@@ -2,10 +2,10 @@
 //
 #pragma once
 
-#include "types.h"
-#include "util.h"
+#include "summersimulator/types.h"
+#include "summersimulator/util.h"
 
-namespace elninho
+namespace summer
 {
 
 enum class WorldTypes {
@@ -22,7 +22,7 @@ class WorldGenerator {
   /// Default Constructor
   WorldGenerator(){}
 
-  GenerateWorld(RobotPoseVectorPtr robot_poses);
+  void GenerateWorld(RobotPoseVectorPtr robot_poses);
 
 private:
 

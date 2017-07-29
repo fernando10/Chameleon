@@ -5,14 +5,14 @@
 
 #include <glog/logging.h>
 
-#include "visualizer.h"
-#include "path_generator.h"
+#include "summersimulator/visualizer.h"
+#include "summersimulator/path_generator.h"
 
 /*-----------COMMAND LINE FLAGS-----------------------------------------------*/
 DEFINE_bool(display, true, "use viewer (pangolin)");
 /*----------------------------------------------------------------------------*/
 
-using namespace elninho;
+using namespace summer;
 
 int main(int argc, char **argv) {
   google::InitGoogleLogging(argv[0]);
@@ -23,7 +23,7 @@ int main(int argc, char **argv) {
   FLAGS_logtostderr = 1;
 
   PathGenerator::PathGeneratorOptions path_options;
-  path_options.motion_type = PathGenerator::PathTypes::Circle;
+  path_options.motion_type = PathGenerator::PathTypes::Rectangle;
   path_options.num_steps = 100;
   std::unique_ptr<PathGenerator> path_generator = util::make_unique<PathGenerator>(path_options);
 

@@ -1,11 +1,19 @@
-project(ChangeDetection)
-cmake_minimum_required(VERSION 2.8)
+project(SummerSimulator)
+cmake_minimum_required(VERSION 2.8.2)
+
 # Mac ONLY. Define Relative Path on Mac OS
 if(NOT DEFINED CMAKE_MACOSX_RPATH)
   set(CMAKE_MACOSX_RPATH 0)
 endif()
 
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake_modules/")
+
+string(TOLOWER ${PROJECT_NAME} LIBRARY_NAME)
+
+set(SummerSimulator_VERSION_MAJOR 0)
+set(SummerSimulator_VERSION_MINOR 1)
+set(PACKAGE_VERSION ${Compass_VERSION_MAJOR}.${Compass_VERSION_MINOR})
+set(SummerSimulator_VERSION ${PACKAGE_VERSION})
 
 include(install_package)
 include(SetPlatformVars)
@@ -18,6 +26,8 @@ link_directories(${CMAKE_BINARY_DIR}/lib)
 option (USE_SYSTEM_CERES
   "Use Ceres via find_package" OFF)
 SET(N_CORES 8 CACHE STRING "Cores for parallel build")
+option(BUILD_APPLICATIONS "Build Applications" ON)
+
 
 
 set( CMAKE_CXX_FLAGS "-std=c++11 -Wall ${CMAKE_CXX_FLAGS}" )
@@ -33,6 +43,11 @@ endif()
 if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
   message(FATAL_ERROR "In-source builds not allowed. Please make a new directory (called a build directory) and run CMake from there. You may need to remove CMakeCache.txt. ")
 endif()
+
+# Prepare "Catch" library for other executables
+set(CATCH_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/catch)
+add_library(Catch INTERFACE)
+target_include_directories(Catch INTERFACE ${CATCH_INCLUDE_DIR})
 
 find_package(GLog REQUIRED)
 include_directories(BEFORE ${GLOG_INCLUDE_DIRS})
@@ -119,11 +134,6 @@ set( REQUIRED_INCLUDE_DIRS
   ${GFlag_INCLUDE_DIRS}
   )
 
-include_directories( ${REQUIRED_INCLUDE_DIRS} )
-include_directories( "external" )
-include_directories( "include" )
-
-
 set( REQUIRED_LIBRARIES
   ${Pangolin_LIBRARIES}
   ${CERES_LIBRARIES}
@@ -131,28 +141,46 @@ set( REQUIRED_LIBRARIES
   ${Sophus_LIBRARIES}
   ${GLOG_LIBRARIES}
   ${GFLAGS_LIBRARIES}
+  pthread
   )
 
-set(SRCS
-  src/main.cpp
+set(LIB_SRCS
   src/visualizer.cpp
   src/path_generator.cpp
+  src/motion_generator.cpp
   )
 
+set( INC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include/${LIBRARY_NAME} )
+set(LIB_HEADERS
+  ${INC_DIR}/data_generator.h
+  ${INC_DIR}/motion_generator.h
+  ${INC_DIR}/path_generator.h
+  ${INC_DIR}/world_generator.h
+  ${INC_DIR}/visualizer.h
+  )
+
+include_directories( ${REQUIRED_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/include )
+
+
+add_library(${LIBRARY_NAME} SHARED ${LIB_SRCS} ${LIB_HEADERS})
+set_target_properties( ${LIBRARY_NAME} PROPERTIES VERSION "${PACKAGE_VERSION}" SOVERSION "${PACKAGE_VERSION}" )
+target_link_libraries( ${LIBRARY_NAME} ${REQUIRED_LIBRARIES} )
+
+# Also build tests
 set(TEST_SRCS
   tests/tests-main.cpp
   tests/tests-math.cpp
+  tests/tests-motion_generator.cpp
   )
 
-add_executable(change_detection ${SRCS})
-add_executable(tests ${TEST_SRCS} external/catch.hpp)
+# Make test executable and link to our library
+add_executable(tests ${TEST_SRCS})
+target_link_libraries(tests Catch ${LIBRARY_NAME})
 
-
-target_link_libraries( change_detection
-  ${REQUIRED_LIBRARIES}
-  )
-
-target_link_libraries( tests
-  ${REQUIRED_LIBRARIES}
-  )
+# Build application
+if(BUILD_APPLICATIONS)
+    MESSAGE(STATUS "BUILDING APPLICATIONS")
+    add_executable(simulator applications/simulator/main.cpp)
+    target_link_libraries(simulator ${LIBRARY_NAME})
+endif()
 

@@ -3,10 +3,10 @@
 #pragma once
 #include <thread>
 #include <mutex>
-#include "types.h"
-#include "util.h"
+#include "summersimulator/types.h"
+#include "summersimulator/util.h"
 
-namespace elninho
+namespace summer
 {
 
 class Visualizer {
