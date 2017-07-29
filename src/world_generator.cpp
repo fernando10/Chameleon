@@ -5,19 +5,9 @@
 
 namespace elninho
 {
-WorldGenerator::GenerateWorld(WorldTypes type) {
-  switch(type) {
-    case WorldTypes::RectangularField:
-      VLOG(1) << "Generating rectangular field world";
-    break;
-  default:
-    LOG(ERROR) << "World type not supported yet.";
-  }
+WorldGenerator::GenerateWorld(RobotPoseVectorPtr robot_poses) {
 
-}
 
-void WorldGenerator::GenerateRectangularField() {
-  int num_landmarks_length = std::floor(kLandmarkDensity * kFieldLength);
 }
 
 

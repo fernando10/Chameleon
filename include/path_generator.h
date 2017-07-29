@@ -9,30 +9,30 @@
 namespace elninho
 {
 
-class MotionGenerator {
+class PathGenerator {
  public:
 
-  enum class MotionTypes {
+  enum class PathTypes {
     Rectangle,
     Circle,
     SineWave,
     StraightLine
   };
 
-  struct MotionGeneratorOptions {
+  struct PathGeneratorOptions {
     double num_steps = 100;
-    MotionTypes motion_type = MotionTypes::Rectangle;
+    PathTypes motion_type = PathTypes::Rectangle;
   };
 
-  MotionGenerator(const MotionGeneratorOptions& options);
+  PathGenerator(const PathGeneratorOptions& options);
 
-  RobotPoseVectorPtr GenerateMotion() const;
+  RobotPoseVectorPtr GeneratePath() const;
 
  private:
-  RobotPoseVectorPtr GenerateRectangularMotion() const;
-  RobotPoseVectorPtr GenerateCircularMotion() const;
-  RobotPoseVectorPtr GenerateSineWaveMotion() const;
-  RobotPoseVectorPtr GenerateStraightLine() const;
+  RobotPoseVectorPtr GenerateRectangularPath() const;
+  RobotPoseVectorPtr GenerateCircularPath() const;
+  RobotPoseVectorPtr GenerateSineWavePath() const;
+  RobotPoseVectorPtr GenerateStraightLinePath() const;
 
   // 2D spline related
   typedef Eigen::Spline<double, 1> Spline1d;
@@ -47,7 +47,7 @@ class MotionGenerator {
   RobotSpline GenerateSplineFromWaypoints(const RobotPoseVectorPtr& waypoints) const;
   RobotPoseVectorPtr GeneratePosesFromSpline(const RobotSpline& spline) const;
 
-  const MotionGeneratorOptions& options_;
+  const PathGeneratorOptions& options_;
 
   // rectangular motion parameters
   const double kRectangleWidth = 10; // [m]
@@ -55,10 +55,7 @@ class MotionGenerator {
   const double kRectangleCornerPercent = 0.2; // [%] of length to start cornering at
 
   // circular motion parameters
-  const double kCircleRadius = 10; // [m]
-
-  // sine motion parameters
-  const double kSineMagnitude = 5; // [m]
+  const double kCircleRadius = 20; // [m]
 
 
 };

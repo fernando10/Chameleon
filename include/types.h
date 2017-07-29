@@ -4,6 +4,7 @@
 #include <deque>
 #include <iostream>
 #include <vector>
+#include <array>
 #include <sophus/se2.hpp>
 #include <Eigen/Core>
 #include "math_utils.h"
@@ -56,18 +57,23 @@ struct RobotPose {
   }
 
   // Construct from angle and position
-  RobotPose(double theta, Eigen::Vector2d position) : RobotPose() {
+  RobotPose(const double theta, const Eigen::Vector2d position) : RobotPose() {
     pose = Sophus::SE2d(theta, position);
   }
 
   // Construct from an SE2d transform
-  RobotPose(Sophus::SE2d p): RobotPose() {
+  RobotPose(const Sophus::SE2d p): RobotPose() {
     pose = p;
   }
 
   // Construct from an SO2d and position
-  RobotPose(Sophus::SO2d rot, Eigen::Vector2d pos): RobotPose() {
+  RobotPose(const Sophus::SO2d rot, const Eigen::Vector2d pos): RobotPose() {
     pose = Sophus::SE2d(rot, pos);
+  }
+
+  // Construct from an angle and x, y
+  RobotPose(const double theta, const double x, const double y): RobotPose() {
+    pose = Sophus::SE2d(theta, Eigen::Vector2d(x, y));
   }
 
   // Construct from another RobotPose
@@ -116,15 +122,41 @@ struct RobotPose {
 typedef Eigen::Matrix2d LandmarkCovariance;
 
 struct Landmark {
-  double x;
-  double y;
+  static constexpr size_t kParamCount = 2;
+
   LandmarkCovariance covariance;
   uint64_t id;
 
-  Landmark(): x(0.), y(0.), covariance(LandmarkCovariance::Identity()), id(0) {
+  Landmark(): covariance(LandmarkCovariance::Identity()), id(0) {
   }
+
+  double x() const { return data_[0]; }
+
+  double y() const { return data_[1]; }
+
+  double& x() { return data_[0]; }
+
+  double& y() { return data_[1]; }
+
+  void SetPosition(const double x, const double y) {
+    data_[0] = x;
+    data_[1] = y;
+  }
+
+  friend std::ostream& operator<<(std::ostream& os, const Landmark& lm) {
+    os << "( " << lm.x() << ", " << lm.y() << " )";
+    return os;
+  }
+
+  // Should only be used by ceres cost function
+  double* data() { return data_.data(); }
+
+ private:
+  std::array<double, kParamCount> data_ = {{0.}};
 };
 
+typedef std::vector<Landmark> LandmarkVector;
+typedef std::shared_ptr<LandmarkVector> LandmarkVectorPtr;
 typedef std::vector<RobotPose> RobotPoseVector;
 typedef std::shared_ptr<RobotPoseVector> RobotPoseVectorPtr;
 

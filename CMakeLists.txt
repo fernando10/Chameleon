@@ -136,7 +136,7 @@ set( REQUIRED_LIBRARIES
 set(SRCS
   src/main.cpp
   src/visualizer.cpp
-  src/motion_generator.cpp
+  src/path_generator.cpp
   )
 
 set(TEST_SRCS

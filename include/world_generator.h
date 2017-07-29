@@ -22,7 +22,7 @@ class WorldGenerator {
   /// Default Constructor
   WorldGenerator(){}
 
-  GenerateWorld(WorldTypes type);
+  GenerateWorld(RobotPoseVectorPtr robot_poses);
 
 private:
 

@@ -6,7 +6,7 @@
 #include <glog/logging.h>
 
 #include "visualizer.h"
-#include "motion_generator.h"
+#include "path_generator.h"
 
 /*-----------COMMAND LINE FLAGS-----------------------------------------------*/
 DEFINE_bool(display, true, "use viewer (pangolin)");
@@ -22,12 +22,12 @@ int main(int argc, char **argv) {
   FLAGS_colorlogtostderr = 1;
   FLAGS_logtostderr = 1;
 
-  MotionGenerator::MotionGeneratorOptions path_options;
-  path_options.motion_type = MotionGenerator::MotionTypes::Rectangle;
+  PathGenerator::PathGeneratorOptions path_options;
+  path_options.motion_type = PathGenerator::PathTypes::Circle;
   path_options.num_steps = 100;
-  std::unique_ptr<MotionGenerator> motion_generator = util::make_unique<MotionGenerator>(path_options);
+  std::unique_ptr<PathGenerator> path_generator = util::make_unique<PathGenerator>(path_options);
 
-  RobotPoseVectorPtr poses =  motion_generator->GenerateMotion();
+  RobotPoseVectorPtr poses = path_generator->GeneratePath();
 
   Visualizer::ViewerData::Ptr viewer_data = Visualizer::ViewerData::Ptr(new Visualizer::ViewerData());
   viewer_data->robot_poses = poses;

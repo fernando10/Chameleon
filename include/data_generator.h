@@ -36,7 +36,7 @@ public:
 private:
   const DataGeneratorOptions& options_;
   const std::unique_ptr<WorldGenerator> world_generator_;
-  const std::unique_ptr<MotionGenerator> motion_generator_;
+  const std::unique_ptr<PathGenerator> motion_generator_;
   const uint32_t kObservationDim = 3; // range, bearing, id
   const uint32_t kMotionDim = 3; // x, y, theta
 };

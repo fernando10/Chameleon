@@ -8,7 +8,7 @@ namespace elninho
 
 DataGenerator::DataGenerator(const DataGeneratorOptions &options):
   options_(options), world_generator_(util::make_unique<WorldGenerator>()),
-  motion_generator_(util::make_unique<MotionGenerator>()){
+  motion_generator_(util::make_unique<PathGenerator>()){
 }
 
 DataGenerator::GenerateSimulatedData() {

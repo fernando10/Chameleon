@@ -1,40 +1,41 @@
 // Copyright 2017 Toyota Research Institute.  All rights reserved.
 //
-#include "motion_generator.h"
+#include "path_generator.h"
 #include "glog/logging.h"
 #include "math_utils.h"
 
 namespace elninho
 {
 
-MotionGenerator::MotionGenerator(const MotionGeneratorOptions& options):
+PathGenerator::PathGenerator(const PathGeneratorOptions& options):
   options_(options){
 }
 
-RobotPoseVectorPtr MotionGenerator::GenerateMotion() const {
+RobotPoseVectorPtr PathGenerator::GeneratePath() const {
   RobotPoseVectorPtr robot_poses;
 
   switch (options_.motion_type) {
-  case MotionTypes::Rectangle:
-    robot_poses = GenerateRectangularMotion();
+  case PathTypes::Rectangle:
+    robot_poses = GenerateRectangularPath();
     break;
-  case MotionTypes::Circle:
-    robot_poses = GenerateCircularMotion();
+  case PathTypes::Circle:
+    robot_poses = GenerateCircularPath();
     break;
-  case MotionTypes::SineWave:
+  case PathTypes::SineWave:
+    robot_poses = GenerateSineWavePath();
     break;
-  case MotionTypes::StraightLine:
-    robot_poses = GenerateStraightLine();
+  case PathTypes::StraightLine:
+    robot_poses = GenerateStraightLinePath();
     break;
   default:
-    LOG(ERROR) << " Motion type not supported. Unable to generate motion";
+    LOG(ERROR) << "Motion type not supported. Unable to generate motion";
   }
 
   return robot_poses;
 }
 
-RobotPoseVectorPtr MotionGenerator::GenerateStraightLine() const {
-  VLOG(1) << " Generating straight line motion.";
+RobotPoseVectorPtr PathGenerator::GenerateStraightLinePath() const {
+  VLOG(1) << "Generating straight line motion.";
   RobotPoseVectorPtr robot_poses = std::make_shared<RobotPoseVector>();
 
   // start position
@@ -48,8 +49,8 @@ RobotPoseVectorPtr MotionGenerator::GenerateStraightLine() const {
   return robot_poses;
 }
 
-RobotPoseVectorPtr MotionGenerator::GenerateRectangularMotion() const {
-  VLOG(1) << " Generating rectangular motion.";
+RobotPoseVectorPtr PathGenerator::GenerateRectangularPath() const {
+  VLOG(1) << "Generating rectangular motion.";
 
   RobotPoseVectorPtr robot_poses = std::make_shared<RobotPoseVector>();
 
@@ -62,10 +63,7 @@ RobotPoseVectorPtr MotionGenerator::GenerateRectangularMotion() const {
   const double total_perimiter =  2 * length_minus_corner
                                   + 2 * width_minus_corner
                                   + 4 * corner_perimiter;
-  VLOG(3) << "total_perimiter: " << total_perimiter;
-
   const double dt = total_perimiter / options_.num_steps;
-  VLOG(3) << "dt: " << dt;
 
   if (dt < 1e-16) {
     LOG(ERROR) << "dt too close to zero: " << dt;
@@ -132,18 +130,33 @@ RobotPoseVectorPtr MotionGenerator::GenerateRectangularMotion() const {
   return robot_poses;
 }
 
-RobotPoseVectorPtr MotionGenerator::GenerateCircularMotion() const {
+RobotPoseVectorPtr PathGenerator::GenerateCircularPath() const {
+  VLOG(1) << "Generating circular motion.";
+
   RobotPoseVectorPtr robot_poses = std::make_shared<RobotPoseVector>();
+
+  const double omega = (2 * M_PI) / options_.num_steps;  // angular rate
+  const Eigen::Vector2d vel(4 * kCircleRadius / options_.num_steps, 0);
+
+  // start pose:
+  robot_poses->push_back(RobotPose(0, kCircleRadius, 0));
+
+  for (int ii = 0; ii < options_.num_steps; ++ii) {
+    robot_poses->push_back(robot_poses->back() * Sophus::SE2d(omega, vel));
+  }
+
   return robot_poses;
 }
 
-RobotPoseVectorPtr MotionGenerator::GenerateSineWaveMotion() const {
+//TODO
+RobotPoseVectorPtr PathGenerator::GenerateSineWavePath() const {
   RobotPoseVectorPtr robot_poses = std::make_shared<RobotPoseVector>();
+  LOG(ERROR) << "SineWaveMotion not implemented.";
   return robot_poses;
 }
 
 
-MotionGenerator::RobotSpline MotionGenerator::GenerateSplineFromWaypoints(const RobotPoseVectorPtr &waypoints) const {
+PathGenerator::RobotSpline PathGenerator::GenerateSplineFromWaypoints(const RobotPoseVectorPtr &waypoints) const {
   VLOG(2) << " Generating spline from "  << waypoints->size() << " waypoints";
 
   Eigen::ArrayXXd positions(2, waypoints->size());
@@ -162,7 +175,7 @@ MotionGenerator::RobotSpline MotionGenerator::GenerateSplineFromWaypoints(const 
   return result;
 }
 
-RobotPoseVectorPtr MotionGenerator::GeneratePosesFromSpline(const RobotSpline &spline) const {
+RobotPoseVectorPtr PathGenerator::GeneratePosesFromSpline(const RobotSpline &spline) const {
   VLOG(2) << " Generating poses from spline" ;
 
   RobotPoseVectorPtr out_poses = std::make_shared<RobotPoseVector>();
