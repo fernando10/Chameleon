@@ -52,6 +52,20 @@ struct RobotPose {
   RobotPose(): covariance(PoseCovariance::Identity()), time(0.) {
   }
 
+  RobotPose(double theta, Eigen::Vector2d position) : RobotPose() {
+    pose = Sophus::SE2d(theta, position);
+  }
+
+  RobotPose(Sophus::SE2d p): RobotPose() {
+    pose = p;
+  }
+
+  RobotPose(const RobotPose& other) {
+    pose = other.pose;
+    covariance = other.covariance;
+    time = other.time;
+  }
+
 };
 
 typedef Eigen::Matrix2d LandmarkCovariance;

@@ -6,6 +6,7 @@
 #include <glog/logging.h>
 
 #include "visualizer.h"
+#include "motion_generator.h"
 
 /*-----------COMMAND LINE FLAGS-----------------------------------------------*/
 DEFINE_bool(display, true, "use viewer (pangolin)");
@@ -21,13 +22,25 @@ int main(int argc, char **argv) {
   FLAGS_colorlogtostderr = 1;
   FLAGS_logtostderr = 1;
 
- // std::unique_ptr<DataGenerator> data_generator = util::make_unique<DataGenerator>();
+  MotionGenerator::MotionGeneratorOptions path_options;
+  path_options.motion_type = MotionGenerator::MotionTypes::StraightLine;
+  path_options.num_steps = 100;
+  std::unique_ptr<MotionGenerator> motion_generator = util::make_unique<MotionGenerator>(path_options);
+
+  RobotPoseVector poses =  motion_generator->GenerateMotion();
+  for(const auto& r : poses){
+    VLOG(3) << " trans: " << r.pose.translation().transpose();
+  }
+  Visualizer::ViewerData::Ptr viewer_data = Visualizer::ViewerData::Ptr(new Visualizer::ViewerData());
+  viewer_data->robot_poses = poses;
 
   if (FLAGS_display) {
     VLOG(1) << "Creating visualizer";
-    ViewerOptions viewer_options;
+    Visualizer::ViewerOptions viewer_options;
     viewer_options.window_name = "Change Detection Simulator";
     Visualizer viewer(viewer_options);  // create viewer and run thread
+
+    viewer.SetData(viewer_data);
 
     while (!viewer.IsFinished()) {
       usleep(50000);
@@ -38,4 +51,3 @@ int main(int argc, char **argv) {
 
   return 0;
 }
-

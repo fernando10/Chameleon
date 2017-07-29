@@ -1,5 +1,7 @@
 // Copyright 2017 Toyota Research Institute.  All rights reserved.
 //
+#include <thread>
+#include <mutex>
 #include "visualizer.h"
 
 
@@ -81,6 +83,12 @@ void Visualizer::Run() {
       reset_ = false;
     }
 
+    if (data_ != nullptr) {
+      for (const auto& robot : data_->robot_poses) {
+        DrawRobot(robot);
+      }
+    }
+
     pangolin::FinishFrame();
 
     // Sleep for a bit.
@@ -92,8 +100,18 @@ void Visualizer::Run() {
   SetFinish();
 }
 
-void Visualizer::DrawRobot(const RobotPose &pose, bool draw_covariance) {
-  //TODO
+void Visualizer::SetData(ViewerData::Ptr data) {
+  std::unique_lock<std::mutex> lock(data_mutex_);
+  data_ = data;
+}
+
+void Visualizer::DrawRobot(const RobotPose &robot, bool draw_covariance) {
+  glColor3f(0.0, 0.0, 1.0);  // blue
+  pangolin::glDrawCirclePerimeter(robot.pose.translation(), kRobotRadius);
+
+//  Eigen::Vector2d orientation_pt(std::sin(robot.pose.so2().log()) * kRobotRadius,
+//                                 std::cos(robot.pose.so2().log()) * kRobotRadius);
+//  pangolin::glDrawLine(robot.pose.translation(), orientation_pt);
 }
 
 void Visualizer::DrawLandmark(const Landmark &landmark, bool draw_covariance) {
@@ -101,23 +119,23 @@ void Visualizer::DrawLandmark(const Landmark &landmark, bool draw_covariance) {
 }
 
 void Visualizer::RequestFinish() {
-  std::unique_lock<std::mutex> lock(mutex_finish_);
+  std::unique_lock<std::mutex> lock(finish_mutex_);
   finish_requested_ = true;
 }
 
 
 bool Visualizer::CheckFinish() {
-  std::unique_lock<std::mutex> lock(mutex_finish_);
+  std::unique_lock<std::mutex> lock(finish_mutex_);
   return finish_requested_;
 }
 
 void Visualizer::SetFinish() {
-  std::unique_lock<std::mutex> lock(mutex_finish_);
+  std::unique_lock<std::mutex> lock(finish_mutex_);
   finished_ = true;
 }
 
 bool Visualizer::IsFinished() {
-  std::unique_lock<std::mutex> lock(mutex_finish_);
+  std::unique_lock<std::mutex> lock(finish_mutex_);
   return finished_;
 }
 

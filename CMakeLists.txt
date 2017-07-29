@@ -20,7 +20,7 @@ option (USE_SYSTEM_CERES
 SET(N_CORES 8 CACHE STRING "Cores for parallel build")
 
 
-set( CMAKE_CXX_FLAGS "-std=c++0x -Wall ${CMAKE_CXX_FLAGS}" )
+set( CMAKE_CXX_FLAGS "-std=c++11 -Wall ${CMAKE_CXX_FLAGS}" )
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
 endif()
@@ -136,6 +136,7 @@ set( REQUIRED_LIBRARIES
 set(SRCS
   src/main.cpp
   src/visualizer.cpp
+  src/motion_generator.cpp
   )
 
 set(TEST_SRCS
