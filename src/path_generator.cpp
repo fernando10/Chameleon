@@ -1,10 +1,10 @@
 // Copyright 2017 Toyota Research Institute.  All rights reserved.
 //
-#include "path_generator.h"
+#include "summersimulator/path_generator.h"
 #include "glog/logging.h"
-#include "math_utils.h"
+#include "summersimulator/math_utils.h"
 
-namespace elninho
+namespace summer
 {
 
 PathGenerator::PathGenerator(const PathGeneratorOptions& options):
@@ -39,11 +39,11 @@ RobotPoseVectorPtr PathGenerator::GenerateStraightLinePath() const {
   RobotPoseVectorPtr robot_poses = std::make_shared<RobotPoseVector>();
 
   // start position
-  robot_poses->push_back(RobotPose(0., Eigen::Vector2d(-kRectangleLength / 2,  0.)));
-  Sophus::SE2d increment(0., Eigen::Vector2d(kRectangleLength/options_.num_steps, 0.));
+  robot_poses->push_back(RobotPose(0., Eigen::Vector2d(-kLineLength / 2,  0.)));
+  Sophus::SE2d increment(0., Eigen::Vector2d(kLineLength/options_.num_steps, 0.));
 
   for (size_t ii = 1; ii < options_.num_steps; ++ii) {
-    robot_poses->push_back(RobotPose(robot_poses->at(ii - 1).pose * increment));
+    robot_poses->push_back(RobotPose(robot_poses->at(ii - 1) * increment));
   }
 
   return robot_poses;
@@ -60,9 +60,9 @@ RobotPoseVectorPtr PathGenerator::GenerateRectangularPath() const {
   const double length_minus_corner = kRectangleLength - (2 * corner_offset);
   const double width_minus_corner = kRectangleWidth - (2 * corner_offset);
 
-  const double total_perimiter =  2 * length_minus_corner
-                                  + 2 * width_minus_corner
-                                  + 4 * corner_perimiter;
+  const double total_perimiter =  2. * length_minus_corner
+                                  + 2. * width_minus_corner
+                                  + 4. * corner_perimiter;
   const double dt = total_perimiter / options_.num_steps;
 
   if (dt < 1e-16) {
@@ -135,13 +135,13 @@ RobotPoseVectorPtr PathGenerator::GenerateCircularPath() const {
 
   RobotPoseVectorPtr robot_poses = std::make_shared<RobotPoseVector>();
 
-  const double omega = (2 * M_PI) / options_.num_steps;  // angular rate
-  const Eigen::Vector2d vel(4 * kCircleRadius / options_.num_steps, 0);
+  const double omega = (2. * M_PI) / double(options_.num_steps);  // angular rate
+  const Eigen::Vector2d vel(4. * kCircleRadius / double(options_.num_steps), 0);
 
   // start pose:
   robot_poses->push_back(RobotPose(0, kCircleRadius, 0));
 
-  for (int ii = 0; ii < options_.num_steps; ++ii) {
+  for (size_t ii = 1; ii < options_.num_steps; ++ii) {
     robot_poses->push_back(robot_poses->back() * Sophus::SE2d(omega, vel));
   }
 

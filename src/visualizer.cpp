@@ -2,7 +2,7 @@
 //
 #include <thread>
 #include <mutex>
-#include "visualizer.h"
+#include "summersimulator/visualizer.h"
 
 
 /*-----GUI Includes-----------*/
@@ -12,7 +12,7 @@
 
 #include <glog/logging.h>
 
-namespace elninho
+namespace summer
 {
 
 Visualizer::Visualizer(const ViewerOptions& options):

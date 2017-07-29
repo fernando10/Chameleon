@@ -1,12 +1,15 @@
 // Copyright 2017 Toyota Research Institute.  All rights reserved.
 //
+// Generates 2D robot poses (theta, x, y) along a pre-determined path
+// there is no noise added to the robot, these poses are meant to be used
+// as the ground truth and to generate odometry
 #pragma once
 
-#include "types.h"
-#include "util.h"
+#include "summersimulator/types.h"
+#include "summersimulator/util.h"
 #include <unsupported/Eigen/Splines>
 
-namespace elninho
+namespace summer
 {
 
 class PathGenerator {
@@ -20,7 +23,7 @@ class PathGenerator {
   };
 
   struct PathGeneratorOptions {
-    double num_steps = 100;
+    size_t num_steps = 100;
     PathTypes motion_type = PathTypes::Rectangle;
   };
 
@@ -49,13 +52,16 @@ class PathGenerator {
 
   const PathGeneratorOptions& options_;
 
+  // straight line parameters
+  const double kLineLength = 20.; // [m]
+
   // rectangular motion parameters
-  const double kRectangleWidth = 10; // [m]
-  const double kRectangleLength = 20; // [m]
+  const double kRectangleWidth = 10.; // [m]
+  const double kRectangleLength = 20.; // [m]
   const double kRectangleCornerPercent = 0.2; // [%] of length to start cornering at
 
   // circular motion parameters
-  const double kCircleRadius = 20; // [m]
+  const double kCircleRadius = 20.; // [m]
 
 
 };

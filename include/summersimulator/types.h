@@ -5,15 +5,16 @@
 #include <iostream>
 #include <vector>
 #include <array>
+#include <memory>
 #include <sophus/se2.hpp>
 #include <Eigen/Core>
-#include "math_utils.h"
+#include "summersimulator/math_utils.h"
 
 static Eigen::IOFormat kCleanFmt(4, 0, ", ", ";\n", "", "");
 static Eigen::IOFormat kLongFmt(Eigen::FullPrecision, 0, ", ", ";\n", "", "");
 static Eigen::IOFormat kLongCsvFmt(Eigen::FullPrecision, 0, ", ", "\n", "", "");
 
-namespace elninho
+namespace summer
 {
 
 //------------------------OBSERVATION TYPES------------------------//
@@ -35,9 +36,22 @@ struct RangeFinderReading {
   double range;  // [m]
 };
 
+// TODO: Possibly remove this...may not be necessary
 struct OdometryReading {
   double angle;  // [rad]
   double speed;  // [m/s]
+};
+
+struct OdometryMeasurement {
+  double theta_1;
+  double translation;
+  double theta_2;
+
+  OdometryMeasurement(): theta_1(0.), translation(0), theta_2(0.) {}
+
+  OdometryMeasurement(double theta_1, double trans, double theta2):
+    theta_1(theta_1), translation(trans), theta_2(theta2) {
+  }
 };
 
 typedef Observation<OdometryReading> OdometryObservation;
@@ -100,7 +114,7 @@ struct RobotPose {
     return *this;
   }
 
-  const Eigen::Vector2d& Translation() const {
+  const Eigen::Vector2d& translation() const {
     return pose.translation();
   }
 
@@ -108,12 +122,21 @@ struct RobotPose {
     return pose.so2();
   }
 
-  double Theta() const {
-    return pose.so2().log();
+  double theta() const { return pose.so2().log(); }
+
+  // we don't store theta directly so can't easily return a reference like we do for x and y
+  void SetTheta(const double theta_new) {
+    pose.so2() = Sophus::SO2d(AngleWraparound(theta_new));
   }
 
+  double x() const { return pose.translation().x(); }
+  double& x() { return pose.translation().x(); }
+
+  double y() const { return pose.translation().y(); }
+  double& y() { return pose.translation().y(); }
+
   friend std::ostream& operator<<(std::ostream& os, const RobotPose& robot) {
-    os << "theta: " << Rad2Deg(robot.Theta()) << ", position: " << robot.Translation().transpose();
+    os << "theta: " << Rad2Deg(robot.theta()) << ", position: " << robot.translation().transpose();
     return os;
   }
 
@@ -160,5 +183,18 @@ typedef std::shared_ptr<LandmarkVector> LandmarkVectorPtr;
 typedef std::vector<RobotPose> RobotPoseVector;
 typedef std::shared_ptr<RobotPoseVector> RobotPoseVectorPtr;
 
+
+//------------------------DATA STRUCTURES------------------------//
+
+struct DebugData {
+  RobotPoseVector ground_truth_poses;
+  RobotPoseVector noisy_poses;
+  RangeFinderObservationDeque noise_free_observations;
+};
+
+struct SimData {
+  RangeFinderObservationDeque observations;
+  DebugData debug_data;
+};
 
 } // namespace elninho

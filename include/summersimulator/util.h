@@ -4,7 +4,7 @@
 
 #include <memory>
 
-namespace elninho
+namespace summer
 {
 namespace util
 {

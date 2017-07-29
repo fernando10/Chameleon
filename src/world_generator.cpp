@@ -1,13 +1,13 @@
 // Copyright 2017 Toyota Research Institute.  All rights reserved.
 //
-#include "world_generator.h"
+#include "summersimulator/world_generator.h"
 #include "glog/logging.h"
 
-namespace elninho
+namespace summer
 {
-WorldGenerator::GenerateWorld(RobotPoseVectorPtr robot_poses) {
+void WorldGenerator::GenerateWorld(RobotPoseVectorPtr robot_poses) {
 
-
+//TODO
 }
 
 
