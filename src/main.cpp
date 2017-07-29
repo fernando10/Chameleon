@@ -23,14 +23,12 @@ int main(int argc, char **argv) {
   FLAGS_logtostderr = 1;
 
   MotionGenerator::MotionGeneratorOptions path_options;
-  path_options.motion_type = MotionGenerator::MotionTypes::StraightLine;
+  path_options.motion_type = MotionGenerator::MotionTypes::Rectangle;
   path_options.num_steps = 100;
   std::unique_ptr<MotionGenerator> motion_generator = util::make_unique<MotionGenerator>(path_options);
 
-  RobotPoseVector poses =  motion_generator->GenerateMotion();
-  for(const auto& r : poses){
-    VLOG(3) << " trans: " << r.pose.translation().transpose();
-  }
+  RobotPoseVectorPtr poses =  motion_generator->GenerateMotion();
+
   Visualizer::ViewerData::Ptr viewer_data = Visualizer::ViewerData::Ptr(new Visualizer::ViewerData());
   viewer_data->robot_poses = poses;
 

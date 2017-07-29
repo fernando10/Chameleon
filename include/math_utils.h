@@ -11,7 +11,7 @@ namespace elninho
 
 ///
 /// \brief AngleWraparound
-/// \param angle -> input angle in radians
+/// \param angle : input angle in radians
 /// \return angle in the [-PI PI) range
 ///
 inline double AngleWraparound(const double angle) {
@@ -27,11 +27,20 @@ inline double AngleWraparound(const double angle) {
 
 ///
 /// \brief Deg2Rad
-/// \param deg -> angle in degrees
+/// \param deg : angle in degrees
 /// \return angle in radians
 ///
 inline double Deg2Rad(const double deg) {
-  return (deg / 180.0 * M_PI);
+  return AngleWraparound(((deg / 180.0) * M_PI));
+}
+
+///
+/// \brief Rad2Deg
+/// \param rad : angle in radians
+/// \return angle in degrees
+///
+inline double Rad2Deg(const double rad) {
+  return (AngleWraparound(rad) * 180.0) / M_PI;
 }
 
 inline void SampleGaussian(const double mean, const double covariance, const double dim) {

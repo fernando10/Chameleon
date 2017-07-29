@@ -21,7 +21,7 @@ public:
 
   struct ViewerData {
     typedef std::shared_ptr<ViewerData> Ptr;
-    RobotPoseVector robot_poses;
+    RobotPoseVectorPtr robot_poses;
   };
 
   Visualizer(const ViewerOptions& options);

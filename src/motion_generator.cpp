@@ -11,14 +11,15 @@ MotionGenerator::MotionGenerator(const MotionGeneratorOptions& options):
   options_(options){
 }
 
-RobotPoseVector MotionGenerator::GenerateMotion(){
-  RobotPoseVector robot_poses;
+RobotPoseVectorPtr MotionGenerator::GenerateMotion() const {
+  RobotPoseVectorPtr robot_poses;
 
   switch (options_.motion_type) {
   case MotionTypes::Rectangle:
     robot_poses = GenerateRectangularMotion();
     break;
   case MotionTypes::Circle:
+    robot_poses = GenerateCircularMotion();
     break;
   case MotionTypes::SineWave:
     break;
@@ -32,85 +33,125 @@ RobotPoseVector MotionGenerator::GenerateMotion(){
   return robot_poses;
 }
 
-RobotPoseVector MotionGenerator::GenerateStraightLine() {
+RobotPoseVectorPtr MotionGenerator::GenerateStraightLine() const {
   VLOG(1) << " Generating straight line motion.";
-  RobotPoseVector robot_poses;
+  RobotPoseVectorPtr robot_poses = std::make_shared<RobotPoseVector>();
 
   // start position
-  robot_poses.push_back(RobotPose(0., Eigen::Vector2d(-kRectangleLength / 2,  0.)));
+  robot_poses->push_back(RobotPose(0., Eigen::Vector2d(-kRectangleLength / 2,  0.)));
   Sophus::SE2d increment(0., Eigen::Vector2d(kRectangleLength/options_.num_steps, 0.));
 
   for (size_t ii = 1; ii < options_.num_steps; ++ii) {
-    robot_poses.push_back(RobotPose(robot_poses.at(ii - 1).pose * increment));
+    robot_poses->push_back(RobotPose(robot_poses->at(ii - 1).pose * increment));
   }
 
   return robot_poses;
 }
 
-RobotPoseVector MotionGenerator::GenerateRectangularMotion() {
+RobotPoseVectorPtr MotionGenerator::GenerateRectangularMotion() const {
   VLOG(1) << " Generating rectangular motion.";
 
-  RobotPoseVector waypoints;
-  const double corner_offset = 1;  // start cornering this distance [m] from the edge
+  RobotPoseVectorPtr robot_poses = std::make_shared<RobotPoseVector>();
 
-  const double half_length = kRectangleLength / 2;
-  const double half_width = kRectangleWidth / 2;
+  const double corner_offset = kRectangleCornerPercent * kRectangleLength;  // start cornering this distance [m] from the edge
+  // assuming the length is the longest side (quarter turn)
+  const double corner_perimiter = corner_offset * M_PI * 0.5;
+  const double length_minus_corner = kRectangleLength - (2 * corner_offset);
+  const double width_minus_corner = kRectangleWidth - (2 * corner_offset);
 
-  // we will add the waypoints for the corners of the rectangle, which will be traversed clockwise
-  // from a top-down view, x axis is positive to the right, and y axis is positive going up
-  // top left corner
-  waypoints.push_back(RobotPose(Deg2Rad(90), Eigen::Vector2d(-half_length, half_width - corner_offset)));
-  waypoints.push_back(RobotPose(Deg2Rad(45), Eigen::Vector2d(-half_length, half_width)));
-  waypoints.push_back(RobotPose(0., Eigen::Vector2d(-half_length + corner_offset, half_width)));
+  const double total_perimiter =  2 * length_minus_corner
+                                  + 2 * width_minus_corner
+                                  + 4 * corner_perimiter;
+  VLOG(3) << "total_perimiter: " << total_perimiter;
 
-  // top middle
-  waypoints.push_back(RobotPose(0., Eigen::Vector2d(0, half_width)));
+  const double dt = total_perimiter / options_.num_steps;
+  VLOG(3) << "dt: " << dt;
 
-  // top right corner
-  waypoints.push_back(RobotPose(0., Eigen::Vector2d(half_length - corner_offset, half_width)));
-  waypoints.push_back(RobotPose(Deg2Rad(-45), Eigen::Vector2d(half_length, half_width)));
-  waypoints.push_back(RobotPose(Deg2Rad(-90), Eigen::Vector2d(half_length, half_width - corner_offset)));
+  if (dt < 1e-16) {
+    LOG(ERROR) << "dt too close to zero: " << dt;
+    return robot_poses;
+  }
+  const size_t num_steps_length = std::floor(length_minus_corner / dt);
+  const size_t num_steps_width = std::floor(width_minus_corner / dt);
+  const size_t num_steps_corner = std::floor(corner_perimiter / dt);
 
-  // right middle
-  waypoints.push_back(RobotPose(0., Eigen::Vector2d(half_length, 0)));
+  if (num_steps_corner == 0 || num_steps_length == 0 || num_steps_width == 0) {
+    LOG(ERROR) << " Zero steps on a side or corner...shouldn't happen.";
+    return robot_poses;
+  }
 
-  // bottom right corner
-  waypoints.push_back(RobotPose(Deg2Rad(-90), Eigen::Vector2d(half_length , -half_width + corner_offset)));
-  waypoints.push_back(RobotPose(Deg2Rad(-135), Eigen::Vector2d(half_length, -half_width)));
-  waypoints.push_back(RobotPose(Deg2Rad(-180), Eigen::Vector2d(half_length - corner_offset, -half_width)));
+  // segment velocities in the robot frame
+  const double corner_omega = Deg2Rad(-90) / num_steps_corner;
+  const double side_omega = 0;
+  const Eigen::Vector2d corner_vel = Eigen::Vector2d(corner_offset / num_steps_corner, 0.);
+  const Eigen::Vector2d length_vel = Eigen::Vector2d(length_minus_corner / num_steps_length, 0.);
+  const Eigen::Vector2d width_vel = Eigen::Vector2d(width_minus_corner / num_steps_width, 0.);
 
-  // bottom middle
-  waypoints.push_back(RobotPose(0., Eigen::Vector2d(0, -half_width)));
+  robot_poses->push_back(RobotPose(0., Eigen::Vector2d(-kRectangleLength / 2 + corner_offset, kRectangleWidth / 2)));
 
-  // bottom left corner
-  waypoints.push_back(RobotPose(Deg2Rad(-180), Eigen::Vector2d(-half_length + corner_offset , -half_width)));
-  waypoints.push_back(RobotPose(Deg2Rad(135), Eigen::Vector2d(-half_length, -half_width)));
-  waypoints.push_back(RobotPose(Deg2Rad(90), Eigen::Vector2d(-half_length, -half_width + corner_offset)));
+  // Top side of rectangle (start from one since the first pose has already been added) (length)
+  for (size_t ii = 1; ii < num_steps_length; ++ii) {
+    robot_poses->push_back(robot_poses->back() * Sophus::SE2d(side_omega, length_vel));
+  }
 
-  // left middle
-  waypoints.push_back(RobotPose(0., Eigen::Vector2d(-half_length, 0)));
+  // Top right corner
+  for (size_t ii = 0; ii < num_steps_corner; ++ii) {
+    robot_poses->push_back(robot_poses->back() * Sophus::SE2d(corner_omega, corner_vel));
+  }
 
-  // closing the loop
-  waypoints.push_back(RobotPose(Deg2Rad(90), Eigen::Vector2d(-half_length, half_width - corner_offset)));
+  // Right side (width)
+  for (size_t ii = 0; ii < num_steps_width; ++ii) {
+    robot_poses->push_back(robot_poses->back() * Sophus::SE2d(side_omega, width_vel));
+  }
 
+  // Bottom right corner
+  for (size_t ii = 0; ii < num_steps_corner; ++ii) {
+    robot_poses->push_back(robot_poses->back() * Sophus::SE2d(corner_omega, corner_vel));
+  }
 
-  VLOG(2) << "Generated "  << waypoints.size() << " waypoints.";
-  // run a spline through the waypoints
-  RobotSpline spline = GenerateSplineFromWaypoints(waypoints);
+  // Bottom side (length)
+  for (size_t ii = 0; ii < num_steps_length; ++ii) {
+    robot_poses->push_back(robot_poses->back() * Sophus::SE2d(side_omega, length_vel));
+  }
 
-  // and generate poses sampled from the spline
-  return GeneratePosesFromSpline(spline);
+  // Bottom left corner
+  for (size_t ii = 0; ii < num_steps_corner; ++ii) {
+    robot_poses->push_back(robot_poses->back() * Sophus::SE2d(corner_omega, corner_vel));
+  }
+
+  // Left side (width)
+  for (size_t ii = 0; ii < num_steps_width; ++ii) {
+    robot_poses->push_back(robot_poses->back() * Sophus::SE2d(side_omega, width_vel));
+  }
+
+  // Top left corner
+  for (size_t ii = 0; ii < num_steps_corner; ++ii) {
+    robot_poses->push_back(robot_poses->back() * Sophus::SE2d(corner_omega, corner_vel));
+  }
+
+  return robot_poses;
 }
 
-MotionGenerator::RobotSpline MotionGenerator::GenerateSplineFromWaypoints(const RobotPoseVector &waypoints) {
-  VLOG(2) << " Generating spline from "  << waypoints.size() << " waypoints";
+RobotPoseVectorPtr MotionGenerator::GenerateCircularMotion() const {
+  RobotPoseVectorPtr robot_poses = std::make_shared<RobotPoseVector>();
+  return robot_poses;
+}
 
-  Eigen::ArrayXXd positions(2, waypoints.size());
-  Eigen::ArrayXd rotations(waypoints.size());
+RobotPoseVectorPtr MotionGenerator::GenerateSineWaveMotion() const {
+  RobotPoseVectorPtr robot_poses = std::make_shared<RobotPoseVector>();
+  return robot_poses;
+}
 
-  for (size_t ii = 0; ii < waypoints.size(); ++ii) {
-    positions.col(ii) = waypoints.at(ii).pose.translation();
-    rotations(ii) = waypoints.at(ii).pose.so2().log();
+
+MotionGenerator::RobotSpline MotionGenerator::GenerateSplineFromWaypoints(const RobotPoseVectorPtr &waypoints) const {
+  VLOG(2) << " Generating spline from "  << waypoints->size() << " waypoints";
+
+  Eigen::ArrayXXd positions(2, waypoints->size());
+  Eigen::ArrayXd rotations(waypoints->size());
+
+  for (size_t ii = 0; ii < waypoints->size(); ++ii) {
+    positions.col(ii) = waypoints->at(ii).pose.translation();
+    rotations(ii) = waypoints->at(ii).pose.so2().log();
   }
 
   RobotSpline result;
@@ -121,10 +162,10 @@ MotionGenerator::RobotSpline MotionGenerator::GenerateSplineFromWaypoints(const 
   return result;
 }
 
-RobotPoseVector MotionGenerator::GeneratePosesFromSpline(const RobotSpline &spline) {
+RobotPoseVectorPtr MotionGenerator::GeneratePosesFromSpline(const RobotSpline &spline) const {
   VLOG(2) << " Generating poses from spline" ;
 
-  RobotPoseVector out_poses;
+  RobotPoseVectorPtr out_poses = std::make_shared<RobotPoseVector>();
   double spline_position = 0;
   double spline_increment = 1.0 / options_.num_steps;
 
@@ -134,7 +175,7 @@ RobotPoseVector MotionGenerator::GeneratePosesFromSpline(const RobotSpline &spli
     PointType pt = spline.position_spline(spline_position);
     Eigen::Vector2d position(pt[0], pt[1]);
 
-    out_poses.push_back(RobotPose(theta, position));
+    out_poses->push_back(RobotPose(theta, position));
     spline_position += spline_increment;
   }
   return out_poses;

@@ -26,9 +26,15 @@ class MotionGenerator {
 
   MotionGenerator(const MotionGeneratorOptions& options);
 
-  RobotPoseVector GenerateMotion();
+  RobotPoseVectorPtr GenerateMotion() const;
 
  private:
+  RobotPoseVectorPtr GenerateRectangularMotion() const;
+  RobotPoseVectorPtr GenerateCircularMotion() const;
+  RobotPoseVectorPtr GenerateSineWaveMotion() const;
+  RobotPoseVectorPtr GenerateStraightLine() const;
+
+  // 2D spline related
   typedef Eigen::Spline<double, 1> Spline1d;
   typedef Eigen::Spline2d Spline2d;
   typedef Eigen::Spline2d::PointType PointType;
@@ -38,15 +44,21 @@ class MotionGenerator {
     Spline2d position_spline;
   };
 
-  RobotSpline GenerateSplineFromWaypoints(const RobotPoseVector& waypoints);
-  RobotPoseVector GeneratePosesFromSpline(const RobotSpline& spline);
-  RobotPoseVector GenerateRectangularMotion();
-  RobotPoseVector GenerateStraightLine();
+  RobotSpline GenerateSplineFromWaypoints(const RobotPoseVectorPtr& waypoints) const;
+  RobotPoseVectorPtr GeneratePosesFromSpline(const RobotSpline& spline) const;
 
   const MotionGeneratorOptions& options_;
 
-  const double kRectangleWidth = 20; // [m]
-  const double kRectangleLength =40; // [m]
+  // rectangular motion parameters
+  const double kRectangleWidth = 10; // [m]
+  const double kRectangleLength = 20; // [m]
+  const double kRectangleCornerPercent = 0.2; // [%] of length to start cornering at
+
+  // circular motion parameters
+  const double kCircleRadius = 10; // [m]
+
+  // sine motion parameters
+  const double kSineMagnitude = 5; // [m]
 
 
 };

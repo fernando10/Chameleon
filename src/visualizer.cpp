@@ -84,7 +84,7 @@ void Visualizer::Run() {
     }
 
     if (data_ != nullptr) {
-      for (const auto& robot : data_->robot_poses) {
+      for (const auto& robot : *(data_->robot_poses)) {
         DrawRobot(robot);
       }
     }
