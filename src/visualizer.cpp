@@ -134,7 +134,6 @@ void Visualizer::RequestFinish() {
   finish_requested_ = true;
 }
 
-
 bool Visualizer::CheckFinish() {
   std::unique_lock<std::mutex> lock(finish_mutex_);
   return finish_requested_;
@@ -150,4 +149,4 @@ bool Visualizer::IsFinished() {
   return finished_;
 }
 
-}  // namespace elninho
+}  // namespace summer

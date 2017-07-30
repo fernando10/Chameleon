@@ -66,4 +66,4 @@ class PathGenerator {
 
 };
 
-}
+}  // namespace summer

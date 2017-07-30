@@ -194,4 +194,4 @@ RobotPoseVectorPtr PathGenerator::GeneratePosesFromSpline(const RobotSpline &spl
   return out_poses;
 }
 
-}
+}  // namespace summer

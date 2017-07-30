@@ -14,11 +14,9 @@ namespace summer
 class DataGenerator {
 public:
   struct DataGeneratorOptions {
-    size_t num_steps = 100;  // number of steps or keyframes to drop
-    RobotPose initial_pose;  // starting position for the robot
     double max_observations = 3;  // maximum observations the robot can make at each timestep
     Eigen::Vector4d odometry_noise =
-        (Eigen::Vector4d() << Square(5e-2), Square(1e-3), Square(5e-2), Square(1e-2)).finished();
+        (Eigen::Vector4d() << Square(kAlpha1), Square(kAlpha2), Square(kAlpha3), Square(kAlpha4)).finished();
 
     PathGenerator::PathGeneratorOptions path_options;
   };
@@ -34,5 +32,10 @@ private:
   const std::unique_ptr<MotionGenerator> motion_generator_;
   const uint32_t kObservationDim = 3; // range, bearing, id
   const uint32_t kMotionDim = 3; // x, y, theta
+
+  const double kAlpha1 = 5e-2;
+  const double kAlpha2 = 1e-3;
+  const double kAlpha3 = 5e-2;
+  const double kAlpha4 = 1e-2;
 };
-} // namespace elninho
+}  // namespace summer

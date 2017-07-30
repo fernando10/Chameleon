@@ -23,6 +23,7 @@ int main(int argc, char **argv) {
   FLAGS_logtostderr = 1;
 
   DataGenerator::DataGeneratorOptions options;  // use default options
+  options.path_options.motion_type = PathGenerator::PathTypes::Rectangle;
   std::unique_ptr<DataGenerator> data_generator = util::make_unique<DataGenerator>(options);
 
   SimData simulated_data;

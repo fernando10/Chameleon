@@ -80,4 +80,4 @@ struct MultivariateNormalVariable {
 };
 
 
-}  // namespace elninho
+}  // namespace summer
