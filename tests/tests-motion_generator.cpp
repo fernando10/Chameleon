@@ -33,7 +33,7 @@ TEST_CASE("Noise-free odometry integrates back to original path") {
 
       // now propagate the odometry
       RobotPose integrated_pose = motion_generator->PropagateMeasurement(noise_free_odometry,
-                                                                         ground_truth_robot_path->at(ii));
+                                                                         integrated_robot_path->at(ii));
       integrated_robot_path->push_back(integrated_pose);
     }
 
@@ -68,7 +68,7 @@ TEST_CASE("Noise-free odometry integrates back to original path") {
 
       // now propagate the odometry
       RobotPose integrated_pose = motion_generator->PropagateMeasurement(noise_free_odometry,
-                                                                         ground_truth_robot_path->at(ii));
+                                                                         integrated_robot_path->at(ii));
       integrated_robot_path->push_back(integrated_pose);
     }
 
@@ -101,7 +101,7 @@ TEST_CASE("Noise-free odometry integrates back to original path") {
 
       // now propagate the odometry
       RobotPose integrated_pose = motion_generator->PropagateMeasurement(noise_free_odometry,
-                                                                         ground_truth_robot_path->at(ii));
+                                                                         integrated_robot_path->at(ii));
       integrated_robot_path->push_back(integrated_pose);
     }
 

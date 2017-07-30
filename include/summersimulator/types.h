@@ -54,6 +54,8 @@ struct OdometryMeasurement {
   }
 };
 
+typedef std::vector<OdometryMeasurement> OdometryMeasurementVector;
+typedef std::shared_ptr<std::vector<OdometryMeasurement>> OdometryMeasurementVectorPtr;
 typedef Observation<OdometryReading> OdometryObservation;
 typedef Observation<RangeFinderReading> RangeFinderObservation;
 typedef std::deque<RangeFinderObservation> RangeFinderObservationDeque;

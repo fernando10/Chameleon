@@ -18,9 +18,14 @@ RobotPoseVectorPtr MotionGenerator::GetPath() {
   return robot_poses_;
 }
 
-OdometryMeasurement MotionGenerator::GenerateOdometryMeasurement(size_t step) {
+OdometryMeasurement MotionGenerator::GenerateOdometryMeasurement(size_t step) const {
   if (robot_poses_ == nullptr) {
     LOG(ERROR) << "Path not initalized but generate odometry was called...";
+    return OdometryMeasurement();
+  }
+
+  if (step >= robot_poses_->size()) {
+    LOG(ERROR) << " inex out of bounds, only " << robot_poses_->size() << " poses are here.";
     return OdometryMeasurement();
   }
 
@@ -43,7 +48,19 @@ OdometryMeasurement MotionGenerator::GenerateOdometryMeasurement(size_t step) {
   return OdometryMeasurement(theta_1, translation, theta_2);
 }
 
-RobotPose MotionGenerator::PropagateMeasurement(const OdometryMeasurement &meas, const RobotPose &start_pose) {
+OdometryMeasurementVectorPtr MotionGenerator::GenerateOdometry() const {
+  OdometryMeasurementVectorPtr odometry_measurements = std::make_shared<OdometryMeasurementVector>();
+
+  for (size_t ii = 0; ii < robot_poses_->size() - 1; ++ii) {
+    OdometryMeasurement noise_free_odometry = GenerateOdometryMeasurement(ii);
+    odometry_measurements->push_back(noise_free_odometry);
+  }
+
+  return odometry_measurements;
+}
+
+
+RobotPose MotionGenerator::PropagateMeasurement(const OdometryMeasurement &meas, const RobotPose &start_pose) const {
   RobotPose propagated_pose = start_pose;
 
   // first rotation
