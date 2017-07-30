@@ -36,11 +36,12 @@ public:
   };
 
   struct GuiVars {
-    pangolin::OpenGlRenderState camera2d;
-    pangolin::OpenGlRenderState camera3d;  // currently unused...for projective views
+    pangolin::OpenGlRenderState camera;
+    pangolin::OpenGlRenderState camera3d;
     SceneGraph::GLSceneGraph scene_graph;  // Scene Graph to hold GLObjects and realtive transforms
     SceneGraph::GLDynamicGrid dynamic_grid;  // Grid object to be the world plane
     std::unique_ptr<SceneGraph::HandlerSceneGraph> handler;
+    std::unique_ptr<SceneGraph::HandlerSceneGraph> handler3d;
     SceneGraph::AxisAlignedBoundingBox aa_bounding_box;
     std::unique_ptr<pangolin::View> world_view_ptr;
     std::unique_ptr<pangolin::View> panel_view_ptr;
@@ -56,7 +57,14 @@ public:
   bool IsFinished();
 
 private:
+
+  enum class ProjectionMatrixTypes {
+    Perspective,
+    Orthographic
+  };
+
   void InitGui();
+  void SwitchProjection(ProjectionMatrixTypes type);
   void Run();
   void SetFinish();
   bool CheckFinish();

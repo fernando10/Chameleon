@@ -3,7 +3,7 @@
 #include <thread>
 #include <mutex>
 #include "summersimulator/viewer/visualizer.h"
-
+#include "fmt/format.h"
 #include <glog/logging.h>
 
 namespace summer
@@ -11,10 +11,22 @@ namespace summer
 
 Visualizer::Visualizer(const ViewerOptions& options):
   options_(options) {
-  InitGui();
 
+  VLOG(1) << "Starting viewer thread.";
   // start displaying things
   viewer_thread_ = std::unique_ptr<std::thread>(new std::thread(&Visualizer::Run, this));
+}
+
+void Visualizer::SwitchProjection(ProjectionMatrixTypes type) {
+  if (type == ProjectionMatrixTypes::Perspective) {
+    VLOG(1) << "Switching to perspective projection";
+    gui_vars_.camera.SetProjectionMatrix(pangolin::ProjectionMatrix(options_.window_width, options_.window_height,
+                                                                    420, 420, 320, 240, 0.01, 5000));
+  } else if (type == ProjectionMatrixTypes::Orthographic) {
+    VLOG(1) << "Switching to orthographic projection";
+    gui_vars_.camera.SetProjectionMatrix(pangolin::ProjectionMatrixOrthographic(-30, 30,
+                                                                                -30, 30, -50, 1000));
+  }
 }
 
 void Visualizer::InitGui() {
@@ -24,9 +36,10 @@ void Visualizer::InitGui() {
                                 options_.window_width,
                                 options_.window_height);
 
-  gui_vars_.camera2d.SetModelViewMatrix(pangolin::IdentityMatrix());
-  gui_vars_.camera2d.SetProjectionMatrix(pangolin::ProjectionMatrixOrthographic(0,  options_.window_width,
-                                                                                0, options_.window_height, 0, 1000));
+  // setup camera for 2d orthographic views (better for 2d worlds)
+  gui_vars_.camera.SetModelViewMatrix(pangolin::ModelViewLookAt(3, 3, 4, 0, 0, 0, pangolin::AxisZ));
+  gui_vars_.camera.SetProjectionMatrix(pangolin::ProjectionMatrixOrthographic(-30, 30,
+                                                                              -30, 30, -50, 1000));
 
   SceneGraph::GLSceneGraph::ApplyPreferredGlSettings();
   // Reset background color to black.
@@ -48,57 +61,34 @@ void Visualizer::InitGui() {
                                  SetBounds(0, 1.0, 0, pangolin::Attach::Pix(options_.panel_size)));
 
   // create handler to allow user input to update modelview matrix and flow through to the scene graph
-  gui_vars_.handler.reset(new SceneGraph::HandlerSceneGraph(gui_vars_.scene_graph, gui_vars_.camera2d,
+  gui_vars_.handler.reset(new SceneGraph::HandlerSceneGraph(gui_vars_.scene_graph, gui_vars_.camera,
                                                             pangolin::AxisNegZ));
+
   gui_vars_.world_view_ptr->SetHandler(gui_vars_.handler.get());
   gui_vars_.world_view_ptr->SetDrawFunction(SceneGraph::ActivateDrawFunctor(gui_vars_.scene_graph,
-                                                                            gui_vars_.camera2d));
+                                                                            gui_vars_.camera));
 
   // create a container view in case we want to have multiple views on the rigth side (maybe add some plots, etc)
   gui_vars_.multi_view_ptr.reset(&pangolin::Display("multi")
                                  .SetBounds(0.0, 1.0, pangolin::Attach::Pix(options_.panel_size), 1.0)
-                                 .SetLayout(pangolin::LayoutHorizontal));
+                                 .SetLayout(pangolin::LayoutEqualVertical));
 
   // for now just add the world view
   gui_vars_.multi_view_ptr->AddDisplay(*(gui_vars_.world_view_ptr));
 
 
+  // set the keybindings
+  pangolin::RegisterKeyPressCallback('p', std::bind(&Visualizer::SwitchProjection,
+                                                    this, ProjectionMatrixTypes::Perspective));
+  pangolin::RegisterKeyPressCallback('o', std::bind(&Visualizer::SwitchProjection,
+                                                    this, ProjectionMatrixTypes::Orthographic));
 
 }
 
 void Visualizer::Run() {
 
-
-  //  // Attatch a panel on the left side for controls, buttons etc.
-  //  pangolin::CreatePanel("menu").SetBounds(0, 1, 0,
-  //                                          pangolin::Attach::Pix(options_.panel_size));
-  //  pangolin::Var<bool> menu_follow_camera("menu.Follow Camera",true,false);
-
-
-  // Define Camera Render Object (for view / scene browsing).
-  //  pangolin::OpenGlRenderState s_cam(
-  //        pangolin::ProjectionMatrix(options_.window_width,options_.window_height
-  //                                   ,420, 420, 320, 240, 1E-3, 10*1000),
-  //        pangolin::ModelViewLookAt(5, 0, 100, 0, 0, 0, pangolin::AxisNegZ)
-  //        );
-
-  // Add named OpenGL viewport to window and provide 3D Handler.
-  //  pangolin::View& d_cam = pangolin::CreateDisplay()
-  //                          .SetAspect(-(float)options_.window_width/(float)options_.window_height)
-  //                          .SetHandler(new SceneGraph::HandlerSceneGraph(gl_graph, s_cam))
-  //                          .SetDrawFunction(SceneGraph::ActivateDrawFunctor(gl_graph, s_cam));
-
-
-  // Create a new view and attach the sub-views to this one.
-//  pangolin::Display("multi")
-//      .SetBounds(0.0, 1.0, pangolin::Attach::Pix(options_.panel_size), 1.0)
-//      .SetLayout(pangolin::LayoutEqual)
-//      .AddDisplay(d_cam);
-
-//  SceneGraph::GLGrid gl_grid(150, 1);
-
-  pangolin::OpenGlMatrix Twc;
-  Twc.SetIdentity();
+  VLOG(1) << "Running viewer thread...";
+  InitGui();  // the gui needs to be initialize in the same thread
 
   // Viewer loop.
   while (!pangolin::ShouldQuit()) {
@@ -106,17 +96,17 @@ void Visualizer::Run() {
     // clear whole screen
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-//    if (menu_follow_camera) {
-//      s_cam.Follow(Twc);
-//    }
+    //    if (menu_follow_camera) {
+    //      s_cam.Follow(Twc);
+    //    }
 
-//    if (reset_) {
-//      VLOG(2) << "Reset called (or system start) clearing dispaly and repopulating.";
-//      gl_graph.Clear();
-//      // re-popoulate with stuff...
-//      gl_graph.AddChild(&gl_grid);
-//      reset_ = false;
-//    }
+    //    if (reset_) {
+    //      VLOG(2) << "Reset called (or system start) clearing dispaly and repopulating.";
+    //      gl_graph.Clear();
+    //      // re-popoulate with stuff...
+    //      gl_graph.AddChild(&gl_grid);
+    //      reset_ = false;
+    //    }
 
     //    {
     //      std::unique_lock<std::mutex> lock(data_mutex_);
