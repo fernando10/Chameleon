@@ -145,6 +145,11 @@ void Visualizer::SetData(ViewerData::Ptr data) {
     robots_to_draw.push_back(std::unique_ptr<GLRobot>(new GLRobot(p.pose)));
     gui_vars_.scene_graph.AddChild(robots_to_draw.back().get());
   }
+
+  for (const Landmark& lm : *(data_->ground_truth_map)) {
+    lm_to_draw.push_back(std::unique_ptr<GLLandmark>(new GLLandmark(lm)));
+    gui_vars_.scene_graph.AddChild(lm_to_draw.back().get());
+  }
 }
 
 //void Visualizer::DrawRobot(const RobotPose &robot, Eigen::Vector3d color, bool draw_covariance) {

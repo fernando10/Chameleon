@@ -22,20 +22,13 @@ class WorldGenerator {
   /// Default Constructor
   WorldGenerator(){}
 
-  void GenerateWorld(RobotPoseVectorPtr robot_poses);
+  LandmarkVectorPtr GenerateWorld(const RobotPoseVectorPtr& robot_poses);
 
 private:
 
-  ///
-  /// \brief GenerateRectangularField
-  /// Generates a rectangle of landmarks centered at the origin
-  void GenerateRectangularField();
-
+  double GetTotalDistanceTraveled(const RobotPoseVectorPtr& poses);
   const double kLandmarkDensity = 0.5;  // landmarks / meter
-  const double kFieldWidth = 10.; // [m]
-  const double kFieldLength = 5.; // [m]
-
-
+  const double kLandmarkdDistance = 3; // [m]
 };
 
 }  // namespace summer

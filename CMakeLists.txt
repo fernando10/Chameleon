@@ -23,6 +23,8 @@ include(ExternalProject)
 include_directories(${CMAKE_BINARY_DIR}/include)
 link_directories(${CMAKE_BINARY_DIR}/lib)
 
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
 option (USE_SYSTEM_CERES
   "Use Ceres via find_package" OFF)
 SET(N_CORES 8 CACHE STRING "Cores for parallel build")
@@ -156,6 +158,7 @@ set(LIB_SRCS
   src/visualizer.cpp
   src/path_generator.cpp
   src/motion_generator.cpp
+  src/world_generator.cpp
   src/data_generator.cpp
   )
 

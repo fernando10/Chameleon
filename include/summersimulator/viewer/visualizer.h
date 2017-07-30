@@ -34,11 +34,13 @@ public:
     ViewerData() {
       ground_truth_robot_poses = std::make_shared<RobotPoseVector>();
       noisy_robot_poses = std::make_shared<RobotPoseVector>();
+      ground_truth_map = std::make_shared<LandmarkVector>();
     }
 
     typedef std::shared_ptr<ViewerData> Ptr;
     RobotPoseVectorPtr ground_truth_robot_poses;
     RobotPoseVectorPtr noisy_robot_poses;
+    LandmarkVectorPtr ground_truth_map;
   };
 
   struct GuiVars {
@@ -76,6 +78,8 @@ private:
   bool CheckFinish();
 
   std::vector<std::unique_ptr<GLRobot>> robots_to_draw;
+  std::vector<std::unique_ptr<GLLandmark>> lm_to_draw;
+
 
 //  void DrawRobot(const RobotPose& robot, Eigen::Vector3d color = Eigen::Vector3d(0., 0., 1.),
 //                 bool draw_covariance = false);

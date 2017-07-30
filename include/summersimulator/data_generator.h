@@ -7,6 +7,7 @@
 #include "summersimulator/path_generator.h"
 #include "summersimulator/motion_generator.h"
 #include "summersimulator/types.h"
+#include "summersimulator/math_utils.h"
 
 namespace summer
 {
@@ -17,7 +18,7 @@ public:
     double max_observations = 3;  // maximum observations the robot can make at each timestep
     Eigen::Vector4d odometry_noise =
         (Eigen::Vector4d() << Square(kAlpha1), Square(kAlpha2), Square(kAlpha3), Square(kAlpha4)).finished();
-    Eigen::Vector2d measurement_noise(Square(kBeta1), Square(kBeta2));
+    Eigen::Vector2d measurement_noise;
 
     PathGenerator::PathGeneratorOptions path_options;
   };
@@ -40,7 +41,7 @@ private:
   static constexpr double kAlpha4 = 1e-2;
 
   static constexpr double kBeta1 = 10;
-  static constexpr double kBeta2 = Deg2Rad(10);
+  static constexpr double kBeta2 = 0.174533;
 
 };
 }  // namespace summer

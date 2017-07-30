@@ -33,6 +33,7 @@ int main(int argc, char **argv) {
   Visualizer::ViewerData::Ptr viewer_data = std::make_shared<Visualizer::ViewerData>();
   viewer_data->ground_truth_robot_poses = simulated_data.debug.ground_truth_poses;
   viewer_data->noisy_robot_poses = simulated_data.debug.noisy_poses;
+  viewer_data->ground_truth_map = simulated_data.debug.ground_truth_map;
 
   if (FLAGS_display) {
     VLOG(1) << "Creating visualizer";

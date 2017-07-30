@@ -24,27 +24,38 @@ bool DataGenerator::GenerateSimulatedData(SimData* data) {
     return false;
   }
 
-  RobotPoseVectorPtr noisy_robot_path = std::make_shared<RobotPoseVector>();
-  noisy_robot_path->push_back(ground_truth_robot_path->at(0));  // set start pose
+  LandmarkVectorPtr ground_truth_landmarks =  world_generator_->GenerateWorld(ground_truth_robot_path);
+  data->debug.ground_truth_map = ground_truth_landmarks;
+
+  RobotPose noisy_robot_pose = ground_truth_robot_path->at(0);
+  RobotPose noise_free_robot_pose = ground_truth_robot_path->at(0);
+
+  data->debug.ground_truth_poses->push_back(noise_free_robot_pose);
+  data->debug.noisy_poses->push_back(noisy_robot_pose);
 
   // load the path into the motion (odometry) generator
   motion_generator_->SetPath(ground_truth_robot_path);
 
   for (size_t ii = 0; ii < ground_truth_robot_path->size() - 1; ++ii) {
+    OdometryMeasurement noise_free_odometry =
+        motion_generator_->GenerateNoiseFreeOdometryMeasurement(ii);
+    RobotPose new_noise_free_pose =
+        motion_generator_->PropagateMeasurement(noise_free_odometry, noise_free_robot_pose);
+    noise_free_robot_pose = new_noise_free_pose;
 
     OdometryMeasurement noisy_odometry =
         motion_generator_->GenerateNoisyOdometryMeasurement(ii);
-
     RobotPose new_noisy_pose =
-        motion_generator_->PropagateMeasurement(noisy_odometry, noisy_robot_path->back());
-    noisy_robot_path->push_back(new_noisy_pose);
+        motion_generator_->PropagateMeasurement(noisy_odometry, noisy_robot_pose);
+    noisy_robot_pose = new_noisy_pose;
 
+    data->times.push_back(ii);
+    data->debug.ground_truth_poses->push_back(new_noise_free_pose);
+    data->debug.noisy_poses->push_back(new_noisy_pose);
+    data->debug.noise_free_odometry->push_back(noise_free_odometry);
+    data->debug.noisy_odometry->push_back(noisy_odometry);
   }
-
-  data->debug.ground_truth_poses = ground_truth_robot_path;
-  data->debug.noisy_poses = noisy_robot_path;
 
   return true;
 }
-
 } // namespace summer

@@ -147,12 +147,20 @@ struct RobotPose {
 typedef Eigen::Matrix2d LandmarkCovariance;
 
 struct Landmark {
-  static constexpr size_t kParamCount = 2;
-
   LandmarkCovariance covariance;
   uint64_t id;
 
   Landmark(): covariance(LandmarkCovariance::Identity()), id(0) {
+  }
+
+  Landmark(double x, double y): Landmark() {
+    data_[0] = x;
+    data_[1] = y;
+  }
+
+  Landmark(Eigen::Vector2d vec): Landmark() {
+    data_[0] = vec[0];
+    data_[1] = vec[1];
   }
 
   double x() const { return data_[0]; }
@@ -168,6 +176,10 @@ struct Landmark {
     data_[1] = y;
   }
 
+  Eigen::Vector2d vec() {
+    return data_;
+  }
+
   friend std::ostream& operator<<(std::ostream& os, const Landmark& lm) {
     os << "( " << lm.x() << ", " << lm.y() << " )";
     return os;
@@ -177,7 +189,8 @@ struct Landmark {
   double* data() { return data_.data(); }
 
  private:
-  std::array<double, kParamCount> data_ = {{0.}};
+  Eigen::Vector2d data_ = Eigen::Vector2d::Zero();
+  //std::array<double, kParamCount> data_ = {{0.}};
 };
 
 typedef std::vector<Landmark> LandmarkVector;
@@ -189,9 +202,19 @@ typedef std::shared_ptr<RobotPoseVector> RobotPoseVectorPtr;
 //------------------------DATA STRUCTURES------------------------//
 
 struct DebugData {
+  DebugData() {
+    ground_truth_map = std::make_shared<LandmarkVector>();
+    ground_truth_poses = std::make_shared<RobotPoseVector>();
+    noisy_poses = std::make_shared<RobotPoseVector>();
+    noise_free_odometry = std::make_shared<OdometryMeasurementVector>();
+    noisy_odometry = std::make_shared<OdometryMeasurementVector>();
+  }
+
   RobotPoseVectorPtr ground_truth_poses;
   RobotPoseVectorPtr noisy_poses;
-  RangeFinderObservationDeque noise_free_observations;
+  OdometryMeasurementVectorPtr noise_free_odometry;
+  OdometryMeasurementVectorPtr noisy_odometry;
+  LandmarkVectorPtr ground_truth_map;
 };
 
 struct SimData {

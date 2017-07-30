@@ -85,7 +85,7 @@ RobotPoseVectorPtr PathGenerator::GenerateRectangularPath() const {
   const Eigen::Vector2d length_vel = Eigen::Vector2d(length_minus_corner / num_steps_length, 0.);
   const Eigen::Vector2d width_vel = Eigen::Vector2d(width_minus_corner / num_steps_width, 0.);
 
-  robot_poses->push_back(RobotPose(0., Eigen::Vector2d(-kRectangleLength / 2 + corner_offset, kRectangleWidth / 2)));
+  robot_poses->push_back(RobotPose(0., Eigen::Vector2d(-kRectangleLength / 2 + corner_offset, kRectangleWidth / 3)));
 
   // Top side of rectangle (start from one since the first pose has already been added) (length)
   for (size_t ii = 1; ii < num_steps_length; ++ii) {
