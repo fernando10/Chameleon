@@ -21,9 +21,10 @@ public:
   void SetPath(const RobotPoseVectorPtr robot_poses);
   RobotPoseVectorPtr GetPath();
 
-  OdometryMeasurement GenerateOdometryMeasurement(size_t step);
+  OdometryMeasurement GenerateOdometryMeasurement(size_t step) const;
+  OdometryMeasurementVectorPtr GenerateOdometry() const;
 
-  RobotPose PropagateMeasurement(const OdometryMeasurement& meas, const RobotPose& current_pose);
+  RobotPose PropagateMeasurement(const OdometryMeasurement& meas, const RobotPose& current_pose) const;
 
 private:
   RobotPoseVectorPtr robot_poses_;

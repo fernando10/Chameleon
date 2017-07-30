@@ -141,7 +141,7 @@ RobotPoseVectorPtr PathGenerator::GenerateCircularPath() const {
   // start pose:
   robot_poses->push_back(RobotPose(0, kCircleRadius, 0));
 
-  for (int ii = 1; ii < options_.num_steps; ++ii) {
+  for (size_t ii = 1; ii < options_.num_steps; ++ii) {
     robot_poses->push_back(robot_poses->back() * Sophus::SE2d(omega, vel));
   }
 
