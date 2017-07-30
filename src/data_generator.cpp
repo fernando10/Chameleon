@@ -1,7 +1,7 @@
 // Copyright 2017 Toyota Research Institute.  All rights reserved.
 //
 #include "summersimulator/data_generator.h"
-#include "util.h"
+#include "summersimulator/util.h"
 #include "glog/logging.h"
 
 namespace summer

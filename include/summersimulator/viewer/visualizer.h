@@ -8,6 +8,14 @@
 #include "summersimulator/viewer/gl_landmark.h"
 #include "summersimulator/viewer/gl_robot.h"
 
+#include "fmt/format.h"
+
+/*-----GUI Includes-----------*/
+#include <pangolin/pangolin.h>
+#include <SceneGraph/SceneGraph.h>
+#include <SceneGraph/GLDynamicGrid.h>
+/*----------------------------*/
+
 namespace summer
 {
 
@@ -27,6 +35,19 @@ public:
     RobotPoseVectorPtr noisy_robot_poses;
   };
 
+  struct GuiVars {
+    pangolin::OpenGlRenderState camera2d;
+    pangolin::OpenGlRenderState camera3d;  // currently unused...for projective views
+    SceneGraph::GLSceneGraph scene_graph;  // Scene Graph to hold GLObjects and realtive transforms
+    SceneGraph::GLDynamicGrid dynamic_grid;  // Grid object to be the world plane
+    std::unique_ptr<SceneGraph::HandlerSceneGraph> handler;
+    SceneGraph::AxisAlignedBoundingBox aa_bounding_box;
+    std::unique_ptr<pangolin::View> world_view_ptr;
+    std::unique_ptr<pangolin::View> panel_view_ptr;
+    std::unique_ptr<pangolin::View> multi_view_ptr;
+    SceneGraph::GLLight light;
+  };
+
   Visualizer(const ViewerOptions& options);
 
   void SetData(ViewerData::Ptr data);
@@ -35,6 +56,7 @@ public:
   bool IsFinished();
 
 private:
+  void InitGui();
   void Run();
   void SetFinish();
   bool CheckFinish();
@@ -44,6 +66,7 @@ private:
   void DrawLandmark(const Landmark& landmark, bool draw_covariance = false);
 
   const ViewerOptions& options_;
+  GuiVars gui_vars_;
   ViewerData::Ptr data_;
   std::unique_ptr<std::thread> viewer_thread_;
   std::mutex finish_mutex_;
