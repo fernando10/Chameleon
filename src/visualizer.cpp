@@ -2,7 +2,8 @@
 //
 #include <thread>
 #include <mutex>
-#include "summersimulator/visualizer.h"
+#include "fmt/format.h"
+#include "summersimulator/viewer/visualizer.h"
 
 
 /*-----GUI Includes-----------*/
@@ -58,7 +59,7 @@ void Visualizer::Run() {
 
   // Create a new view and attach the sub-views to this one.
   pangolin::Display("multi")
-      .SetBounds(0.0, 1.0, pangolin::Attach::Pix(175), 1.0)
+      .SetBounds(0.0, 1.0, pangolin::Attach::Pix(options_.panel_size), 1.0)
       .SetLayout(pangolin::LayoutEqual)
       .AddDisplay(d_cam);
 
@@ -118,7 +119,7 @@ void Visualizer::SetData(ViewerData::Ptr data) {
 
 void Visualizer::DrawRobot(const RobotPose &robot, Eigen::Vector3d color, bool draw_covariance) {
   glColor3f(color[0], color[1], color[2]);
-  pangolin::glDrawCirclePerimeter(robot.pose.translation(), kRobotRadius);
+  pangolin::glDrawCirclePerimeter(robot.pose.translation(), 0.3);
 
   //  Eigen::Vector2d orientation_pt(std::sin(robot.pose.so2().log()) * kRobotRadius,
   //                                 std::cos(robot.pose.so2().log()) * kRobotRadius);

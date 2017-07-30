@@ -165,7 +165,7 @@ set(LIB_HEADERS
   ${INC_DIR}/motion_generator.h
   ${INC_DIR}/path_generator.h
   ${INC_DIR}/world_generator.h
-  ${INC_DIR}/visualizer.h
+  ${INC_DIR}/viewer/visualizer.h
   )
 
 include_directories( ${REQUIRED_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/include )

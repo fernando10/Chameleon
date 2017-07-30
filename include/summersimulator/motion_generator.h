@@ -33,4 +33,4 @@ private:
   Eigen::Vector4d odometry_noise_ = Eigen::Vector4d::Zero();
 };
 
-}  // namespace elninho
+}  // namespace summer

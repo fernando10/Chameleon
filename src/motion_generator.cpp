@@ -116,4 +116,4 @@ RobotPose MotionGenerator::PropagateMeasurement(const OdometryMeasurement &meas,
   return propagated_pose;
 }
 
-}  // namespace elninho
+}  // namespace summer

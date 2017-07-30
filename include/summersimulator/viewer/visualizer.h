@@ -5,6 +5,8 @@
 #include <mutex>
 #include "summersimulator/types.h"
 #include "summersimulator/util.h"
+#include "summersimulator/viewer/gl_landmark.h"
+#include "summersimulator/viewer/gl_robot.h"
 
 namespace summer
 {
@@ -33,8 +35,6 @@ public:
   bool IsFinished();
 
 private:
-  const double kRobotRadius = 0.3;
-
   void Run();
   void SetFinish();
   bool CheckFinish();
@@ -53,4 +53,4 @@ private:
   bool reset_ = true;
 };
 
-}  // namespace elninho
+}  // namespace summer

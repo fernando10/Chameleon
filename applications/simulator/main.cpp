@@ -5,7 +5,7 @@
 
 #include <glog/logging.h>
 
-#include "summersimulator/visualizer.h"
+#include "summersimulator/viewer/visualizer.h"
 #include "summersimulator/data_generator.h"
 #include "fmt/printf.h"
 
