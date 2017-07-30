@@ -189,14 +189,14 @@ typedef std::shared_ptr<RobotPoseVector> RobotPoseVectorPtr;
 //------------------------DATA STRUCTURES------------------------//
 
 struct DebugData {
-  RobotPoseVector ground_truth_poses;
-  RobotPoseVector noisy_poses;
+  RobotPoseVectorPtr ground_truth_poses;
+  RobotPoseVectorPtr noisy_poses;
   RangeFinderObservationDeque noise_free_observations;
 };
 
 struct SimData {
   RangeFinderObservationDeque observations;
-  DebugData debug_data;
+  DebugData debug;
 };
 
 } // namespace elninho

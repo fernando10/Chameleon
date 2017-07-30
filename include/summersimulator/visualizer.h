@@ -21,7 +21,8 @@ public:
 
   struct ViewerData {
     typedef std::shared_ptr<ViewerData> Ptr;
-    RobotPoseVectorPtr robot_poses;
+    RobotPoseVectorPtr ground_truth_robot_poses;
+    RobotPoseVectorPtr noisy_robot_poses;
   };
 
   Visualizer(const ViewerOptions& options);
@@ -38,7 +39,8 @@ private:
   void SetFinish();
   bool CheckFinish();
 
-  void DrawRobot(const RobotPose& robot,  bool draw_covariance = false);
+  void DrawRobot(const RobotPose& robot, Eigen::Vector3d color = Eigen::Vector3d(0., 0., 1.),
+                 bool draw_covariance = false);
   void DrawLandmark(const Landmark& landmark, bool draw_covariance = false);
 
   const ViewerOptions& options_;

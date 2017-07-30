@@ -83,9 +83,20 @@ void Visualizer::Run() {
       reset_ = false;
     }
 
-    if (data_ != nullptr) {
-      for (const auto& robot : *(data_->robot_poses)) {
-        DrawRobot(robot);
+    {
+      std::unique_lock<std::mutex> lock(data_mutex_);
+      if (data_ != nullptr) {
+        if(data_->ground_truth_robot_poses != nullptr) {
+          for (const auto& robot : *(data_->ground_truth_robot_poses)) {
+            DrawRobot(robot);
+          }
+        }
+
+        if(data_->noisy_robot_poses != nullptr) {
+          for (const auto& robot : *(data_->noisy_robot_poses)) {
+            DrawRobot(robot, Eigen::Vector3d(1.0, 0.0, 0.0));
+          }
+        }
       }
     }
 
@@ -105,13 +116,13 @@ void Visualizer::SetData(ViewerData::Ptr data) {
   data_ = data;
 }
 
-void Visualizer::DrawRobot(const RobotPose &robot, bool draw_covariance) {
-  glColor3f(0.0, 0.0, 1.0);  // blue
+void Visualizer::DrawRobot(const RobotPose &robot, Eigen::Vector3d color, bool draw_covariance) {
+  glColor3f(color[0], color[1], color[2]);
   pangolin::glDrawCirclePerimeter(robot.pose.translation(), kRobotRadius);
 
-//  Eigen::Vector2d orientation_pt(std::sin(robot.pose.so2().log()) * kRobotRadius,
-//                                 std::cos(robot.pose.so2().log()) * kRobotRadius);
-//  pangolin::glDrawLine(robot.pose.translation(), orientation_pt);
+  //  Eigen::Vector2d orientation_pt(std::sin(robot.pose.so2().log()) * kRobotRadius,
+  //                                 std::cos(robot.pose.so2().log()) * kRobotRadius);
+  //  pangolin::glDrawLine(robot.pose.translation(), orientation_pt);
 }
 
 void Visualizer::DrawLandmark(const Landmark &landmark, bool draw_covariance) {

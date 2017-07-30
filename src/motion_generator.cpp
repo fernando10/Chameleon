@@ -10,6 +10,9 @@ namespace summer
 MotionGenerator::MotionGenerator(const RobotPoseVectorPtr robot_poses): robot_poses_(robot_poses){
 }
 
+MotionGenerator::MotionGenerator(const Eigen::Vector4d odometry_noise): odometry_noise_(odometry_noise) {
+}
+
 void MotionGenerator::SetPath(const RobotPoseVectorPtr robot_poses) {
   robot_poses_ = robot_poses;
 }
@@ -18,7 +21,7 @@ RobotPoseVectorPtr MotionGenerator::GetPath() {
   return robot_poses_;
 }
 
-OdometryMeasurement MotionGenerator::GenerateOdometryMeasurement(size_t step) const {
+OdometryMeasurement MotionGenerator::GenerateNoiseFreeOdometryMeasurement(size_t step) const {
   if (robot_poses_ == nullptr) {
     LOG(ERROR) << "Path not initalized but generate odometry was called...";
     return OdometryMeasurement();
@@ -48,12 +51,51 @@ OdometryMeasurement MotionGenerator::GenerateOdometryMeasurement(size_t step) co
   return OdometryMeasurement(theta_1, translation, theta_2);
 }
 
-OdometryMeasurementVectorPtr MotionGenerator::GenerateOdometry() const {
+OdometryMeasurement MotionGenerator::GenerateNoisyOdometryMeasurement(size_t step) const {
+  OdometryMeasurement noise_free_odometry = GenerateNoiseFreeOdometryMeasurement(step);
+  const double theta_1 = noise_free_odometry.theta_1;
+  const double theta_2 = noise_free_odometry.theta_2;
+  const double trans = noise_free_odometry.translation;
+
+  Eigen::Matrix<double, 1, 1> variance;
+  Eigen::Matrix<double, 1, 1> mean;
+  variance(0) = odometry_noise_[0] * Square(theta_1) + odometry_noise_[1] * Square(trans);
+  mean(0) = theta_1;
+  MultivariateNormalVariable theta_1_sample(variance, mean);
+
+  variance(0) = odometry_noise_[2] * Square(trans) + odometry_noise_[3] * (Square(theta_1) + Square(theta_2));
+  mean(0) = trans;
+  MultivariateNormalVariable translation_sample(variance, mean);
+
+  variance(0) = odometry_noise_[0] * Square(theta_2) + odometry_noise_[1] * Square(trans);
+  mean(0) = theta_2;
+  MultivariateNormalVariable theta_2_sample(variance, mean);
+
+  // sample from the normal distribution to obtain the noisy values
+  double noisy_theta_1 = theta_1_sample()[0];
+  double noisy_trans = translation_sample()[0];
+  double noisy_theta_2 = theta_2_sample()[0];
+
+//  VLOG(3) << "orig values: [" << theta_1 << ", " << trans << ", " << theta_2;
+//  VLOG(3) << "noisy values: [" << noisy_theta_1 << ", " << noisy_trans << ", " << noisy_theta_2;
+//  VLOG(3) << "A values: [" << theta_1_sample.A << ", " << translation_sample.A << ", " << theta_2_sample.A;
+
+  return OdometryMeasurement(noisy_theta_1, noisy_trans, noisy_theta_2);
+}
+
+OdometryMeasurementVectorPtr MotionGenerator::GenereteOdometry(bool noisy) const {
   OdometryMeasurementVectorPtr odometry_measurements = std::make_shared<OdometryMeasurementVector>();
 
   for (size_t ii = 0; ii < robot_poses_->size() - 1; ++ii) {
-    OdometryMeasurement noise_free_odometry = GenerateOdometryMeasurement(ii);
-    odometry_measurements->push_back(noise_free_odometry);
+    OdometryMeasurement odometry;
+
+    if (noisy) {
+      odometry = GenerateNoisyOdometryMeasurement(ii);
+    }
+    else {
+      odometry = GenerateNoiseFreeOdometryMeasurement(ii);
+    }
+    odometry_measurements->push_back(odometry);
   }
 
   return odometry_measurements;

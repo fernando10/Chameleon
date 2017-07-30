@@ -148,6 +148,7 @@ set(LIB_SRCS
   src/visualizer.cpp
   src/path_generator.cpp
   src/motion_generator.cpp
+  src/data_generator.cpp
   )
 
 set( INC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include/${LIBRARY_NAME} )

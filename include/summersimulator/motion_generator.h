@@ -16,18 +16,21 @@ class MotionGenerator {
 public:
 
   MotionGenerator(const RobotPoseVectorPtr robot_poses);
+  MotionGenerator(const Eigen::Vector4d odometry_noise);
   MotionGenerator() {}
 
   void SetPath(const RobotPoseVectorPtr robot_poses);
   RobotPoseVectorPtr GetPath();
 
-  OdometryMeasurement GenerateOdometryMeasurement(size_t step) const;
-  OdometryMeasurementVectorPtr GenerateOdometry() const;
+  OdometryMeasurement GenerateNoiseFreeOdometryMeasurement(size_t step) const;
+  OdometryMeasurement GenerateNoisyOdometryMeasurement(size_t step) const;
+  OdometryMeasurementVectorPtr GenereteOdometry(bool noisy = false) const;
 
   RobotPose PropagateMeasurement(const OdometryMeasurement& meas, const RobotPose& current_pose) const;
 
 private:
   RobotPoseVectorPtr robot_poses_;
+  Eigen::Vector4d odometry_noise_ = Eigen::Vector4d::Zero();
 };
 
 }  // namespace elninho

@@ -17,13 +17,15 @@ public:
     size_t num_steps = 100;  // number of steps or keyframes to drop
     RobotPose initial_pose;  // starting position for the robot
     double max_observations = 3;  // maximum observations the robot can make at each timestep
+    Eigen::Vector4d odometry_noise =
+        (Eigen::Vector4d() << Square(5e-2), Square(1e-3), Square(5e-2), Square(1e-2)).finished();
 
     PathGenerator::PathGeneratorOptions path_options;
   };
 
   DataGenerator(const DataGeneratorOptions& options);
 
-  SimData GenerateSimulatedData();
+  bool GenerateSimulatedData(SimData* data);
 
 private:
   const DataGeneratorOptions& options_;

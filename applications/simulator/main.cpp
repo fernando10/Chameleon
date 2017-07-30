@@ -6,7 +6,7 @@
 #include <glog/logging.h>
 
 #include "summersimulator/visualizer.h"
-#include "summersimulator/path_generator.h"
+#include "summersimulator/data_generator.h"
 
 /*-----------COMMAND LINE FLAGS-----------------------------------------------*/
 DEFINE_bool(display, true, "use viewer (pangolin)");
@@ -22,15 +22,15 @@ int main(int argc, char **argv) {
   FLAGS_colorlogtostderr = 1;
   FLAGS_logtostderr = 1;
 
-  PathGenerator::PathGeneratorOptions path_options;
-  path_options.motion_type = PathGenerator::PathTypes::Rectangle;
-  path_options.num_steps = 100;
-  std::unique_ptr<PathGenerator> path_generator = util::make_unique<PathGenerator>(path_options);
+  DataGenerator::DataGeneratorOptions options;  // use default options
+  std::unique_ptr<DataGenerator> data_generator = util::make_unique<DataGenerator>(options);
 
-  RobotPoseVectorPtr poses = path_generator->GeneratePath();
+  SimData simulated_data;
+  data_generator->GenerateSimulatedData(&simulated_data);
 
-  Visualizer::ViewerData::Ptr viewer_data = Visualizer::ViewerData::Ptr(new Visualizer::ViewerData());
-  viewer_data->robot_poses = poses;
+  Visualizer::ViewerData::Ptr viewer_data = std::make_shared<Visualizer::ViewerData>();
+  viewer_data->ground_truth_robot_poses = simulated_data.debug.ground_truth_poses;
+  viewer_data->noisy_robot_poses = simulated_data.debug.noisy_poses;
 
   if (FLAGS_display) {
     VLOG(1) << "Creating visualizer";

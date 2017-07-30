@@ -43,10 +43,19 @@ inline double Rad2Deg(const double rad) {
   return (AngleWraparound(rad) * 180.0) / M_PI;
 }
 
+///
+/// \brief Square
+/// \param x variable to be squared
+/// \return
+///
+inline double Square(const double x) {
+  return x * x;
+}
 
 ///
 /// \brief The MultivariateNormalVariable struct
 /// Represents a multivariate normal and allows sampling the variable
+/// see: https://en.wikipedia.org/wiki/Normal_distribution#Generating_values_from_normal_distribution
 ///
 struct MultivariateNormalVariable {
   MultivariateNormalVariable(const Eigen::MatrixXd& cov):
