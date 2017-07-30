@@ -29,7 +29,13 @@ public:
     unsigned int panel_size = 180;
   };
 
+  // Struct for passing data from the application to the viewer
   struct ViewerData {
+    ViewerData() {
+      ground_truth_robot_poses = std::make_shared<RobotPoseVector>();
+      noisy_robot_poses = std::make_shared<RobotPoseVector>();
+    }
+
     typedef std::shared_ptr<ViewerData> Ptr;
     RobotPoseVectorPtr ground_truth_robot_poses;
     RobotPoseVectorPtr noisy_robot_poses;
@@ -69,8 +75,10 @@ private:
   void SetFinish();
   bool CheckFinish();
 
-  void DrawRobot(const RobotPose& robot, Eigen::Vector3d color = Eigen::Vector3d(0., 0., 1.),
-                 bool draw_covariance = false);
+  std::vector<std::unique_ptr<GLRobot>> robots_to_draw;
+
+//  void DrawRobot(const RobotPose& robot, Eigen::Vector3d color = Eigen::Vector3d(0., 0., 1.),
+//                 bool draw_covariance = false);
   void DrawLandmark(const Landmark& landmark, bool draw_covariance = false);
 
   const ViewerOptions& options_;

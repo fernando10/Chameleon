@@ -24,8 +24,8 @@ void Visualizer::SwitchProjection(ProjectionMatrixTypes type) {
                                                                     420, 420, 320, 240, 0.01, 5000));
   } else if (type == ProjectionMatrixTypes::Orthographic) {
     VLOG(1) << "Switching to orthographic projection";
-    gui_vars_.camera.SetProjectionMatrix(pangolin::ProjectionMatrixOrthographic(-30, 30,
-                                                                                -30, 30, -50, 1000));
+    gui_vars_.camera.SetProjectionMatrix(pangolin::ProjectionMatrixOrthographic(-20, 20,
+                                                                                -20, 20, -50, 1000));
   }
 }
 
@@ -38,8 +38,8 @@ void Visualizer::InitGui() {
 
   // setup camera for 2d orthographic views (better for 2d worlds)
   gui_vars_.camera.SetModelViewMatrix(pangolin::ModelViewLookAt(3, 3, 4, 0, 0, 0, pangolin::AxisZ));
-  gui_vars_.camera.SetProjectionMatrix(pangolin::ProjectionMatrixOrthographic(-30, 30,
-                                                                              -30, 30, -50, 1000));
+  gui_vars_.camera.SetProjectionMatrix(pangolin::ProjectionMatrixOrthographic(-20, 20,
+                                                                              -20, 20, -50, 1000));
 
   SceneGraph::GLSceneGraph::ApplyPreferredGlSettings();
   // Reset background color to black.
@@ -139,16 +139,22 @@ void Visualizer::Run() {
 void Visualizer::SetData(ViewerData::Ptr data) {
   std::unique_lock<std::mutex> lock(data_mutex_);
   data_ = data;
+
+  //TEMP
+  for (const RobotPose& p : *(data_->ground_truth_robot_poses)) {
+    robots_to_draw.push_back(std::unique_ptr<GLRobot>(new GLRobot(p.pose)));
+    gui_vars_.scene_graph.AddChild(robots_to_draw.back().get());
+  }
 }
 
-void Visualizer::DrawRobot(const RobotPose &robot, Eigen::Vector3d color, bool draw_covariance) {
-  glColor3f(color[0], color[1], color[2]);
-  pangolin::glDrawCirclePerimeter(robot.pose.translation(), 0.3);
+//void Visualizer::DrawRobot(const RobotPose &robot, Eigen::Vector3d color, bool draw_covariance) {
+//  glColor3f(color[0], color[1], color[2]);
+//  pangolin::glDrawCirclePerimeter(robot.pose.translation(), 0.3);
 
-  //  Eigen::Vector2d orientation_pt(std::sin(robot.pose.so2().log()) * kRobotRadius,
-  //                                 std::cos(robot.pose.so2().log()) * kRobotRadius);
-  //  pangolin::glDrawLine(robot.pose.translation(), orientation_pt);
-}
+//  //  Eigen::Vector2d orientation_pt(std::sin(robot.pose.so2().log()) * kRobotRadius,
+//  //                                 std::cos(robot.pose.so2().log()) * kRobotRadius);
+//  //  pangolin::glDrawLine(robot.pose.translation(), orientation_pt);
+//}
 
 void Visualizer::DrawLandmark(const Landmark &landmark, bool draw_covariance) {
   // TODO

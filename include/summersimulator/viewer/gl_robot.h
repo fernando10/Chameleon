@@ -16,10 +16,10 @@ class GLRobot : public SceneGraph::GLObject
  public:
   GLRobot() {
     robot_color_ << 1.0, 1.0, 0.0, 1.0;
-    ConvertPose2d3d();
   }
 
-  GLRobot(const Sophus::SE2d& pose): robot_pose_(pose) {
+  GLRobot(const Sophus::SE2d& pose): GLRobot() {
+    robot_pose_ = pose;
     ConvertPose2d3d();
   }
 
@@ -47,6 +47,7 @@ class GLRobot : public SceneGraph::GLObject
       glMultMatrixf(MAT4_COL_MAJOR_DATA(robot_pose_3d_));
       glColor4f(robot_color_[0], robot_color_[1], robot_color_[2], robot_color_[3]);
       pangolin::glDrawCirclePerimeter(0, 0, robot_radius_);
+      pangolin::glDrawLine(0, 0, robot_radius_, 0);  // orientation
 
       glPopMatrix();
     }
@@ -60,7 +61,7 @@ class GLRobot : public SceneGraph::GLObject
 private:
   Eigen::Vector4f robot_color_ = Eigen::Vector4f::Zero();
   Sophus::SE2d robot_pose_;
-  Eigen::Matrix4f robot_pose_3d_;
+  Eigen::Matrix4f robot_pose_3d_ = Eigen::Matrix4f::Identity();
   bool draw_robot_ = true;
   float robot_radius_ = 0.3f;
 
