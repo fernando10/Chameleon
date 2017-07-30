@@ -47,4 +47,4 @@ bool DataGenerator::GenerateSimulatedData(SimData* data) {
   return true;
 }
 
-} // namespace elninho
+} // namespace summer

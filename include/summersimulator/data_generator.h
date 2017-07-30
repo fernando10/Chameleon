@@ -33,9 +33,9 @@ private:
   const uint32_t kObservationDim = 3; // range, bearing, id
   const uint32_t kMotionDim = 3; // x, y, theta
 
-  const double kAlpha1 = 5e-2;
-  const double kAlpha2 = 1e-3;
-  const double kAlpha3 = 5e-2;
-  const double kAlpha4 = 1e-2;
+  static constexpr double kAlpha1 = 5e-2;
+  static constexpr double kAlpha2 = 1e-3;
+  static constexpr double kAlpha3 = 5e-2;
+  static constexpr double kAlpha4 = 1e-2;
 };
 }  // namespace summer

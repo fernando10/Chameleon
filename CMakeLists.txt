@@ -81,14 +81,6 @@ else ()
 
   add_library(ceres UNKNOWN IMPORTED)
   set(CERES_LIB_PREFIX "lib")
-  if (CMAKE_SYSTEM_NAME MATCHES "Linux" AND
-      NOT DEFINED LIB_SUFFIX AND
-      NOT CMAKE_CROSSCOMPILING AND
-      CMAKE_SIZEOF_VOID_P EQUAL "8" AND
-      NOT EXISTS "/etc/debian_version" AND
-      NOT EXISTS "/etc/arch-release")
-    set(CERES_LIB_PREFIX "lib64")
-  endif ()
 
 if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
   set_property(TARGET ceres PROPERTY IMPORTED_LOCATION
@@ -109,16 +101,31 @@ else ()
 endif ()
 add_dependencies(${CERES_LIBRARIES} ceres_external)
 
-# install it once built
-install(FILES ${CMAKE_BINARY_DIR}/${CERES_LIB_PREFIX}/libceres.a
-  DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
-install(DIRECTORY ${CMAKE_BINARY_DIR}/include/ceres/
-  DESTINATION ${CMAKE_INSTALL_PREFIX}/include/ceres/)
-install(DIRECTORY ${CMAKE_BINARY_DIR}/share/Ceres/
-  DESTINATION ${CMAKE_INSTALL_PREFIX}/share/Ceres/)
-endif ()
+endif()
 
 #########################################################
+
+############### FMT (formatting library) #################
+set(FMT_VERSION 40000)
+set(FMT_TAG 398343897f98b88ade80bbebdcbe82a36c65a980)
+ExternalProject_Add(fmt_external
+  GIT_REPOSITORY https://github.com/fmtlib/fmt.git
+  GIT_TAG ${FMT_TAG}
+  UPDATE_COMMAND ""
+  INSTALL_DIR ${CMAKE_BINARY_DIR}
+  CMAKE_ARGS
+  -DCMAKE_INSTALL_PREFIX:PATH=<INSTALL_DIR>
+  -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
+  -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
+  PREFIX ${CMAKE_CURRENT_BINARY_DIR}/fmt
+  BUILD_IN_SOURCE 0
+  BUILD_COMMAND make -j${N_CORES}
+  INSTALL_COMMAND make install
+  )
+
+add_library(fmt UNKNOWN IMPORTED)
+set_property(TARGET fmt PROPERTY IMPORTED_LOCATION
+             ${CMAKE_BINARY_DIR}/lib/libfmt.a )
 
 #####################################################################
 ## Find required packages
@@ -141,6 +148,7 @@ set( REQUIRED_LIBRARIES
   ${Sophus_LIBRARIES}
   ${GLOG_LIBRARIES}
   ${GFLAGS_LIBRARIES}
+  fmt
   pthread
   )
 

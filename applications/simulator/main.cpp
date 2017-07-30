@@ -7,6 +7,7 @@
 
 #include "summersimulator/visualizer.h"
 #include "summersimulator/data_generator.h"
+#include "fmt/printf.h"
 
 /*-----------COMMAND LINE FLAGS-----------------------------------------------*/
 DEFINE_bool(display, true, "use viewer (pangolin)");
