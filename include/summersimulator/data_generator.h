@@ -17,6 +17,7 @@ public:
     double max_observations = 3;  // maximum observations the robot can make at each timestep
     Eigen::Vector4d odometry_noise =
         (Eigen::Vector4d() << Square(kAlpha1), Square(kAlpha2), Square(kAlpha3), Square(kAlpha4)).finished();
+    Eigen::Vector2d measurement_noise(Square(kBeta1), Square(kBeta2));
 
     PathGenerator::PathGeneratorOptions path_options;
   };
@@ -37,5 +38,9 @@ private:
   static constexpr double kAlpha2 = 1e-3;
   static constexpr double kAlpha3 = 5e-2;
   static constexpr double kAlpha4 = 1e-2;
+
+  static constexpr double kBeta1 = 10;
+  static constexpr double kBeta2 = Deg2Rad(10);
+
 };
 }  // namespace summer

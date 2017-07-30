@@ -195,6 +195,7 @@ struct DebugData {
 };
 
 struct SimData {
+  std::vector<double> times;
   RangeFinderObservationDeque observations;
   DebugData debug;
 };
