@@ -1,10 +1,10 @@
 // Copyright 2017 Toyota Research Institute.  All rights reserved.
 //
 
-#include "summersimulator/motion_generator.h"
+#include "chameleon/motion_generator.h"
 #include "glog/logging.h"
 
-namespace summer
+namespace chameleon
 {
 
 MotionGenerator::MotionGenerator(const RobotPoseVectorPtr robot_poses): robot_poses_(robot_poses){
@@ -116,4 +116,4 @@ RobotPose MotionGenerator::PropagateMeasurement(const OdometryMeasurement &meas,
   return propagated_pose;
 }
 
-}  // namespace summer
+}  // namespace chameleon

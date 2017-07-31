@@ -1,10 +1,10 @@
 // Copyright 2017 Toyota Research Institute.  All rights reserved.
 //
-#include "summersimulator/world_generator.h"
+#include "chameleon/world_generator.h"
 #include "glog/logging.h"
 #include  "fmt/format.h"
 
-namespace summer
+namespace chameleon
 {
 LandmarkVectorPtr WorldGenerator::GenerateWorld(const RobotPoseVectorPtr& robot_poses) {
   LandmarkVectorPtr map = std::make_shared<LandmarkVector>();
@@ -53,6 +53,4 @@ double WorldGenerator::GetTotalDistanceTraveled(const RobotPoseVectorPtr& poses)
   return distance_traveled;
 }
 
-
-
-} // namespace elninho
+} // namespace chameleon

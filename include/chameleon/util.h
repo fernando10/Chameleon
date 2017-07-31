@@ -4,7 +4,7 @@
 
 #include <memory>
 
-namespace summer
+namespace chameleon
 {
 namespace util
 {
@@ -16,4 +16,4 @@ std::unique_ptr<T> make_unique( Args&& ...args )
 }
 
 } // namespace util
-} // namespace elninho
+} // namespace chameleon

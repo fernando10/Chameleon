@@ -3,10 +3,10 @@
 #pragma once
 #include <thread>
 #include <mutex>
-#include "summersimulator/types.h"
-#include "summersimulator/util.h"
-#include "summersimulator/viewer/gl_landmark.h"
-#include "summersimulator/viewer/gl_robot.h"
+#include "chameleon/types.h"
+#include "chameleon/util.h"
+#include "chameleon/viewer/gl_landmark.h"
+#include "chameleon/viewer/gl_robot.h"
 
 #include "fmt/format.h"
 
@@ -16,7 +16,7 @@
 #include <SceneGraph/GLDynamicGrid.h>
 /*----------------------------*/
 
-namespace summer
+namespace chameleon
 {
 
 class Visualizer {
@@ -49,7 +49,6 @@ public:
     SceneGraph::GLSceneGraph scene_graph;  // Scene Graph to hold GLObjects and realtive transforms
     SceneGraph::GLDynamicGrid dynamic_grid;  // Grid object to be the world plane
     std::unique_ptr<SceneGraph::HandlerSceneGraph> handler;
-    std::unique_ptr<SceneGraph::HandlerSceneGraph> handler3d;
     SceneGraph::AxisAlignedBoundingBox aa_bounding_box;
     std::unique_ptr<pangolin::View> world_view_ptr;
     std::unique_ptr<pangolin::View> panel_view_ptr;
@@ -77,13 +76,10 @@ private:
   void SetFinish();
   bool CheckFinish();
 
+   // TEMP
   std::vector<std::unique_ptr<GLRobot>> robots_to_draw;
   std::vector<std::unique_ptr<GLLandmark>> lm_to_draw;
 
-
-//  void DrawRobot(const RobotPose& robot, Eigen::Vector3d color = Eigen::Vector3d(0., 0., 1.),
-//                 bool draw_covariance = false);
-  void DrawLandmark(const Landmark& landmark, bool draw_covariance = false);
 
   const ViewerOptions& options_;
   GuiVars gui_vars_;
@@ -96,4 +92,4 @@ private:
   bool reset_ = true;
 };
 
-}  // namespace summer
+}  // namespace chameleon

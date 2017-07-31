@@ -1,10 +1,10 @@
 // Copyright 2017 Toyota Research Institute.  All rights reserved.
 //
-#include "summersimulator/path_generator.h"
+#include "chameleon/path_generator.h"
 #include "glog/logging.h"
-#include "summersimulator/math_utils.h"
+#include "chameleon/math_utils.h"
 
-namespace summer
+namespace chameleon
 {
 
 PathGenerator::PathGenerator(const PathGeneratorOptions& options):
@@ -194,4 +194,4 @@ RobotPoseVectorPtr PathGenerator::GeneratePosesFromSpline(const RobotSpline &spl
   return out_poses;
 }
 
-}  // namespace summer
+}  // namespace chameleon

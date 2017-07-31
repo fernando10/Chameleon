@@ -1,4 +1,4 @@
-project(SummerSimulator)
+project(Chameleon)
 cmake_minimum_required(VERSION 2.8.2)
 
 # Mac ONLY. Define Relative Path on Mac OS
@@ -10,10 +10,10 @@ list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake_modules/")
 
 string(TOLOWER ${PROJECT_NAME} LIBRARY_NAME)
 
-set(SummerSimulator_VERSION_MAJOR 0)
-set(SummerSimulator_VERSION_MINOR 1)
+set(Chameleon_VERSION_MAJOR 0)
+set(Chameleon_VERSION_MINOR 1)
 set(PACKAGE_VERSION ${Compass_VERSION_MAJOR}.${Compass_VERSION_MINOR})
-set(SummerSimulator_VERSION ${PACKAGE_VERSION})
+set(Chameleon_VERSION ${PACKAGE_VERSION})
 
 include(install_package)
 include(SetPlatformVars)

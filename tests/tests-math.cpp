@@ -1,9 +1,9 @@
 // Copyright 2017 Toyota Research Institute.  All rights reserved.
 //
 #include "catch.hpp"
-#include "summersimulator/math_utils.h"
+#include "chameleon/math_utils.h"
 
-using namespace summer;
+using namespace chameleon;
 
 TEST_CASE("AngleWraparound", "[math]") {
   REQUIRE( AngleWraparound(5 * M_PI) == -M_PI );

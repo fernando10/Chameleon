@@ -5,15 +5,15 @@
 
 #include <glog/logging.h>
 
-#include "summersimulator/viewer/visualizer.h"
-#include "summersimulator/data_generator.h"
+#include "chameleon/viewer/visualizer.h"
+#include "chameleon/data_generator.h"
 #include "fmt/printf.h"
 
 /*-----------COMMAND LINE FLAGS-----------------------------------------------*/
 DEFINE_bool(display, true, "use viewer (pangolin)");
 /*----------------------------------------------------------------------------*/
 
-using namespace summer;
+using namespace chameleon;
 
 int main(int argc, char **argv) {
   google::InitGoogleLogging(argv[0]);

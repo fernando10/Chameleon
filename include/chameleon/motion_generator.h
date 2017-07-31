@@ -7,10 +7,10 @@
 //
 #pragma once
 
-#include "summersimulator/types.h"
-#include "summersimulator/util.h"
+#include "chameleon/types.h"
+#include "chameleon/util.h"
 
-namespace summer{
+namespace chameleon{
 
 class MotionGenerator {
 public:
@@ -33,4 +33,4 @@ private:
   Eigen::Vector4d odometry_noise_ = Eigen::Vector4d::Zero();
 };
 
-}  // namespace summer
+}  // namespace chameleon

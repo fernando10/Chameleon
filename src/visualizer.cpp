@@ -2,11 +2,11 @@
 //
 #include <thread>
 #include <mutex>
-#include "summersimulator/viewer/visualizer.h"
+#include "chameleon/viewer/visualizer.h"
 #include "fmt/format.h"
 #include <glog/logging.h>
 
-namespace summer
+namespace chameleon
 {
 
 Visualizer::Visualizer(const ViewerOptions& options):
@@ -21,7 +21,7 @@ void Visualizer::SwitchProjection(ProjectionMatrixTypes type) {
   if (type == ProjectionMatrixTypes::Perspective) {
     VLOG(1) << "Switching to perspective projection";
     gui_vars_.camera.SetProjectionMatrix(pangolin::ProjectionMatrix(options_.window_width, options_.window_height,
-                                                                    420, 420, 320, 240, 0.01, 5000));
+                                                                    420, 420, options_.window_width/2., options_.window_height/2. , 0.01, 5000));
   } else if (type == ProjectionMatrixTypes::Orthographic) {
     VLOG(1) << "Switching to orthographic projection";
     gui_vars_.camera.SetProjectionMatrix(pangolin::ProjectionMatrixOrthographic(-20, 20,
@@ -96,35 +96,6 @@ void Visualizer::Run() {
     // clear whole screen
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    //    if (menu_follow_camera) {
-    //      s_cam.Follow(Twc);
-    //    }
-
-    //    if (reset_) {
-    //      VLOG(2) << "Reset called (or system start) clearing dispaly and repopulating.";
-    //      gl_graph.Clear();
-    //      // re-popoulate with stuff...
-    //      gl_graph.AddChild(&gl_grid);
-    //      reset_ = false;
-    //    }
-
-    //    {
-    //      std::unique_lock<std::mutex> lock(data_mutex_);
-    //      if (data_ != nullptr) {
-    //        if(data_->ground_truth_robot_poses != nullptr) {
-    //          for (const auto& robot : *(data_->ground_truth_robot_poses)) {
-    //            DrawRobot(robot);
-    //          }
-    //        }
-
-    //        if(data_->noisy_robot_poses != nullptr) {
-    //          for (const auto& robot : *(data_->noisy_robot_poses)) {
-    //            DrawRobot(robot, Eigen::Vector3d(1.0, 0.0, 0.0));
-    //          }
-    //        }
-    //      }
-    //    }
-
     pangolin::FinishFrame();
 
     // Pause for 1/60th of a second
@@ -152,19 +123,6 @@ void Visualizer::SetData(ViewerData::Ptr data) {
   }
 }
 
-//void Visualizer::DrawRobot(const RobotPose &robot, Eigen::Vector3d color, bool draw_covariance) {
-//  glColor3f(color[0], color[1], color[2]);
-//  pangolin::glDrawCirclePerimeter(robot.pose.translation(), 0.3);
-
-//  //  Eigen::Vector2d orientation_pt(std::sin(robot.pose.so2().log()) * kRobotRadius,
-//  //                                 std::cos(robot.pose.so2().log()) * kRobotRadius);
-//  //  pangolin::glDrawLine(robot.pose.translation(), orientation_pt);
-//}
-
-void Visualizer::DrawLandmark(const Landmark &landmark, bool draw_covariance) {
-  // TODO
-}
-
 void Visualizer::RequestFinish() {
   std::unique_lock<std::mutex> lock(finish_mutex_);
   finish_requested_ = true;
@@ -185,4 +143,4 @@ bool Visualizer::IsFinished() {
   return finished_;
 }
 
-}  // namespace summer
+}  // namespace chameleon

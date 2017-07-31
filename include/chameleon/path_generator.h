@@ -5,11 +5,11 @@
 // as the ground truth and to generate odometry
 #pragma once
 
-#include "summersimulator/types.h"
-#include "summersimulator/util.h"
+#include "chameleon/types.h"
+#include "chameleon/util.h"
 #include <unsupported/Eigen/Splines>
 
-namespace summer
+namespace chameleon
 {
 
 class PathGenerator {
@@ -66,4 +66,4 @@ class PathGenerator {
 
 };
 
-}  // namespace summer
+}  // namespace chameleon

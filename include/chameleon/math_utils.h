@@ -6,7 +6,7 @@
 #include <Eigen/Core>
 #include <Eigen/Eigenvalues>
 
-namespace summer
+namespace chameleon
 {
 
 ///
@@ -79,5 +79,4 @@ struct MultivariateNormalVariable {
   Eigen::MatrixXd A;
 };
 
-
-}  // namespace summer
+}  // namespace chameleon

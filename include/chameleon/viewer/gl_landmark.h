@@ -3,7 +3,7 @@
 #pragma once
 
 #include <Eigen/Eigen>
-#include "summersimulator/types.h"
+#include "chameleon/types.h"
 
 #include <SceneGraph/GLObject.h>
 #define MAT4_COL_MAJOR_DATA(m) (Eigen::Matrix<float,4,4,Eigen::ColMajor>(m).data())
@@ -15,14 +15,14 @@ class GLLandmark : public SceneGraph::GLObject
 {
  public:
   GLLandmark() {
-    lm_color_ << 0.0, 1.0, 0.0, 0.7;
+    lm_color_ << 0.0, 0.0, 1.0, 1.0;
   }
 
   GLLandmark(const Eigen::Vector2d& position): GLLandmark() {
     lm_position_ = position;
   }
 
-  GLLandmark(const summer::Landmark& lm): GLLandmark() {
+  GLLandmark(const chameleon::Landmark& lm): GLLandmark() {
     lm_position_[0] = lm.x();
     lm_position_[1] = lm.y();
   }

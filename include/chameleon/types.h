@@ -8,13 +8,13 @@
 #include <memory>
 #include <sophus/se2.hpp>
 #include <Eigen/Core>
-#include "summersimulator/math_utils.h"
+#include "chameleon/math_utils.h"
 
 static Eigen::IOFormat kCleanFmt(4, 0, ", ", ";\n", "", "");
 static Eigen::IOFormat kLongFmt(Eigen::FullPrecision, 0, ", ", ";\n", "", "");
 static Eigen::IOFormat kLongCsvFmt(Eigen::FullPrecision, 0, ", ", "\n", "", "");
 
-namespace summer
+namespace chameleon
 {
 
 //------------------------OBSERVATION TYPES------------------------//
@@ -223,4 +223,4 @@ struct SimData {
   DebugData debug;
 };
 
-} // namespace elninho
+} // namespace chameleon

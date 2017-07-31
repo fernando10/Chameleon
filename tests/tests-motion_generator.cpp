@@ -1,11 +1,11 @@
 // Copyright 2017 Toyota Research Institute.  All rights reserved.
 //
 #include "catch.hpp"
-#include "summersimulator/motion_generator.h"
-#include "summersimulator/path_generator.h"
-#include "summersimulator/data_generator.h"
+#include "chameleon/motion_generator.h"
+#include "chameleon/path_generator.h"
+#include "chameleon/data_generator.h"
 
-using namespace summer;
+using namespace chameleon;
 
 TEST_CASE("Noise-free odometry integrates back to original path") {
 

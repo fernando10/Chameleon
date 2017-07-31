@@ -3,13 +3,13 @@
 #pragma once
 
 #include <stdint.h>
-#include "summersimulator/world_generator.h"
-#include "summersimulator/path_generator.h"
-#include "summersimulator/motion_generator.h"
-#include "summersimulator/types.h"
-#include "summersimulator/math_utils.h"
+#include "chameleon/world_generator.h"
+#include "chameleon/path_generator.h"
+#include "chameleon/motion_generator.h"
+#include "chameleon/types.h"
+#include "chameleon/math_utils.h"
 
-namespace summer
+namespace chameleon
 {
 
 class DataGenerator {
@@ -44,4 +44,4 @@ private:
   static constexpr double kBeta2 = 0.174533;
 
 };
-}  // namespace summer
+}  // namespace chameleon

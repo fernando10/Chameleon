@@ -2,10 +2,10 @@
 //
 #pragma once
 
-#include "summersimulator/types.h"
-#include "summersimulator/util.h"
+#include "chameleon/types.h"
+#include "chameleon/util.h"
 
-namespace summer
+namespace chameleon
 {
 
 enum class WorldTypes {
@@ -31,4 +31,4 @@ private:
   const double kLandmarkdDistance = 3; // [m]
 };
 
-}  // namespace summer
+}  // namespace chameleon

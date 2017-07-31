@@ -1,10 +1,10 @@
 // Copyright 2017 Toyota Research Institute.  All rights reserved.
 //
-#include "summersimulator/data_generator.h"
-#include "summersimulator/util.h"
+#include "chameleon/data_generator.h"
+#include "chameleon/util.h"
 #include "glog/logging.h"
 
-namespace summer
+namespace chameleon
 {
 
 DataGenerator::DataGenerator(const DataGeneratorOptions& options):
@@ -58,4 +58,4 @@ bool DataGenerator::GenerateSimulatedData(SimData* data) {
 
   return true;
 }
-} // namespace summer
+} // namespace chameleon
