@@ -7,6 +7,7 @@
 #include "chameleon/util.h"
 #include "chameleon/viewer/gl_landmark.h"
 #include "chameleon/viewer/gl_robot.h"
+#include "chameleon/viewer/gl_path_abs.h"
 
 #include "fmt/format.h"
 
@@ -27,6 +28,7 @@ public:
     int window_height = 768;
     int window_width = 1024;
     unsigned int panel_size = 180;
+    bool start_running = true;
   };
 
   // Struct for passing data from the application to the viewer
@@ -41,6 +43,8 @@ public:
     RobotPoseVectorPtr ground_truth_robot_poses;
     RobotPoseVectorPtr noisy_robot_poses;
     LandmarkVectorPtr ground_truth_map;
+    RangeFinderObservationVectorMap ground_truth_observation_map;
+    RangeFinderObservationVectorMap noisy_observation_map;
   };
 
   struct GuiVars {
@@ -54,14 +58,20 @@ public:
     std::unique_ptr<pangolin::View> panel_view_ptr;
     std::unique_ptr<pangolin::View> multi_view_ptr;
     SceneGraph::GLLight light;
+    GLPathAbs robot_path;
   };
 
   Visualizer(const ViewerOptions& options);
 
   void SetData(ViewerData::Ptr data);
+  // which timesteps from the data should we add to the display
+  bool AddTimesteps(std::vector<size_t> timesteps);
 
   void RequestFinish();
   bool IsFinished();
+  bool IsStepping();
+  bool SetStepping(bool stepping);
+  bool IsRunning();
 
 private:
 
@@ -80,12 +90,14 @@ private:
   std::vector<std::unique_ptr<GLRobot>> robots_to_draw;
   std::vector<std::unique_ptr<GLLandmark>> lm_to_draw;
 
-
   const ViewerOptions& options_;
+  bool single_step_ = false;
+  bool running_ = false;
+
   GuiVars gui_vars_;
   ViewerData::Ptr data_;
   std::unique_ptr<std::thread> viewer_thread_;
-  std::mutex finish_mutex_;
+  std::mutex status_mutex_;
   std::mutex data_mutex_;
   bool finished_ = false;
   bool finish_requested_ = false;

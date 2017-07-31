@@ -25,7 +25,7 @@ inline Eigen::Vector3d HomogenizeLandmark(Eigen::Vector2d lm) {
 }
 
 inline Eigen::Vector2d DeHomogenizeLandmark(Eigen::Vector3d lm_h) {
-  if (lm_h[3] > 1e-4) {
+  if (lm_h[2] > 1e-4) {
     return Eigen::Vector2d(lm_h[0] / lm_h[2], lm_h[1] / lm_h[3]);
   }
   else {

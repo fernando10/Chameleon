@@ -10,9 +10,9 @@ namespace chameleon
 {
 
 Visualizer::Visualizer(const ViewerOptions& options):
-  options_(options) {
+  options_(options), single_step_(false), running_(options.start_running) {
 
-  VLOG(1) << "Starting viewer thread.";
+  VLOG(1) << fmt::format("Starting viewer thread. Running: {}, Stepping: {}", running_, single_step_);
   // start displaying things
   viewer_thread_ = std::unique_ptr<std::thread>(new std::thread(&Visualizer::Run, this));
 }
@@ -36,10 +36,10 @@ void Visualizer::InitGui() {
                                 options_.window_width,
                                 options_.window_height);
 
-  // setup camera for 2d orthographic views (better for 2d worlds)
+  // setup camera
   gui_vars_.camera.SetModelViewMatrix(pangolin::ModelViewLookAt(3, 3, 4, 0, 0, 0, pangolin::AxisZ));
-  gui_vars_.camera.SetProjectionMatrix(pangolin::ProjectionMatrixOrthographic(-20, 20,
-                                                                              -20, 20, -50, 1000));
+  gui_vars_.camera.SetProjectionMatrix(pangolin::ProjectionMatrix(options_.window_width, options_.window_height,
+                                                                  420, 420, options_.window_width/2., options_.window_height/2. , 0.01, 5000));
 
   SceneGraph::GLSceneGraph::ApplyPreferredGlSettings();
   // Reset background color to black.
@@ -50,6 +50,9 @@ void Visualizer::InitGui() {
   gui_vars_.scene_graph.AddChild(&gui_vars_.light);
 
   gui_vars_.scene_graph.AddChild(&gui_vars_.dynamic_grid);
+
+  // add robot path to the scene graph
+  gui_vars_.scene_graph.AddChild(&gui_vars_.robot_path);
 
   // create view that will contain the robot/landmarks
   gui_vars_.world_view_ptr.reset(&pangolin::CreateDisplay()
@@ -82,7 +85,9 @@ void Visualizer::InitGui() {
                                                     this, ProjectionMatrixTypes::Perspective));
   pangolin::RegisterKeyPressCallback('o', std::bind(&Visualizer::SwitchProjection,
                                                     this, ProjectionMatrixTypes::Orthographic));
-
+  pangolin::RegisterKeyPressCallback(' ' , [&]() { running_ = !running_; });
+  pangolin::RegisterKeyPressCallback(pangolin::PANGO_SPECIAL + pangolin::PANGO_KEY_RIGHT,
+                                     [&]() { single_step_ = true; });
 }
 
 void Visualizer::Run() {
@@ -110,41 +115,64 @@ void Visualizer::Run() {
 void Visualizer::SetData(ViewerData::Ptr data) {
   std::unique_lock<std::mutex> lock(data_mutex_);
   data_ = data;
-
-  //TEMP
-  if (data_->ground_truth_robot_poses != nullptr) {
-    for (const RobotPose& p : *(data_->ground_truth_robot_poses)) {
-      robots_to_draw.push_back(std::unique_ptr<GLRobot>(new GLRobot(p.pose)));
-      gui_vars_.scene_graph.AddChild(robots_to_draw.back().get());
-    }
-  }
-
-  if (data_->ground_truth_map != nullptr) {
-    for (const Landmark& lm : *(data_->ground_truth_map)) {
-      lm_to_draw.push_back(std::unique_ptr<GLLandmark>(new GLLandmark(lm)));
-      gui_vars_.scene_graph.AddChild(lm_to_draw.back().get());
-    }
-  }
 }
 
+bool Visualizer::AddTimesteps(std::vector<size_t> timesteps) {
+  std::unique_lock<std::mutex>(data_mutex_);
+
+  for (const size_t& ts : timesteps) {
+    if (data_ == nullptr) {
+      LOG(ERROR) << fmt::format("Requested to add timestep: {} but viewer has no valid data pointer...", ts);
+      return false;
+    }
+    if (data_->ground_truth_robot_poses != nullptr && data_->ground_truth_robot_poses->size() > ts) {
+      // data exsits, add this pose to the display
+      RobotPose& robot = data_->ground_truth_robot_poses->at(ts);
+      std::vector<Sophus::SE2d>& poses_path_ref = gui_vars_.robot_path.GetPathRef();
+      poses_path_ref.push_back(robot.pose);
+      VLOG(3) << fmt::format("Added pose to path at: {}, {}", robot.pose.translation().x(), robot.pose.translation().y());
+    }else{
+      LOG(ERROR) << fmt::format("Error adding timestep: {}, either data is null or index does not exist.", ts);
+    }
+  }
+  return true;
+}
+
+
 void Visualizer::RequestFinish() {
-  std::unique_lock<std::mutex> lock(finish_mutex_);
+  std::unique_lock<std::mutex> lock(status_mutex_);
   finish_requested_ = true;
 }
 
 bool Visualizer::CheckFinish() {
-  std::unique_lock<std::mutex> lock(finish_mutex_);
+  std::unique_lock<std::mutex> lock(status_mutex_);
   return finish_requested_;
 }
 
 void Visualizer::SetFinish() {
-  std::unique_lock<std::mutex> lock(finish_mutex_);
+  std::unique_lock<std::mutex> lock(status_mutex_);
   finished_ = true;
 }
 
 bool Visualizer::IsFinished() {
-  std::unique_lock<std::mutex> lock(finish_mutex_);
+  std::unique_lock<std::mutex> lock(status_mutex_);
   return finished_;
 }
+
+bool Visualizer::IsStepping() {
+  std::unique_lock<std::mutex> lock(status_mutex_);
+  return single_step_;
+}
+
+bool Visualizer::SetStepping(bool stepping) {
+  std::unique_lock<std::mutex> lock(status_mutex_);
+  return single_step_ = stepping;
+}
+
+bool Visualizer::IsRunning() {
+  std::unique_lock<std::mutex> lock(status_mutex_);
+  return running_;
+}
+
 
 }  // namespace chameleon

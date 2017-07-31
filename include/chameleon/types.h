@@ -226,7 +226,7 @@ struct DebugData {
 };
 
 struct SimData {
-  std::vector<double> times;
+  std::vector<size_t> times;
   DebugData debug;
 };
 

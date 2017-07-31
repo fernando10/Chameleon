@@ -11,8 +11,7 @@
 ///
 /// \brief The GLRobot class
 /// Code to render a robot
-class GLRobot : public SceneGraph::GLObject
-{
+class GLRobot : public SceneGraph::GLObject {
  public:
   GLRobot() {
     robot_color_ << 1.0, 1.0, 0.0, 1.0;
@@ -37,7 +36,7 @@ class GLRobot : public SceneGraph::GLObject
   ~GLRobot() {
   }
 
-  void DrawCanonicalObject() {
+  void DrawCanonicalObject() override {
 
     glLineWidth(2.0f);
 
