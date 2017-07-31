@@ -5,6 +5,7 @@
 #include <iostream>
 #include <vector>
 #include <array>
+#include <map>
 #include <memory>
 #include <sophus/se2.hpp>
 #include <cstdint>
@@ -30,10 +31,15 @@ struct Observation {
   Observation(const double& time, const T& obs) :
     timestamp(time), observation(obs) {
   }
+
 };
 
 struct RangeFinderReading {
   RangeFinderReading(double theta, double range): theta(theta), range(range) {
+  }
+
+  RangeFinderReading operator+(const Eigen::Vector2d& rhs) const {
+    return RangeFinderReading(theta + rhs[0], range + rhs[1]);
   }
 
   double theta;  // [rad]
@@ -56,6 +62,7 @@ typedef std::vector<OdometryMeasurement> OdometryMeasurementVector;
 typedef std::shared_ptr<std::vector<OdometryMeasurement>> OdometryMeasurementVectorPtr;
 typedef Observation<RangeFinderReading> RangeFinderObservation;
 typedef std::vector<RangeFinderObservation> RangeFinderObservationVector;
+typedef std::map<size_t, RangeFinderObservationVector> RangeFinderObservationVectorMap;
 
 //------------------------POSES AND LANDMARKS------------------------//
 
@@ -187,7 +194,7 @@ struct Landmark {
   // Should only be used by ceres cost function
   double* data() { return data_.data(); }
 
- private:
+private:
   Eigen::Vector2d data_ = Eigen::Vector2d::Zero();
   //std::array<double, kParamCount> data_ = {{0.}};
 };
@@ -214,6 +221,8 @@ struct DebugData {
   OdometryMeasurementVectorPtr noise_free_odometry;
   OdometryMeasurementVectorPtr noisy_odometry;
   LandmarkVectorPtr ground_truth_map;
+  RangeFinderObservationVectorMap noise_free_observations;
+  RangeFinderObservationVectorMap noisy_observations;
 };
 
 struct SimData {

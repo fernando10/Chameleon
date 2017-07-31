@@ -5,8 +5,17 @@
 
 namespace chameleon
 {
+ObservationGenerator::ObservationGenerator() {
+  // no data yet, create lists so we don't have any nullptrs
+  path_ = std::make_shared<RobotPoseVector>();
+  map_ = std::make_shared<LandmarkVector>();
+}
 
 ObservationGenerator::ObservationGenerator(const LandmarkVectorPtr map, const RobotPoseVectorPtr path): map_(map), path_(path) {
+}
+
+void ObservationGenerator::SetCovariance(Eigen::Matrix2d cov) {
+  measurement_covariance_ = cov;
 }
 
 void ObservationGenerator::Reset(const LandmarkVectorPtr map, const RobotPoseVectorPtr path) {
@@ -14,10 +23,10 @@ void ObservationGenerator::Reset(const LandmarkVectorPtr map, const RobotPoseVec
   path_ = path;
 }
 
-RangeFinderObservationVector ObservationGenerator::GenerateObservations(size_t pose_idx) {
+RangeFinderObservationVector ObservationGenerator::GenerateObservations(size_t pose_idx) const {
   RangeFinderObservationVector observations;
 
-  if (path_ == nullptr || path_->size() < pose_idx || pose_idx < 0) {
+  if (map_ == nullptr || path_ == nullptr || path_->size() < pose_idx || pose_idx < 0) {
     LOG(ERROR) << "Inalid input to generate observations.";
     return observations;
   }
@@ -46,6 +55,18 @@ RangeFinderObservationVector ObservationGenerator::GenerateObservations(size_t p
     }
   }
   return observations;
+}
+
+RangeFinderObservationVector ObservationGenerator::GenerateNoisyObservations(size_t pose_index) const  {
+  RangeFinderObservationVector noise_free_observations = GenerateObservations(pose_index);
+
+  // now add noise to the observation
+  MultivariateNormalVariable observation_noise(measurement_covariance_); // zero mean observation noise
+  RangeFinderObservationVector noisy_observations;
+  for (const auto& obs : noise_free_observations) {
+    noisy_observations.push_back(RangeFinderObservation(obs.timestamp, obs.observation + observation_noise()));
+  }
+  return noisy_observations;
 }
 
 }  // namespace chameleon
