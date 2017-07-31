@@ -61,7 +61,6 @@ LandmarkVectorPtr WorldGenerator::GenerateWorld(const RobotPoseVectorPtr& robot_
       max_translation.x() = abs(p.pose.translation().x());
     }
   }
- VLOG(1) << fmt::format("Max translation: {}", max_translation.transpose());
 
   for (size_t lm_idx = 0; lm_idx < 5; ++lm_idx) {
     map->push_back(Landmark(20/4. * lm_idx - 10, max_translation.y() * 2));

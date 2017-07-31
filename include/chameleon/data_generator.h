@@ -36,7 +36,7 @@ private:
   const std::unique_ptr<OdometryGenerator> odometry_generator_;
   const std::unique_ptr<ObservationGenerator> observation_generator_;
 
-  Eigen::Matrix2d measurement_covariance_;
+  Eigen::Matrix2d measurement_covariance_ = Eigen::Matrix2d::Identity();
 
   static constexpr double kAlpha1 = 5e-2;
   static constexpr double kAlpha2 = 1e-3;

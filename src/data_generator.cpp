@@ -28,8 +28,10 @@ bool DataGenerator::GenerateSimulatedData(SimData* data) {
 
   if (options_.generate_landmarks) {
      LandmarkVectorPtr ground_truth_landmarks =  world_generator_->GenerateWorld(ground_truth_robot_path);
+     VLOG(1) << fmt::format("generated world with {} landmarks", ground_truth_landmarks->size());
      data->debug.ground_truth_map = ground_truth_landmarks;
      observation_generator_->Reset(ground_truth_landmarks, ground_truth_robot_path);
+     observation_generator_->SetCovariance(measurement_covariance_);
   }
 
   RobotPose noisy_robot_pose = ground_truth_robot_path->at(0);
@@ -66,8 +68,8 @@ bool DataGenerator::GenerateSimulatedData(SimData* data) {
     data->debug.noisy_poses->push_back(new_noisy_pose);
     data->debug.noise_free_odometry->push_back(noise_free_odometry);
     data->debug.noisy_odometry->push_back(noisy_odometry);
-    data->debug.noise_free_observations.at(time_step) = noise_free_obs;
-    data->debug.noisy_observations.at(time_step) = noisy_obs;
+    data->debug.noise_free_observations.insert({time_step, noise_free_obs});
+    data->debug.noisy_observations.insert({time_step, noisy_obs});
   }
 
   return true;
