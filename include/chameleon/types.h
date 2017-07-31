@@ -7,6 +7,7 @@
 #include <array>
 #include <memory>
 #include <sophus/se2.hpp>
+#include <cstdint>
 #include <Eigen/Core>
 #include "chameleon/math_utils.h"
 
@@ -32,14 +33,11 @@ struct Observation {
 };
 
 struct RangeFinderReading {
+  RangeFinderReading(double theta, double range): theta(theta), range(range) {
+  }
+
   double theta;  // [rad]
   double range;  // [m]
-};
-
-// TODO: Possibly remove this...may not be necessary
-struct OdometryReading {
-  double angle;  // [rad]
-  double speed;  // [m/s]
 };
 
 struct OdometryMeasurement {
@@ -56,9 +54,8 @@ struct OdometryMeasurement {
 
 typedef std::vector<OdometryMeasurement> OdometryMeasurementVector;
 typedef std::shared_ptr<std::vector<OdometryMeasurement>> OdometryMeasurementVectorPtr;
-typedef Observation<OdometryReading> OdometryObservation;
 typedef Observation<RangeFinderReading> RangeFinderObservation;
-typedef std::deque<RangeFinderObservation> RangeFinderObservationDeque;
+typedef std::vector<RangeFinderObservation> RangeFinderObservationVector;
 
 //------------------------POSES AND LANDMARKS------------------------//
 
@@ -67,6 +64,8 @@ typedef Eigen::Matrix3d PoseCovariance;
 struct RobotPose {
   Sophus::SE2d pose;
   PoseCovariance covariance;
+  double field_of_view = Deg2Rad(90);  // [rad]
+  double range = 4;  // [m]
 
   // Default constructor
   RobotPose(): covariance(PoseCovariance::Identity()) {
@@ -176,7 +175,7 @@ struct Landmark {
     data_[1] = y;
   }
 
-  Eigen::Vector2d vec() {
+  Eigen::Vector2d vec() const {
     return data_;
   }
 
@@ -219,7 +218,6 @@ struct DebugData {
 
 struct SimData {
   std::vector<double> times;
-  RangeFinderObservationDeque observations;
   DebugData debug;
 };
 

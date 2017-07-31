@@ -148,10 +148,14 @@ RobotPoseVectorPtr PathGenerator::GenerateCircularPath() const {
   return robot_poses;
 }
 
-//TODO
 RobotPoseVectorPtr PathGenerator::GenerateSineWavePath() const {
   RobotPoseVectorPtr robot_poses = std::make_shared<RobotPoseVector>();
-  LOG(ERROR) << "SineWaveMotion not implemented.";
+
+  for (size_t step_idx = 0; step_idx < options_.num_steps; ++step_idx) {
+    Eigen::Vector2d position(step_idx, kSineMagnitude * std::sin(step_idx * kSineFrequency));
+    double heading = std::cos(step_idx * kSineFrequency);
+    robot_poses->push_back(RobotPose(heading, position));
+  }
   return robot_poses;
 }
 

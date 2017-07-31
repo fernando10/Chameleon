@@ -1,6 +1,6 @@
 // Copyright 2017 Toyota Research Institute.  All rights reserved.
 //
-// Generates motions, or odometry given a ground truth path
+// Generates odometry given a ground truth path
 // This class is tasked with:
 //    - Generating odometry given poses at times t-1 and t,
 //    - Integrating odometry (with or without noise) and propagating pose t-1 to pose t
@@ -12,12 +12,12 @@
 
 namespace chameleon{
 
-class MotionGenerator {
+class OdometryGenerator {
 public:
 
-  MotionGenerator(const RobotPoseVectorPtr robot_poses);
-  MotionGenerator(const Eigen::Vector4d odometry_noise);
-  MotionGenerator() {}
+  OdometryGenerator(const RobotPoseVectorPtr robot_poses);
+  OdometryGenerator(const Eigen::Vector4d odometry_noise);
+  OdometryGenerator() {}
 
   void SetPath(const RobotPoseVectorPtr robot_poses);
   RobotPoseVectorPtr GetPath();

@@ -112,14 +112,18 @@ void Visualizer::SetData(ViewerData::Ptr data) {
   data_ = data;
 
   //TEMP
-  for (const RobotPose& p : *(data_->ground_truth_robot_poses)) {
-    robots_to_draw.push_back(std::unique_ptr<GLRobot>(new GLRobot(p.pose)));
-    gui_vars_.scene_graph.AddChild(robots_to_draw.back().get());
+  if (data_->ground_truth_robot_poses != nullptr) {
+    for (const RobotPose& p : *(data_->ground_truth_robot_poses)) {
+      robots_to_draw.push_back(std::unique_ptr<GLRobot>(new GLRobot(p.pose)));
+      gui_vars_.scene_graph.AddChild(robots_to_draw.back().get());
+    }
   }
 
-  for (const Landmark& lm : *(data_->ground_truth_map)) {
-    lm_to_draw.push_back(std::unique_ptr<GLLandmark>(new GLLandmark(lm)));
-    gui_vars_.scene_graph.AddChild(lm_to_draw.back().get());
+  if (data_->ground_truth_map != nullptr) {
+    for (const Landmark& lm : *(data_->ground_truth_map)) {
+      lm_to_draw.push_back(std::unique_ptr<GLLandmark>(new GLLandmark(lm)));
+      gui_vars_.scene_graph.AddChild(lm_to_draw.back().get());
+    }
   }
 }
 

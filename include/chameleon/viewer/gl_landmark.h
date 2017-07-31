@@ -43,7 +43,6 @@ class GLLandmark : public SceneGraph::GLObject
 
       glPopMatrix();
     }
-
   }
 
   void SetColor( float R, float G, float B, float A = 1.0) {

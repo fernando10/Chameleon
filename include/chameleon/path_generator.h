@@ -63,6 +63,10 @@ class PathGenerator {
   // circular motion parameters
   const double kCircleRadius = 20.; // [m]
 
+  // sine wave parameters
+  const double kSineMagnitude = 10; // [m]
+  const double kSineFrequency = 3;
+
 
 };
 

@@ -1,27 +1,27 @@
 // Copyright 2017 Toyota Research Institute.  All rights reserved.
 //
 
-#include "chameleon/motion_generator.h"
+#include "chameleon/odometry_generator.h"
 #include "glog/logging.h"
 
 namespace chameleon
 {
 
-MotionGenerator::MotionGenerator(const RobotPoseVectorPtr robot_poses): robot_poses_(robot_poses){
+OdometryGenerator::OdometryGenerator(const RobotPoseVectorPtr robot_poses): robot_poses_(robot_poses){
 }
 
-MotionGenerator::MotionGenerator(const Eigen::Vector4d odometry_noise): odometry_noise_(odometry_noise) {
+OdometryGenerator::OdometryGenerator(const Eigen::Vector4d odometry_noise): odometry_noise_(odometry_noise) {
 }
 
-void MotionGenerator::SetPath(const RobotPoseVectorPtr robot_poses) {
+void OdometryGenerator::SetPath(const RobotPoseVectorPtr robot_poses) {
   robot_poses_ = robot_poses;
 }
 
-RobotPoseVectorPtr MotionGenerator::GetPath() {
+RobotPoseVectorPtr OdometryGenerator::GetPath() {
   return robot_poses_;
 }
 
-OdometryMeasurement MotionGenerator::GenerateNoiseFreeOdometryMeasurement(size_t step) const {
+OdometryMeasurement OdometryGenerator::GenerateNoiseFreeOdometryMeasurement(size_t step) const {
   if (robot_poses_ == nullptr) {
     LOG(ERROR) << "Path not initalized but generate odometry was called...";
     return OdometryMeasurement();
@@ -51,7 +51,7 @@ OdometryMeasurement MotionGenerator::GenerateNoiseFreeOdometryMeasurement(size_t
   return OdometryMeasurement(theta_1, translation, theta_2);
 }
 
-OdometryMeasurement MotionGenerator::GenerateNoisyOdometryMeasurement(size_t step) const {
+OdometryMeasurement OdometryGenerator::GenerateNoisyOdometryMeasurement(size_t step) const {
   OdometryMeasurement noise_free_odometry = GenerateNoiseFreeOdometryMeasurement(step);
   const double theta_1 = noise_free_odometry.theta_1;
   const double theta_2 = noise_free_odometry.theta_2;
@@ -83,7 +83,7 @@ OdometryMeasurement MotionGenerator::GenerateNoisyOdometryMeasurement(size_t ste
   return OdometryMeasurement(noisy_theta_1, noisy_trans, noisy_theta_2);
 }
 
-OdometryMeasurementVectorPtr MotionGenerator::GenereteOdometry(bool noisy) const {
+OdometryMeasurementVectorPtr OdometryGenerator::GenereteOdometry(bool noisy) const {
   OdometryMeasurementVectorPtr odometry_measurements = std::make_shared<OdometryMeasurementVector>();
 
   for (size_t ii = 0; ii < robot_poses_->size() - 1; ++ii) {
@@ -102,7 +102,7 @@ OdometryMeasurementVectorPtr MotionGenerator::GenereteOdometry(bool noisy) const
 }
 
 
-RobotPose MotionGenerator::PropagateMeasurement(const OdometryMeasurement &meas, const RobotPose &start_pose) const {
+RobotPose OdometryGenerator::PropagateMeasurement(const OdometryMeasurement &meas, const RobotPose &start_pose) const {
   RobotPose propagated_pose = start_pose;
 
   // first rotation

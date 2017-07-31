@@ -11,7 +11,7 @@ DataGenerator::DataGenerator(const DataGeneratorOptions& options):
   options_(options),
   world_generator_(util::make_unique<WorldGenerator>()),
   path_generator_(util::make_unique<PathGenerator>(options.path_options)),
-  motion_generator_(util::make_unique<MotionGenerator>(options.odometry_noise)) {
+  odometry_generator_(util::make_unique<OdometryGenerator>(options.odometry_noise)) {
 }
 
 bool DataGenerator::GenerateSimulatedData(SimData* data) {
@@ -24,8 +24,10 @@ bool DataGenerator::GenerateSimulatedData(SimData* data) {
     return false;
   }
 
-  LandmarkVectorPtr ground_truth_landmarks =  world_generator_->GenerateWorld(ground_truth_robot_path);
-  data->debug.ground_truth_map = ground_truth_landmarks;
+  if (options_.generate_landmarks) {
+     LandmarkVectorPtr ground_truth_landmarks =  world_generator_->GenerateWorld(ground_truth_robot_path);
+     data->debug.ground_truth_map = ground_truth_landmarks;
+  }
 
   RobotPose noisy_robot_pose = ground_truth_robot_path->at(0);
   RobotPose noise_free_robot_pose = ground_truth_robot_path->at(0);
@@ -34,19 +36,19 @@ bool DataGenerator::GenerateSimulatedData(SimData* data) {
   data->debug.noisy_poses->push_back(noisy_robot_pose);
 
   // load the path into the motion (odometry) generator
-  motion_generator_->SetPath(ground_truth_robot_path);
+  odometry_generator_->SetPath(ground_truth_robot_path);
 
   for (size_t ii = 0; ii < ground_truth_robot_path->size() - 1; ++ii) {
     OdometryMeasurement noise_free_odometry =
-        motion_generator_->GenerateNoiseFreeOdometryMeasurement(ii);
+        odometry_generator_->GenerateNoiseFreeOdometryMeasurement(ii);
     RobotPose new_noise_free_pose =
-        motion_generator_->PropagateMeasurement(noise_free_odometry, noise_free_robot_pose);
+        odometry_generator_->PropagateMeasurement(noise_free_odometry, noise_free_robot_pose);
     noise_free_robot_pose = new_noise_free_pose;
 
     OdometryMeasurement noisy_odometry =
-        motion_generator_->GenerateNoisyOdometryMeasurement(ii);
+        odometry_generator_->GenerateNoisyOdometryMeasurement(ii);
     RobotPose new_noisy_pose =
-        motion_generator_->PropagateMeasurement(noisy_odometry, noisy_robot_pose);
+        odometry_generator_->PropagateMeasurement(noisy_odometry, noisy_robot_pose);
     noisy_robot_pose = new_noisy_pose;
 
     data->times.push_back(ii);

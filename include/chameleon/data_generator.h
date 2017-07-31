@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include "chameleon/world_generator.h"
 #include "chameleon/path_generator.h"
-#include "chameleon/motion_generator.h"
+#include "chameleon/odometry_generator.h"
 #include "chameleon/types.h"
 #include "chameleon/math_utils.h"
 
@@ -19,6 +19,7 @@ public:
     Eigen::Vector4d odometry_noise =
         (Eigen::Vector4d() << Square(kAlpha1), Square(kAlpha2), Square(kAlpha3), Square(kAlpha4)).finished();
     Eigen::Vector2d measurement_noise;
+    bool generate_landmarks = true;
 
     PathGenerator::PathGeneratorOptions path_options;
   };
@@ -31,7 +32,7 @@ private:
   const DataGeneratorOptions& options_;
   const std::unique_ptr<WorldGenerator> world_generator_;
   const std::unique_ptr<PathGenerator> path_generator_;
-  const std::unique_ptr<MotionGenerator> motion_generator_;
+  const std::unique_ptr<OdometryGenerator> odometry_generator_;
   const uint32_t kObservationDim = 3; // range, bearing, id
   const uint32_t kMotionDim = 3; // x, y, theta
 

@@ -157,15 +157,17 @@ set( REQUIRED_LIBRARIES
 set(LIB_SRCS
   src/visualizer.cpp
   src/path_generator.cpp
-  src/motion_generator.cpp
+  src/odometry_generator.cpp
   src/world_generator.cpp
+  src/observation_generator.cpp
   src/data_generator.cpp
   )
 
 set( INC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include/${LIBRARY_NAME} )
 set(LIB_HEADERS
   ${INC_DIR}/data_generator.h
-  ${INC_DIR}/motion_generator.h
+  ${INC_DIR}/odometry_generator.h
+  ${INC_DIR}/observation_generator.h
   ${INC_DIR}/path_generator.h
   ${INC_DIR}/world_generator.h
   ${INC_DIR}/viewer/visualizer.h
@@ -174,7 +176,7 @@ set(LIB_HEADERS
 include_directories( ${REQUIRED_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/include )
 
 
-add_library(${LIBRARY_NAME} SHARED ${LIB_SRCS} ${LIB_HEADERS})
+add_library(${LIBRARY_NAME} ${LIB_SRCS} ${LIB_HEADERS})
 set_target_properties( ${LIBRARY_NAME} PROPERTIES VERSION "${PACKAGE_VERSION}" SOVERSION "${PACKAGE_VERSION}" )
 target_link_libraries( ${LIBRARY_NAME} ${REQUIRED_LIBRARIES} )
 
@@ -182,7 +184,8 @@ target_link_libraries( ${LIBRARY_NAME} ${REQUIRED_LIBRARIES} )
 set(TEST_SRCS
   tests/tests-main.cpp
   tests/tests-math.cpp
-  tests/tests-motion_generator.cpp
+  tests/tests-odometry_generator.cpp
+  tests/tests-observation_generator.cpp
   )
 
 # Make test executable and link to our library

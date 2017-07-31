@@ -25,6 +25,7 @@ int main(int argc, char **argv) {
 
   DataGenerator::DataGeneratorOptions options;  // use default options
   options.path_options.motion_type = PathGenerator::PathTypes::Rectangle;
+  options.generate_landmarks = true;
   std::unique_ptr<DataGenerator> data_generator = util::make_unique<DataGenerator>(options);
 
   SimData simulated_data;
