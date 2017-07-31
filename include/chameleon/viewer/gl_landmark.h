@@ -32,8 +32,6 @@ class GLLandmark : public SceneGraph::GLObject
 
   void DrawCanonicalObject() {
 
-    glLineWidth(1.0f);
-
     if (draw_lm_) {
       glPushMatrix();
 
@@ -54,8 +52,4 @@ private:
   Eigen::Vector2d lm_position_;
   bool draw_lm_ = true;
   float lm_radius_ = 0.1f;
-
 };
-// Copyright 2017 Toyota Research Institute.  All rights reserved.
-//
-#pragma once

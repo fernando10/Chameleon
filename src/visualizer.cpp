@@ -51,8 +51,14 @@ void Visualizer::InitGui() {
 
   gui_vars_.scene_graph.AddChild(&gui_vars_.dynamic_grid);
 
-  // add robot path to the scene graph
-  gui_vars_.scene_graph.AddChild(&gui_vars_.robot_path);
+  // add robot path to the scene graph (gt and noisy)
+  gui_vars_.scene_graph.AddChild(&gui_vars_.gt_robot_path);
+  gui_vars_.gt_robot_path.SetColor(0, 0, 1);
+  gui_vars_.scene_graph.AddChild(&gui_vars_.noisy_robot_path);
+  gui_vars_.noisy_robot_path.SetColor(1, 0, 0);
+
+  // and the ground truth map
+  gui_vars_.scene_graph.AddChild(&gui_vars_.ground_truth_map);
 
   // create view that will contain the robot/landmarks
   gui_vars_.world_view_ptr.reset(&pangolin::CreateDisplay()
@@ -115,6 +121,12 @@ void Visualizer::Run() {
 void Visualizer::SetData(ViewerData::Ptr data) {
   std::unique_lock<std::mutex> lock(data_mutex_);
   data_ = data;
+
+  if (data_->ground_truth_map != nullptr) {
+    for (const auto& lm : *data_->ground_truth_map) {
+      gui_vars_.ground_truth_map.GetMapRef().push_back(GLLandmark(lm));
+    }
+  }
 }
 
 bool Visualizer::AddTimesteps(std::vector<size_t> timesteps) {
@@ -125,19 +137,30 @@ bool Visualizer::AddTimesteps(std::vector<size_t> timesteps) {
       LOG(ERROR) << fmt::format("Requested to add timestep: {} but viewer has no valid data pointer...", ts);
       return false;
     }
+    // add the robot pose at the current time
     if (data_->ground_truth_robot_poses != nullptr && data_->ground_truth_robot_poses->size() > ts) {
       // data exsits, add this pose to the display
       RobotPose& robot = data_->ground_truth_robot_poses->at(ts);
-      std::vector<Sophus::SE2d>& poses_path_ref = gui_vars_.robot_path.GetPathRef();
+      std::vector<Sophus::SE2d>& poses_path_ref = gui_vars_.gt_robot_path.GetPathRef();
       poses_path_ref.push_back(robot.pose);
       VLOG(3) << fmt::format("Added pose to path at: {}, {}", robot.pose.translation().x(), robot.pose.translation().y());
     }else{
-      LOG(ERROR) << fmt::format("Error adding timestep: {}, either data is null or index does not exist.", ts);
+      LOG(ERROR) << fmt::format("Error adding robot pose at timestep: {}, either data is null or index does not exist.", ts);
+    }
+
+    // lets also add the noisy robot poses at the current time
+    if (data_->noisy_robot_poses != nullptr && data_->noisy_robot_poses->size() > ts) {
+      // data exsits, add this pose to the display
+      RobotPose& noisy_robot = data_->noisy_robot_poses->at(ts);
+      std::vector<Sophus::SE2d>& poses_path_ref = gui_vars_.noisy_robot_path.GetPathRef();
+      poses_path_ref.push_back(noisy_robot.pose);
+      VLOG(3) << fmt::format("Added noisy pose to path at: {}, {}", noisy_robot.pose.translation().x(), noisy_robot.pose.translation().y());
+    }else{
+      LOG(ERROR) << fmt::format("Error adding noisy robot pose at timestep: {}, either data is null or index does not exist.", ts);
     }
   }
   return true;
 }
-
 
 void Visualizer::RequestFinish() {
   std::unique_lock<std::mutex> lock(status_mutex_);

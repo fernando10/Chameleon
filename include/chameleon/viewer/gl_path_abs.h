@@ -18,7 +18,6 @@ class GLPathAbs : public SceneGraph::GLObject {
 public:
   GLPathAbs() {
     line_color_ << 1.0, 1.0, 0.0, 1.0;
-    robot_.SetColor(line_color_[0], line_color_[1], line_color_[2], line_color_[3]);
   }
 
   ~GLPathAbs() {}
@@ -43,8 +42,20 @@ public:
     glPopMatrix();
 
     // draw the robot at the end
+    robot_.SetColor(line_color_[0], line_color_[1], line_color_[2], line_color_[3]);
     robot_.SetPose(path_.back());
     robot_.DrawCanonicalObject();
+  }
+
+  void SetColor(Eigen::Vector4f color) {
+    line_color_ = color;
+  }
+
+  void SetColor(float R, float G, float B, float A = 1.f) {
+    line_color_[0] = R;
+    line_color_[1] = G;
+    line_color_[2] = B;
+    line_color_[3] = A;
   }
 
   std::vector<Sophus::SE2d>& GetPathRef() {

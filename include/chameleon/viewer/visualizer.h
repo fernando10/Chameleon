@@ -8,6 +8,7 @@
 #include "chameleon/viewer/gl_landmark.h"
 #include "chameleon/viewer/gl_robot.h"
 #include "chameleon/viewer/gl_path_abs.h"
+#include  "chameleon/viewer/gl_map.h"
 
 #include "fmt/format.h"
 
@@ -58,7 +59,9 @@ public:
     std::unique_ptr<pangolin::View> panel_view_ptr;
     std::unique_ptr<pangolin::View> multi_view_ptr;
     SceneGraph::GLLight light;
-    GLPathAbs robot_path;
+    GLPathAbs gt_robot_path;
+    GLPathAbs noisy_robot_path;
+    GLMap ground_truth_map;
   };
 
   Visualizer(const ViewerOptions& options);
@@ -85,10 +88,6 @@ private:
   void Run();
   void SetFinish();
   bool CheckFinish();
-
-   // TEMP
-  std::vector<std::unique_ptr<GLRobot>> robots_to_draw;
-  std::vector<std::unique_ptr<GLLandmark>> lm_to_draw;
 
   const ViewerOptions& options_;
   bool single_step_ = false;
