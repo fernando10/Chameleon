@@ -99,10 +99,10 @@ void Visualizer::InitGui() {
 void Visualizer::Run() {
 
   VLOG(1) << "Running viewer thread...";
-  InitGui();  // the gui needs to be initialize in the same thread
+  InitGui();  // the gui needs to be initialized in the same thread
 
   // Viewer loop.
-  while (!pangolin::ShouldQuit()) {
+  while (!pangolin::ShouldQuit() || CheckFinish()) {
 
     // clear whole screen
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -111,10 +111,7 @@ void Visualizer::Run() {
 
     // Pause for 1/60th of a second
     std::this_thread::sleep_for(std::chrono::microseconds(1000 / 60));
-
-    if (CheckFinish()) { break; }
   }
-
   SetFinish();
 }
 
@@ -122,6 +119,7 @@ void Visualizer::SetData(ViewerData::Ptr data) {
   std::unique_lock<std::mutex> lock(data_mutex_);
   data_ = data;
 
+  // load the gt landmarks now since these shouldn't change
   if (data_->ground_truth_map != nullptr) {
     for (const auto& lm : *data_->ground_truth_map) {
       gui_vars_.ground_truth_map.GetMapRef().push_back(GLLandmark(lm));
@@ -144,7 +142,7 @@ bool Visualizer::AddTimesteps(std::vector<size_t> timesteps) {
       std::vector<Sophus::SE2d>& poses_path_ref = gui_vars_.gt_robot_path.GetPathRef();
       poses_path_ref.push_back(robot.pose);
       VLOG(3) << fmt::format("Added pose to path at: {}, {}", robot.pose.translation().x(), robot.pose.translation().y());
-    }else{
+    } else {
       LOG(ERROR) << fmt::format("Error adding robot pose at timestep: {}, either data is null or index does not exist.", ts);
     }
 
@@ -155,8 +153,17 @@ bool Visualizer::AddTimesteps(std::vector<size_t> timesteps) {
       std::vector<Sophus::SE2d>& poses_path_ref = gui_vars_.noisy_robot_path.GetPathRef();
       poses_path_ref.push_back(noisy_robot.pose);
       VLOG(3) << fmt::format("Added noisy pose to path at: {}, {}", noisy_robot.pose.translation().x(), noisy_robot.pose.translation().y());
-    }else{
+    } else {
       LOG(ERROR) << fmt::format("Error adding noisy robot pose at timestep: {}, either data is null or index does not exist.", ts);
+    }
+
+    // add the ground truth landmark observations
+    if (data->ground_truth_observation_map.size() > ts) {
+      // get the observations for this timestep
+      const RangeFinderObservationVector& gt_observations = data->ground_truth_observation_map.at(ts);
+      for (const RangeFinderObservation& obs : gt_observations) {
+        // TODO
+      }
     }
   }
   return true;
