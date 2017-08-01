@@ -37,7 +37,7 @@ void Visualizer::InitGui() {
                                 options_.window_height);
 
   // setup camera
-  gui_vars_.camera.SetModelViewMatrix(pangolin::ModelViewLookAt(10, 3, 15, 10, 0, 0, pangolin::AxisZ));
+  gui_vars_.camera.SetModelViewMatrix(pangolin::ModelViewLookAt(10, 3, -15, 10, 0, 0, pangolin::AxisNegZ));
   gui_vars_.camera.SetProjectionMatrix(pangolin::ProjectionMatrix(options_.window_width, options_.window_height,
                                                                   420, 420, options_.window_width/2., options_.window_height/2. , 0.01, 5000));
 
@@ -59,6 +59,10 @@ void Visualizer::InitGui() {
 
   // and the ground truth map
   gui_vars_.scene_graph.AddChild(&gui_vars_.ground_truth_map);
+
+  // and the observations
+  gui_vars_.scene_graph.AddChild(&gui_vars_.ground_truth_observations);
+  gui_vars_.scene_graph.AddChild(&gui_vars_.noisy_observations);
 
   // create view that will contain the robot/landmarks
   gui_vars_.world_view_ptr.reset(&pangolin::CreateDisplay()
@@ -147,6 +151,14 @@ bool Visualizer::AddTimesteps(std::vector<size_t> timesteps) {
       std::vector<Sophus::SE2d>& poses_path_ref = gui_vars_.gt_robot_path.GetPathRef();
       poses_path_ref.push_back(robot.pose);
       VLOG(3) << fmt::format("Added pose to path at: {}, {}", robot.pose.translation().x(), robot.pose.translation().y());
+
+      // add the ground truth landmark observations
+      if (data_->ground_truth_observation_map.find(ts) != data_->ground_truth_observation_map.end()) {
+        // get the observations for this timestep
+        const RangeFinderObservationVector& gt_observations = data_->ground_truth_observation_map.at(ts);
+        gui_vars_.ground_truth_observations.SetPoseAndObservations(robot, gt_observations);
+      }
+
     } else {
       LOG(ERROR) << fmt::format("Error adding robot pose at timestep: {}, either data is null or index does not exist.", ts);
     }
@@ -161,15 +173,6 @@ bool Visualizer::AddTimesteps(std::vector<size_t> timesteps) {
     } else {
       LOG(ERROR) << fmt::format("Error adding noisy robot pose at timestep: {}, either data is null or index does not exist.", ts);
     }
-
-    // add the ground truth landmark observations
-    //    if (data_->ground_truth_observation_map.size() > ts) {
-    //      // get the observations for this timestep
-    //      const RangeFinderObservationVector& gt_observations = data_->ground_truth_observation_map.at(ts);
-    //      for (const RangeFinderObservation& obs : gt_observations) {
-    //        // TODO
-    //      }
-    //    }
   }
   return true;
 }

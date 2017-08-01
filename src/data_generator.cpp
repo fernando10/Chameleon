@@ -18,6 +18,8 @@ DataGenerator::DataGenerator(const DataGeneratorOptions& options):
   measurement_covariance_ = options_.measurement_noise.asDiagonal();
   odometry_generator_->SetPath(path_generator_->GetRobotPath());
   world_generator_->GenerateWorld(path_generator_->GetRobotPath());
+  observation_generator_->Reset(world_generator_->GetWorld(), path_generator_->GetRobotPath());
+  observation_generator_->SetCovariance(options_.measurement_noise.asDiagonal());
 }
 
 bool DataGenerator::GetRobotData(RobotData* const data) {
@@ -44,8 +46,15 @@ bool DataGenerator::GetRobotData(RobotData* const data) {
     noisy_robot = odometry_generator_->PropagateMeasurement(noisy_odometry);
   }
 
+  // generate some observations (with and without noise)
+  RangeFinderObservationVector noise_free_obs =  observation_generator_->GenerateObservations(current_timestep_);
+  RangeFinderObservationVector noisy_obs = observation_generator_->GenerateNoisyObservations(current_timestep_);
+  VLOG(3) << fmt::format("{:=^90}", "done generating observations");
+
   data->debug.noisy_pose = noisy_robot;
   data->debug.ground_truth_map = world_generator_->GetWorld(); // this always points to the same data
+  data->debug.noise_free_observations = noise_free_obs;
+  data->debug.noisy_observations = noisy_obs;
   data->timestamp = current_timestep_;
   current_timestep_++;
   return true;

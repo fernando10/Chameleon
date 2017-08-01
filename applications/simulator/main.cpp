@@ -11,7 +11,7 @@
 
 /*-----------COMMAND LINE FLAGS-----------------------------------------------*/
 DEFINE_bool(display, true, "use viewer (pangolin)");
-DEFINE_bool(start_running, true, " start running immediately");
+DEFINE_bool(start_running, false, " start running immediately");
 /*----------------------------------------------------------------------------*/
 
 using namespace chameleon;

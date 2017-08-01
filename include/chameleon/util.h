@@ -21,12 +21,12 @@ std::unique_ptr<T> make_unique( Args&& ...args )
 }
 
 inline Eigen::Vector3d HomogenizeLandmark(Eigen::Vector2d lm) {
-  return Eigen::Vector3d(lm.x(), lm.y(), 1);
+  return Eigen::Vector3d(lm.x(), lm.y(), 1.);
 }
 
 inline Eigen::Vector2d DeHomogenizeLandmark(Eigen::Vector3d lm_h) {
   if (lm_h[2] > 1e-4) {
-    return Eigen::Vector2d(lm_h[0] / lm_h[2], lm_h[1] / lm_h[3]);
+    return Eigen::Vector2d(lm_h[0] / lm_h[2], lm_h[1] / lm_h[2]);
   }
   else {
     LOG(ERROR) << "Dehomogenizing point at infinity.";

@@ -26,13 +26,13 @@ void ObservationGenerator::Reset(const LandmarkVectorPtr map, const RobotPoseVec
 RangeFinderObservationVector ObservationGenerator::GenerateObservations(size_t pose_idx) const {
   RangeFinderObservationVector observations;
 
-  if (map_ == nullptr || path_ == nullptr || path_->size() < pose_idx || pose_idx < 0) {
+  if (map_ == nullptr || path_ == nullptr || pose_idx < 0) {
     LOG(ERROR) << "Inalid input to generate observations.";
     return observations;
   }
 
   // get pose
-  RobotPose& robot = path_->at(pose_idx);
+  RobotPose& robot = path_->at(pose_idx % path_->size());
 
   // serach for the n landmarks that are within the field of view of this robot (and within range)
   for (const auto& lm_w : *map_) {
@@ -45,15 +45,22 @@ RangeFinderObservationVector ObservationGenerator::GenerateObservations(size_t p
     // get angle
     double theta = std::atan2(lm_r.y(), lm_r.x());
 
-    if (abs(theta) <= robot.field_of_view/2.) {
+    if (std::abs(theta) <= robot.field_of_view/2.) {
       // lm in the field of view, get distance
       double distance = lm_r.norm();
       if (distance <= robot.range) {
         // an observation should be generated
         observations.push_back(RangeFinderObservation(pose_idx, RangeFinderReading(theta, distance)));
+        RangeFinderObservation& obs = observations.back();
+        VLOG(3) << fmt::format("Observation ({}): range: {}, bearing: {}, associated landmark: {} (world), {} (robot); robot position: {}",
+                               observations.size(), obs.observation.range, obs.observation.theta, lm_w.vec().transpose(), lm_r.transpose(),
+                               robot.pose.translation().transpose());
       }
     }
   }
+
+  VLOG(3) << fmt::format("Generated observations for ts: {}, generated {} observations.", pose_idx, observations.size());
+
   return observations;
 }
 

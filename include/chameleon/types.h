@@ -72,7 +72,7 @@ struct RobotPose {
   Sophus::SE2d pose;
   PoseCovariance covariance;
   double field_of_view = Deg2Rad(90);  // [rad]
-  double range = 4;  // [m]
+  double range = 10;  // [m]
 
   // Default constructor
   RobotPose(): covariance(PoseCovariance::Identity()) {

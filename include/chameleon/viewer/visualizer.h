@@ -8,7 +8,8 @@
 #include "chameleon/viewer/gl_landmark.h"
 #include "chameleon/viewer/gl_robot.h"
 #include "chameleon/viewer/gl_path_abs.h"
-#include  "chameleon/viewer/gl_map.h"
+#include "chameleon/viewer/gl_map.h"
+#include "chameleon/viewer/gl_observations.h"
 
 #include "fmt/format.h"
 
@@ -41,10 +42,11 @@ public:
     }
 
     void AddData(const RobotData& data) {
-       ground_truth_robot_poses->push_back(data.debug.ground_truth_pose);
-       noisy_robot_poses->push_back(data.debug.noisy_pose);
-       ground_truth_map = data.debug.ground_truth_map; // TODO: should avoid keep setting this every time...
-       // TODO: Add observations
+      ground_truth_robot_poses->push_back(data.debug.ground_truth_pose);
+      noisy_robot_poses->push_back(data.debug.noisy_pose);
+      ground_truth_map = data.debug.ground_truth_map; // TODO: should avoid keep setting this every time...
+      ground_truth_observation_map.insert({data.timestamp, data.debug.noise_free_observations});
+      noisy_observation_map.insert({data.timestamp, data.debug.noisy_observations});
     }
 
     typedef std::shared_ptr<ViewerData> Ptr;
@@ -69,6 +71,8 @@ public:
     GLPathAbs gt_robot_path;
     GLPathAbs noisy_robot_path;
     GLMap ground_truth_map;
+    GLObservations ground_truth_observations;
+    GLObservations noisy_observations;
   };
 
   Visualizer(const ViewerOptions& options);
