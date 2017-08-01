@@ -40,6 +40,13 @@ public:
       ground_truth_map = std::make_shared<LandmarkVector>();
     }
 
+    void AddData(const RobotData& data) {
+       ground_truth_robot_poses->push_back(data.debug.ground_truth_pose);
+       noisy_robot_poses->push_back(data.debug.noisy_pose);
+       ground_truth_map = data.debug.ground_truth_map; // TODO: should avoid keep setting this every time...
+       // TODO: Add observations
+    }
+
     typedef std::shared_ptr<ViewerData> Ptr;
     RobotPoseVectorPtr ground_truth_robot_poses;
     RobotPoseVectorPtr noisy_robot_poses;

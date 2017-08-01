@@ -42,6 +42,10 @@ namespace chameleon
 //  return map;
 //}
 
+LandmarkVectorPtr WorldGenerator::GetWorld() const {
+  return map_;
+}
+
 LandmarkVectorPtr WorldGenerator::GenerateWorld(const RobotPoseVectorPtr& robot_poses) {
   LandmarkVectorPtr map = std::make_shared<LandmarkVector>();
   VLOG(1) << " Generating landmarks for path.";
@@ -70,6 +74,7 @@ LandmarkVectorPtr WorldGenerator::GenerateWorld(const RobotPoseVectorPtr& robot_
     map->push_back(Landmark(20/4. * lm_idx -10, -max_translation.y() * 2));
   }
 
+  map_ = map; // store the map locally in case it's neeeded in the future
   return map;
 }
 

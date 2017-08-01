@@ -207,26 +207,50 @@ typedef std::shared_ptr<RobotPoseVector> RobotPoseVectorPtr;
 
 //------------------------DATA STRUCTURES------------------------//
 
+//struct DebugData {
+//  DebugData() {
+//    ground_truth_map = std::make_shared<LandmarkVector>();
+//    ground_truth_poses = std::make_shared<RobotPoseVector>();
+//    noisy_poses = std::make_shared<RobotPoseVector>();
+//    noise_free_odometry = std::make_shared<OdometryMeasurementVector>();
+//    noisy_odometry = std::make_shared<OdometryMeasurementVector>();
+//  }
+
+//  RobotPoseVectorPtr ground_truth_poses;
+//  RobotPoseVectorPtr noisy_poses;
+//  OdometryMeasurementVectorPtr noise_free_odometry;
+//  OdometryMeasurementVectorPtr noisy_odometry;
+//  LandmarkVectorPtr ground_truth_map;
+//  RangeFinderObservationVectorMap noise_free_observations;
+//  RangeFinderObservationVectorMap noisy_observations;
+//};
+
+// debug data for a single timestep
 struct DebugData {
   DebugData() {
     ground_truth_map = std::make_shared<LandmarkVector>();
-    ground_truth_poses = std::make_shared<RobotPoseVector>();
-    noisy_poses = std::make_shared<RobotPoseVector>();
-    noise_free_odometry = std::make_shared<OdometryMeasurementVector>();
-    noisy_odometry = std::make_shared<OdometryMeasurementVector>();
   }
 
-  RobotPoseVectorPtr ground_truth_poses;
-  RobotPoseVectorPtr noisy_poses;
-  OdometryMeasurementVectorPtr noise_free_odometry;
-  OdometryMeasurementVectorPtr noisy_odometry;
+  RobotPose ground_truth_pose;
+  RobotPose noisy_pose;
+  OdometryMeasurement noise_free_odometry;
+  OdometryMeasurement noisy_odometry;
   LandmarkVectorPtr ground_truth_map;
-  RangeFinderObservationVectorMap noise_free_observations;
-  RangeFinderObservationVectorMap noisy_observations;
+  RangeFinderObservationVector noise_free_observations;
+  RangeFinderObservationVector noisy_observations;
 };
 
 struct SimData {
   std::vector<size_t> times;
+  DebugData debug;
+};
+
+struct VictoriaParkData {
+  // TODO
+};
+
+struct RobotData {
+  double timestamp;
   DebugData debug;
 };
 

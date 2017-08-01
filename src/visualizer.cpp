@@ -158,13 +158,13 @@ bool Visualizer::AddTimesteps(std::vector<size_t> timesteps) {
     }
 
     // add the ground truth landmark observations
-    if (data->ground_truth_observation_map.size() > ts) {
-      // get the observations for this timestep
-      const RangeFinderObservationVector& gt_observations = data->ground_truth_observation_map.at(ts);
-      for (const RangeFinderObservation& obs : gt_observations) {
-        // TODO
-      }
-    }
+//    if (data_->ground_truth_observation_map.size() > ts) {
+//      // get the observations for this timestep
+//      const RangeFinderObservationVector& gt_observations = data_->ground_truth_observation_map.at(ts);
+//      for (const RangeFinderObservation& obs : gt_observations) {
+//        // TODO
+//      }
+//    }
   }
   return true;
 }

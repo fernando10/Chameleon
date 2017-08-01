@@ -25,13 +25,33 @@ class PathGenerator {
   struct PathGeneratorOptions {
     size_t num_steps = 100;
     PathTypes motion_type = PathTypes::Rectangle;
+    RobotPose initial_position;  // all measurements are relative so we can set any initial position
+
   };
 
   PathGenerator(const PathGeneratorOptions& options);
 
-  RobotPoseVectorPtr GeneratePath() const;
+  ///
+  /// \brief GetRobot gets the robot pose at a specific timestamp
+  /// if the timestamp is greater than the number of steps in the pre-generated
+  /// path, it starts from the beginning again. As such ideally all simulated
+  /// trajectories will end at the start position so it can be infinitely looped
+  /// \param timestep step at which we want the robot pose
+  /// \return ref of the robot pose
+  ///
+  RobotPose& GetRobot(size_t timestep);
+
+  const RobotPoseVectorPtr GetRobotPath() const;
 
  private:
+
+  ///
+  /// \brief GeneratePath Generates full simulated path
+  ///
+  void GeneratePath();
+
+  RobotPoseVectorPtr robot_poses_;
+
   RobotPoseVectorPtr GenerateRectangularPath() const;
   RobotPoseVectorPtr GenerateCircularPath() const;
   RobotPoseVectorPtr GenerateSineWavePath() const;

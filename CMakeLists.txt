@@ -184,8 +184,8 @@ target_link_libraries( ${LIBRARY_NAME} ${REQUIRED_LIBRARIES} )
 set(TEST_SRCS
   tests/tests-main.cpp
   tests/tests-math.cpp
-  tests/tests-odometry_generator.cpp
-  tests/tests-observation_generator.cpp
+#  tests/tests-odometry_generator.cpp
+#  tests/tests-observation_generator.cpp
   )
 
 # Make test executable and link to our library

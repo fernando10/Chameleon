@@ -17,28 +17,31 @@ void OdometryGenerator::SetPath(const RobotPoseVectorPtr robot_poses) {
   robot_poses_ = robot_poses;
 }
 
-RobotPoseVectorPtr OdometryGenerator::GetPath() {
-  return robot_poses_;
-}
-
 OdometryMeasurement OdometryGenerator::GenerateNoiseFreeOdometryMeasurement(size_t step) const {
   if (robot_poses_ == nullptr) {
     LOG(ERROR) << "Path not initalized but generate odometry was called...";
     return OdometryMeasurement();
   }
 
-  if (step >= robot_poses_->size()) {
-    LOG(ERROR) << " inex out of bounds, only " << robot_poses_->size() << " poses are here.";
+  if (step == 0) {
+    LOG(ERROR) << "Odometry requested at timestep 0, robot has not moved yet so no odometry to generate";
     return OdometryMeasurement();
   }
 
-  if (step == robot_poses_->size() - 1) {
-    LOG(ERROR) << "Cannot generate odometry for last measurement, nothing to differentiate";
-    return OdometryMeasurement();
-  }
+//  if (step >= robot_poses_->size()) {
+//    LOG(ERROR) << " inex out of bounds, only " << robot_poses_->size() << " poses are here.";
+//    return OdometryMeasurement();
+//  }
 
-  RobotPose& prev_pose = robot_poses_->at(step);
-  RobotPose& current_pose = robot_poses_->at(step + 1);
+//  if (step == robot_poses_->size() - 1) {
+//    LOG(ERROR) << "Cannot generate odometry for last measurement, nothing to differentiate";
+//    return OdometryMeasurement();
+//  }
+
+  // here we assume that the end pose of the path is next to the start pose so we can loop around
+  // if this is not the case the odometry generated here will be very bizarre
+  RobotPose& prev_pose = robot_poses_->at((step - 1) % robot_poses_->size());
+  RobotPose& current_pose = robot_poses_->at(step % robot_poses_->size());
 
   double theta_1 = 0;
   double theta_2 = 0;
@@ -76,10 +79,6 @@ OdometryMeasurement OdometryGenerator::GenerateNoisyOdometryMeasurement(size_t s
   double noisy_trans = translation_sample()[0];
   double noisy_theta_2 = theta_2_sample()[0];
 
-//  VLOG(3) << "orig values: [" << theta_1 << ", " << trans << ", " << theta_2;
-//  VLOG(3) << "noisy values: [" << noisy_theta_1 << ", " << noisy_trans << ", " << noisy_theta_2;
-//  VLOG(3) << "A values: [" << theta_1_sample.A << ", " << translation_sample.A << ", " << theta_2_sample.A;
-
   return OdometryMeasurement(noisy_theta_1, noisy_trans, noisy_theta_2);
 }
 
@@ -101,6 +100,17 @@ OdometryMeasurementVectorPtr OdometryGenerator::GenereteOdometry(bool noisy) con
   return odometry_measurements;
 }
 
+
+RobotPose& OdometryGenerator::PropagateMeasurement(const OdometryMeasurement& meas) {
+  if (noisy_robot_poses_ == nullptr) {
+    noisy_robot_poses_ = std::make_shared<RobotPoseVector>();
+    noisy_robot_poses_->push_back(robot_poses_->at(0)); // same starting condition
+  }
+
+  // propagate the last integrated pose through the new measurements we just recieved
+  noisy_robot_poses_->push_back(PropagateMeasurement(meas, noisy_robot_poses_->back()));
+  return noisy_robot_poses_->back();
+}
 
 RobotPose OdometryGenerator::PropagateMeasurement(const OdometryMeasurement &meas, const RobotPose &start_pose) const {
   RobotPose propagated_pose = start_pose;

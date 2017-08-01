@@ -33,25 +33,22 @@ int main(int argc, char **argv) {
   DataGenerator::DataGeneratorOptions options;  // use default options
   std::unique_ptr<DataGenerator> data_generator = util::make_unique<DataGenerator>(options);
 
-  SimData simulated_data;
-  data_generator->GenerateSimulatedData(&simulated_data);
-
-  Visualizer::ViewerData::Ptr viewer_data = std::make_shared<Visualizer::ViewerData>();
-  viewer_data->ground_truth_robot_poses = simulated_data.debug.ground_truth_poses;
-  viewer_data->noisy_robot_poses = simulated_data.debug.noisy_poses;
-  viewer_data->ground_truth_map = simulated_data.debug.ground_truth_map;
+  RobotData data;  // data corresponding to a single timestep
 
   if (FLAGS_display) {
+
     VLOG(1) << "Creating visualizer";
+
     Visualizer::ViewerOptions viewer_options;
-    viewer_options.window_name = "Change Detection Simulator";
+    viewer_options.window_name = "Chameleon - ICRA 2018";
     viewer_options.start_running = FLAGS_start_running;
+
     Visualizer viewer(viewer_options);  // create viewer and run thread
+
+    Visualizer::ViewerData::Ptr viewer_data = std::make_shared<Visualizer::ViewerData>();
     viewer.SetData(viewer_data);  // point to our local viewer data object so everyone is looking at the same data
 
     bool go = false;
-    size_t num_poses = simulated_data.times.size();
-    size_t pose_idx = 0;
     // until the user requests to finish
     while (!viewer.IsFinished()) {
 
@@ -63,10 +60,11 @@ int main(int argc, char **argv) {
       }
 
       if (go) {
-        if (pose_idx < num_poses) {
-          VLOG(3) << fmt::format("Adding timestep: {}", pose_idx);
-          viewer.AddTimesteps({pose_idx});  // add the current timestep to the display
-          pose_idx++;
+        // Get some data
+        if (data_generator->GetRobotData(&data)) {
+          // and display it
+          viewer_data->AddData(data);
+          viewer.AddTimesteps({size_t(data.timestamp)});  // add the current timestep to the display
         }
       }
       std::this_thread::sleep_for(std::chrono::milliseconds(100));

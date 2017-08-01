@@ -20,16 +20,19 @@ public:
   OdometryGenerator() {}
 
   void SetPath(const RobotPoseVectorPtr robot_poses);
-  RobotPoseVectorPtr GetPath();
 
   OdometryMeasurement GenerateNoiseFreeOdometryMeasurement(size_t step) const;
   OdometryMeasurement GenerateNoisyOdometryMeasurement(size_t step) const;
-  OdometryMeasurementVectorPtr GenereteOdometry(bool noisy = false) const;
 
   RobotPose PropagateMeasurement(const OdometryMeasurement& meas, const RobotPose& current_pose) const;
+  RobotPose& PropagateMeasurement(const OdometryMeasurement& meas);
+
 
 private:
+  OdometryMeasurementVectorPtr GenereteOdometry(bool noisy = false) const;
+
   RobotPoseVectorPtr robot_poses_;
+  RobotPoseVectorPtr noisy_robot_poses_;
   Eigen::Vector4d odometry_noise_ = Eigen::Vector4d::Zero();
 };
 

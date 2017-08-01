@@ -9,11 +9,33 @@ namespace chameleon
 
 PathGenerator::PathGenerator(const PathGeneratorOptions& options):
   options_(options){
+  // pre-build the path
+  GeneratePath();
 }
 
-RobotPoseVectorPtr PathGenerator::GeneratePath() const {
+RobotPose& PathGenerator::GetRobot(size_t timestep) {
+  if (robot_poses_ == nullptr) {
+    // shoudn't happen since we built the path in the constructor, but just in case...
+    GeneratePath();
+  }
+
+  if (robot_poses_->size() == 0) {
+    LOG(ERROR) << "Generated path with zero poses...something went wrong.";
+  }
+
+  // ground truth poses don't drift over time so we can just loop the original trajectory
+  return robot_poses_->at(timestep % robot_poses_->size());
+}
+
+const RobotPoseVectorPtr PathGenerator::GetRobotPath() const {
+  return robot_poses_;
+}
+
+void PathGenerator::GeneratePath() {
   RobotPoseVectorPtr robot_poses;
 
+  // TODO: make sure all these motions end at the start position so they can be looped
+  // indefinitely
   switch (options_.motion_type) {
   case PathTypes::Rectangle:
     robot_poses = GenerateRectangularPath();
@@ -31,7 +53,7 @@ RobotPoseVectorPtr PathGenerator::GeneratePath() const {
     LOG(ERROR) << "Motion type not supported. Unable to generate motion";
   }
 
-  return robot_poses;
+  robot_poses_ = robot_poses;
 }
 
 RobotPoseVectorPtr PathGenerator::GenerateStraightLinePath() const {
@@ -39,7 +61,8 @@ RobotPoseVectorPtr PathGenerator::GenerateStraightLinePath() const {
   RobotPoseVectorPtr robot_poses = std::make_shared<RobotPoseVector>();
 
   // start position
-  robot_poses->push_back(RobotPose(0., Eigen::Vector2d(-kLineLength / 2,  0.)));
+  robot_poses->push_back(options_.initial_position);
+  //robot_poses->push_back(RobotPose(0., Eigen::Vector2d(-kLineLength / 2,  0.)));
   Sophus::SE2d increment(0., Eigen::Vector2d(kLineLength/options_.num_steps, 0.));
 
   for (size_t ii = 1; ii < options_.num_steps; ++ii) {
@@ -85,7 +108,8 @@ RobotPoseVectorPtr PathGenerator::GenerateRectangularPath() const {
   const Eigen::Vector2d length_vel = Eigen::Vector2d(length_minus_corner / num_steps_length, 0.);
   const Eigen::Vector2d width_vel = Eigen::Vector2d(width_minus_corner / num_steps_width, 0.);
 
-  robot_poses->push_back(RobotPose(0., Eigen::Vector2d(-kRectangleLength / 2 + corner_offset, kRectangleWidth / 3)));
+  robot_poses->push_back(options_.initial_position); // start pose
+  //robot_poses->push_back(RobotPose(0., Eigen::Vector2d(-kRectangleLength / 2 + corner_offset, kRectangleWidth / 3)));
 
   // Top side of rectangle (start from one since the first pose has already been added) (length)
   for (size_t ii = 1; ii < num_steps_length; ++ii) {
@@ -139,7 +163,8 @@ RobotPoseVectorPtr PathGenerator::GenerateCircularPath() const {
   const Eigen::Vector2d vel(4. * kCircleRadius / double(options_.num_steps), 0);
 
   // start pose:
-  robot_poses->push_back(RobotPose(0, kCircleRadius, 0));
+  //robot_poses->push_back(RobotPose(0, kCircleRadius, 0));
+  robot_poses->push_back(options_.initial_position);
 
   for (size_t ii = 1; ii < options_.num_steps; ++ii) {
     robot_poses->push_back(robot_poses->back() * Sophus::SE2d(omega, vel));
@@ -150,12 +175,8 @@ RobotPoseVectorPtr PathGenerator::GenerateCircularPath() const {
 
 RobotPoseVectorPtr PathGenerator::GenerateSineWavePath() const {
   RobotPoseVectorPtr robot_poses = std::make_shared<RobotPoseVector>();
-
-  for (size_t step_idx = 0; step_idx < options_.num_steps; ++step_idx) {
-    Eigen::Vector2d position(step_idx, kSineMagnitude * std::sin(step_idx * kSineFrequency));
-    double heading = std::cos(step_idx * kSineFrequency);
-    robot_poses->push_back(RobotPose(heading, position));
-  }
+  // TODO
+  LOG(ERROR) << "SineWave motion not implemented!";
   return robot_poses;
 }
 
