@@ -51,8 +51,9 @@ int main(int argc, char **argv) {
 
       if (viewer.IsResetRequested()) {
         LOG(INFO) << " Reseting...";
-        //data_generator->Reset();
-        data_generator = util::make_unique<DataGenerator>(options);
+        data_generator->Reset();
+        viewer_data = std::make_shared<Visualizer::ViewerData>();
+        viewer.SetData(viewer_data);
         viewer.SetReset();
       }
 
