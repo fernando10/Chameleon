@@ -37,7 +37,7 @@ void Visualizer::InitGui() {
                                 options_.window_height);
 
   // setup camera
-  gui_vars_.camera.SetModelViewMatrix(pangolin::ModelViewLookAt(3, 3, 4, 0, 0, 0, pangolin::AxisZ));
+  gui_vars_.camera.SetModelViewMatrix(pangolin::ModelViewLookAt(10, 3, 15, 10, 0, 0, pangolin::AxisZ));
   gui_vars_.camera.SetProjectionMatrix(pangolin::ProjectionMatrix(options_.window_width, options_.window_height,
                                                                   420, 420, options_.window_width/2., options_.window_height/2. , 0.01, 5000));
 
@@ -118,17 +118,22 @@ void Visualizer::Run() {
 void Visualizer::SetData(ViewerData::Ptr data) {
   std::unique_lock<std::mutex> lock(data_mutex_);
   data_ = data;
+}
 
-  // load the gt landmarks now since these shouldn't change
-  if (data_->ground_truth_map != nullptr) {
-    for (const auto& lm : *data_->ground_truth_map) {
-      gui_vars_.ground_truth_map.GetMapRef().push_back(GLLandmark(lm));
+void Visualizer::AddLandmarks() {
+  if(gui_vars_.ground_truth_map.GetMapRef().size() == 0) {
+    if (data_->ground_truth_map != nullptr) {
+      for (const auto& lm : *data_->ground_truth_map) {
+        gui_vars_.ground_truth_map.GetMapRef().push_back(GLLandmark(lm));
+      }
     }
   }
 }
 
 bool Visualizer::AddTimesteps(std::vector<size_t> timesteps) {
   std::unique_lock<std::mutex>(data_mutex_);
+
+  AddLandmarks();
 
   for (const size_t& ts : timesteps) {
     if (data_ == nullptr) {
@@ -158,13 +163,13 @@ bool Visualizer::AddTimesteps(std::vector<size_t> timesteps) {
     }
 
     // add the ground truth landmark observations
-//    if (data_->ground_truth_observation_map.size() > ts) {
-//      // get the observations for this timestep
-//      const RangeFinderObservationVector& gt_observations = data_->ground_truth_observation_map.at(ts);
-//      for (const RangeFinderObservation& obs : gt_observations) {
-//        // TODO
-//      }
-//    }
+    //    if (data_->ground_truth_observation_map.size() > ts) {
+    //      // get the observations for this timestep
+    //      const RangeFinderObservationVector& gt_observations = data_->ground_truth_observation_map.at(ts);
+    //      for (const RangeFinderObservation& obs : gt_observations) {
+    //        // TODO
+    //      }
+    //    }
   }
   return true;
 }

@@ -15,7 +15,7 @@ class GLLandmark : public SceneGraph::GLObject
 {
  public:
   GLLandmark() {
-    lm_color_ << 0.0, 0.0, 1.0, 1.0;
+    lm_color_ << 0.0, 1.0, 0.0, 1.0;
   }
 
   GLLandmark(const Eigen::Vector2d& position): GLLandmark() {

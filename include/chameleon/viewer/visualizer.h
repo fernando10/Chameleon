@@ -92,6 +92,7 @@ private:
 
   void InitGui();
   void SwitchProjection(ProjectionMatrixTypes type);
+  void AddLandmarks();
   void Run();
   void SetFinish();
   bool CheckFinish();

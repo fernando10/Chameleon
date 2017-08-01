@@ -166,6 +166,10 @@ set(LIB_SRCS
 set( INC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include/${LIBRARY_NAME} )
 set(LIB_HEADERS
   ${INC_DIR}/data_generator.h
+  ${INC_DIR}/data_provider_base.h
+  ${INC_DIR}/math_utils.h
+  ${INC_DIR}/util.h
+  ${INC_DIR}/types.h
   ${INC_DIR}/odometry_generator.h
   ${INC_DIR}/observation_generator.h
   ${INC_DIR}/path_generator.h

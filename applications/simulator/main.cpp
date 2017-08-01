@@ -36,9 +36,6 @@ int main(int argc, char **argv) {
   RobotData data;  // data corresponding to a single timestep
 
   if (FLAGS_display) {
-
-    VLOG(1) << "Creating visualizer";
-
     Visualizer::ViewerOptions viewer_options;
     viewer_options.window_name = "Chameleon - ICRA 2018";
     viewer_options.start_running = FLAGS_start_running;
