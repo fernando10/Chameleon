@@ -56,13 +56,16 @@ void Visualizer::InitGui() {
   gui_vars_.gt_robot_path.SetColor(0, 0, 1);
   gui_vars_.scene_graph.AddChild(&gui_vars_.noisy_robot_path);
   gui_vars_.noisy_robot_path.SetColor(1, 0, 0);
+  gui_vars_.noisy_observations.SetLineWidth(1.5);
 
   // and the ground truth map
   gui_vars_.scene_graph.AddChild(&gui_vars_.ground_truth_map);
 
   // and the observations
   gui_vars_.scene_graph.AddChild(&gui_vars_.ground_truth_observations);
+  gui_vars_.ground_truth_observations.SetColor(1, 1, 1);  // white
   gui_vars_.scene_graph.AddChild(&gui_vars_.noisy_observations);
+  gui_vars_.noisy_observations.SetColor(0.6, 0.1, 0.1);  // dark red
 
   // create view that will contain the robot/landmarks
   gui_vars_.world_view_ptr.reset(&pangolin::CreateDisplay()
@@ -157,6 +160,13 @@ bool Visualizer::AddTimesteps(std::vector<size_t> timesteps) {
         // get the observations for this timestep
         const RangeFinderObservationVector& gt_observations = data_->ground_truth_observation_map.at(ts);
         gui_vars_.ground_truth_observations.SetPoseAndObservations(robot, gt_observations);
+      }
+
+      // add the noisy landmark observations
+      if (data_->noisy_observation_map.find(ts) != data_->noisy_observation_map.end()) {
+        // get the observations for this timestep
+        const RangeFinderObservationVector& noisy_observations = data_->noisy_observation_map.at(ts);
+        gui_vars_.noisy_observations.SetPoseAndObservations(robot, noisy_observations);
       }
 
     } else {

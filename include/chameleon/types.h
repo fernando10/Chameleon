@@ -10,6 +10,7 @@
 #include <sophus/se2.hpp>
 #include <cstdint>
 #include <Eigen/Core>
+#include "chameleon/util.h"
 #include "chameleon/math_utils.h"
 
 static Eigen::IOFormat kCleanFmt(4, 0, ", ", ";\n", "", "");
@@ -66,90 +67,6 @@ typedef std::map<size_t, RangeFinderObservationVector> RangeFinderObservationVec
 
 //------------------------POSES AND LANDMARKS------------------------//
 
-typedef Eigen::Matrix3d PoseCovariance;
-
-struct RobotPose {
-  Sophus::SE2d pose;
-  PoseCovariance covariance;
-  double field_of_view = Deg2Rad(90);  // [rad]
-  double range = 10;  // [m]
-
-  // Default constructor
-  RobotPose(): covariance(PoseCovariance::Identity()) {
-  }
-
-  // Construct from angle and position
-  RobotPose(const double theta, const Eigen::Vector2d position) : RobotPose() {
-    pose = Sophus::SE2d(theta, position);
-  }
-
-  // Construct from an SE2d transform
-  RobotPose(const Sophus::SE2d p): RobotPose() {
-    pose = p;
-  }
-
-  // Construct from an SO2d and position
-  RobotPose(const Sophus::SO2d rot, const Eigen::Vector2d pos): RobotPose() {
-    pose = Sophus::SE2d(rot, pos);
-  }
-
-  // Construct from an angle and x, y
-  RobotPose(const double theta, const double x, const double y): RobotPose() {
-    pose = Sophus::SE2d(theta, Eigen::Vector2d(x, y));
-  }
-
-  // Construct from another RobotPose
-  RobotPose(const RobotPose& other) {
-    pose = other.pose;
-    covariance = other.covariance;
-  }
-
-  // Multiplication with another robot pose
-  RobotPose operator*(const RobotPose& rhs) const {
-    return RobotPose(pose * rhs.pose);
-    // TODO: propagate covariance
-  }
-
-  // Multiplication with an SE2d transform
-  RobotPose operator*(const Sophus::SE2d& rhs) const {
-    return RobotPose(pose * rhs);
-  }
-
-  // Assignment -- copy
-  RobotPose& operator=(const RobotPose& rhs) {
-    pose = rhs.pose;
-    covariance = rhs.covariance;
-    return *this;
-  }
-
-  const Eigen::Vector2d& translation() const {
-    return pose.translation();
-  }
-
-  const Sophus::SO2d& SO2() const {
-    return pose.so2();
-  }
-
-  double theta() const { return pose.so2().log(); }
-
-  // we don't store theta directly so can't easily return a reference like we do for x and y
-  void SetTheta(const double theta_new) {
-    pose.so2() = Sophus::SO2d(AngleWraparound(theta_new));
-  }
-
-  double x() const { return pose.translation().x(); }
-  double& x() { return pose.translation().x(); }
-
-  double y() const { return pose.translation().y(); }
-  double& y() { return pose.translation().y(); }
-
-  friend std::ostream& operator<<(std::ostream& os, const RobotPose& robot) {
-    os << "theta: " << Rad2Deg(robot.theta()) << ", position: " << robot.translation().transpose();
-    return os;
-  }
-
-};
-
 typedef Eigen::Matrix2d LandmarkCovariance;
 
 struct Landmark {
@@ -197,6 +114,95 @@ struct Landmark {
 private:
   Eigen::Vector2d data_ = Eigen::Vector2d::Zero();
   //std::array<double, kParamCount> data_ = {{0.}};
+};
+
+
+typedef Eigen::Matrix3d PoseCovariance;
+struct RobotPose {
+  Sophus::SE2d pose;
+  PoseCovariance covariance;
+  double field_of_view = Deg2Rad(90);  // [rad]
+  double range = 10;  // [m]
+
+  // Default constructor
+  RobotPose(): covariance(PoseCovariance::Identity()) {
+  }
+
+  // Construct from angle and position
+  RobotPose(const double theta, const Eigen::Vector2d position) : RobotPose() {
+    pose = Sophus::SE2d(theta, position);
+  }
+
+  // Construct from an SE2d transform
+  RobotPose(const Sophus::SE2d p): RobotPose() {
+    pose = p;
+  }
+
+  // Construct from an SO2d and position
+  RobotPose(const Sophus::SO2d rot, const Eigen::Vector2d pos): RobotPose() {
+    pose = Sophus::SE2d(rot, pos);
+  }
+
+  // Construct from an angle and x, y
+  RobotPose(const double theta, const double x, const double y): RobotPose() {
+    pose = Sophus::SE2d(theta, Eigen::Vector2d(x, y));
+  }
+
+  // Construct from another RobotPose
+  RobotPose(const RobotPose& other) {
+    pose = other.pose;
+    covariance = other.covariance;
+  }
+
+  // Multiplication with another robot pose
+  RobotPose operator*(const RobotPose& rhs) const {
+    return RobotPose(pose * rhs.pose);
+    // TODO: propagate covariance
+  }
+
+  // Multiplication with an SE2d transform
+  RobotPose operator*(const Sophus::SE2d& rhs) const {
+    return RobotPose(pose * rhs);
+  }
+
+  // Multiplication with an landmark
+  Landmark operator*(const Landmark& rhs) const {
+    return Landmark(util::DeHomogenizeLandmark(pose.matrix() * util::HomogenizeLandmark(rhs.vec())));
+  }
+
+  // Assignment -- copy
+  RobotPose& operator=(const RobotPose& rhs) {
+    pose = rhs.pose;
+    covariance = rhs.covariance;
+    return *this;
+  }
+
+  const Eigen::Vector2d& translation() const {
+    return pose.translation();
+  }
+
+  const Sophus::SO2d& SO2() const {
+    return pose.so2();
+  }
+
+  double theta() const { return pose.so2().log(); }
+
+  // we don't store theta directly so can't easily return a reference like we do for x and y
+  void SetTheta(const double theta_new) {
+    pose.so2() = Sophus::SO2d(AngleWraparound(theta_new));
+  }
+
+  double x() const { return pose.translation().x(); }
+  double& x() { return pose.translation().x(); }
+
+  double y() const { return pose.translation().y(); }
+  double& y() { return pose.translation().y(); }
+
+  friend std::ostream& operator<<(std::ostream& os, const RobotPose& robot) {
+    os << "theta: " << Rad2Deg(robot.theta()) << ", position: " << robot.translation().transpose();
+    return os;
+  }
+
 };
 
 typedef std::vector<Landmark> LandmarkVector;

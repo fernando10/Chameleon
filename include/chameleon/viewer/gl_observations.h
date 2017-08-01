@@ -6,7 +6,6 @@
 #include "chameleon/types.h"
 #include "fmt/string.h"
 #include "fmt/ostream.h"
-#include "chameleon/util.h"
 #include "glog/logging.h"
 #define MAT4_COL_MAJOR_DATA(m) (Eigen::Matrix<float,4,4,Eigen::ColMajor>(m).data())
 
@@ -30,6 +29,10 @@ void SetLineWidth(double line_width) {
   line_width_ = line_width;
 }
 
+void SetColor( float R, float G, float B, float A = 1.0) {
+  line_color_ << R, G, B, A;
+}
+
 void DrawCanonicalObject() override {
   if(observations_.empty()) {
     return;
@@ -40,9 +43,10 @@ void DrawCanonicalObject() override {
   glColor4f(line_color_[0], line_color_[1], line_color_[2], line_color_[3]);
   Eigen::Vector2d origin_pt = pose_.pose.translation();
   for (const chameleon::RangeFinderObservation& obs : observations_) {
-    Eigen::Vector2d pt_r(obs.observation.range * std::cos(obs.observation.theta),  obs.observation.range * std::sin(obs.observation.theta));
-    Eigen::Vector2d pt_w = chameleon::util::DeHomogenizeLandmark(pose_.pose.matrix() * chameleon::util::HomogenizeLandmark(pt_r));
-    pangolin::glDrawLine(origin_pt, pt_w);
+    chameleon::Landmark lm_r(obs.observation.range * std::cos(obs.observation.theta),
+                             obs.observation.range * std::sin(obs.observation.theta));
+    chameleon::Landmark lm_w = pose_ * lm_r; // transfer landmark from robot frame to world frame
+    pangolin::glDrawLine(origin_pt, lm_w.vec());
   }
 
 }
