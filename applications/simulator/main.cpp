@@ -15,8 +15,12 @@ DEFINE_bool(start_running, true, " start running immediately");
 /*----------------------------------------------------------------------------*/
 
 using namespace chameleon;
-bool is_running = false;
-bool is_stepping = false;
+
+////////////////////////////////
+/// UI variables
+///////////////////////////////
+bool is_running = false;  // continuous run
+bool is_stepping = false;  // take only one step and pause
 
 int main(int argc, char **argv) {
   google::InitGoogleLogging(argv[0]);
