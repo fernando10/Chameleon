@@ -42,6 +42,7 @@ class PathGenerator {
   RobotPose& GetRobot(size_t timestep);
 
   const RobotPoseVectorPtr GetRobotPath() const;
+  void RebuildPath();
 
  private:
 

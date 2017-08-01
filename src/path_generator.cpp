@@ -13,6 +13,10 @@ PathGenerator::PathGenerator(const PathGeneratorOptions& options):
   GeneratePath();
 }
 
+void PathGenerator::RebuildPath() {
+  GeneratePath();
+}
+
 RobotPose& PathGenerator::GetRobot(size_t timestep) {
   if (robot_poses_ == nullptr) {
     // shoudn't happen since we built the path in the constructor, but just in case...

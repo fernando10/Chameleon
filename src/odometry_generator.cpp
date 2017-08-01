@@ -24,19 +24,9 @@ OdometryMeasurement OdometryGenerator::GenerateNoiseFreeOdometryMeasurement(size
   }
 
   if (step == 0) {
-    LOG(ERROR) << "Odometry requested at timestep 0, robot has not moved yet so no odometry to generate";
+    LOG(INFO) << "Odometry requested at timestep 0, robot has not moved yet so no odometry to generate";
     return OdometryMeasurement();
   }
-
-//  if (step >= robot_poses_->size()) {
-//    LOG(ERROR) << " inex out of bounds, only " << robot_poses_->size() << " poses are here.";
-//    return OdometryMeasurement();
-//  }
-
-//  if (step == robot_poses_->size() - 1) {
-//    LOG(ERROR) << "Cannot generate odometry for last measurement, nothing to differentiate";
-//    return OdometryMeasurement();
-//  }
 
   // here we assume that the end pose of the path is next to the start pose so we can loop around
   // if this is not the case the odometry generated here will be very bizarre

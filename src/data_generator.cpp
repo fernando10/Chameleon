@@ -18,7 +18,6 @@ DataGenerator::DataGenerator(const DataGeneratorOptions& options):
   measurement_covariance_ = options_.measurement_noise.asDiagonal();
   odometry_generator_->SetPath(path_generator_->GetRobotPath());
   world_generator_->GenerateWorld(path_generator_->GetRobotPath());
-
 }
 
 bool DataGenerator::GetRobotData(RobotData* const data) {
