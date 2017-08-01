@@ -29,7 +29,7 @@ public:
 
 
 private:
-  OdometryMeasurementVectorPtr GenereteOdometry(bool noisy = false) const;
+  OdometryMeasurementVectorPtr GenerateOdometry(bool noisy = false) const;
 
   RobotPoseVectorPtr robot_poses_;
   RobotPoseVectorPtr noisy_robot_poses_;

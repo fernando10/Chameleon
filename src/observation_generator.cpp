@@ -50,11 +50,7 @@ RangeFinderObservationVector ObservationGenerator::GenerateObservations(size_t p
       double distance = lm_r.norm();
       if (distance <= robot.range) {
         // an observation should be generated
-        observations.push_back(RangeFinderObservation(pose_idx, RangeFinderReading(theta, distance)));
-        RangeFinderObservation& obs = observations.back();
-        VLOG(3) << fmt::format("Observation ({}): range: {}, bearing: {}, associated landmark: {} (world), {} (robot); robot position: {}",
-                               observations.size(), obs.observation.range, obs.observation.theta, lm_w.vec().transpose(), lm_r.transpose(),
-                               robot.pose.translation().transpose());
+        observations.push_back(RangeFinderObservation(pose_idx, RangeFinderReading(lm_w.id, theta, distance)));
       }
     }
   }

@@ -29,6 +29,41 @@ void Visualizer::SwitchProjection(ProjectionMatrixTypes type) {
   }
 }
 
+void Visualizer::AddObjectsToSceneGraph() {
+  // create scene graph objects
+  gui_vars_.light = util::make_unique<SceneGraph::GLLight>(10, 10, -1000);
+  gui_vars_.scene_graph.AddChild(gui_vars_.light.get());
+  gui_vars_.dynamic_grid = util::make_unique<SceneGraph::GLDynamicGrid>();
+  gui_vars_.scene_graph.AddChild(gui_vars_.dynamic_grid.get());
+
+  // add robot path to the scene graph (gt and noisy)
+  gui_vars_.gt_robot_path = util::make_unique<GLPathAbs>();
+  gui_vars_.scene_graph.AddChild(gui_vars_.gt_robot_path.get());
+  gui_vars_.gt_robot_path->SetColor(0, 0, 1);
+
+  gui_vars_.noisy_robot_path = util::make_unique<GLPathAbs>();
+  gui_vars_.scene_graph.AddChild(gui_vars_.noisy_robot_path.get());
+  gui_vars_.noisy_robot_path->SetColor(1, 0, 0);
+
+  // and the ground truth map
+  gui_vars_.ground_truth_map = util::make_unique<GLMap>();
+  gui_vars_.scene_graph.AddChild(gui_vars_.ground_truth_map.get());
+
+  // and the observations
+  gui_vars_.ground_truth_observations = util::make_unique<GLObservations>();
+  gui_vars_.scene_graph.AddChild(gui_vars_.ground_truth_observations.get());
+  gui_vars_.ground_truth_observations->SetColor(1, 1, 1);  // white
+  gui_vars_.noisy_observations = util::make_unique<GLObservations>();
+  gui_vars_.scene_graph.AddChild(gui_vars_.noisy_observations.get());
+  gui_vars_.noisy_observations->SetColor(0.6, 0.1, 0.1);  // dark red
+  gui_vars_.noisy_observations->SetLineWidth(1.5);
+}
+
+void Visualizer::ResetSceneGraph() {
+  gui_vars_.scene_graph.Clear();
+  AddObjectsToSceneGraph();
+}
+
 void Visualizer::InitGui() {
   VLOG(1) << "Initializing GUI.";
   // Create a window.
@@ -45,36 +80,16 @@ void Visualizer::InitGui() {
   // Reset background color to black.
   glClearColor(0, 0, 0, 1);
 
-  // create scene graph objects
-  gui_vars_.light = SceneGraph::GLLight(10, 10, -1000);
-  gui_vars_.scene_graph.AddChild(&gui_vars_.light);
-
-  gui_vars_.scene_graph.AddChild(&gui_vars_.dynamic_grid);
-
-  // add robot path to the scene graph (gt and noisy)
-  gui_vars_.scene_graph.AddChild(&gui_vars_.gt_robot_path);
-  gui_vars_.gt_robot_path.SetColor(0, 0, 1);
-  gui_vars_.scene_graph.AddChild(&gui_vars_.noisy_robot_path);
-  gui_vars_.noisy_robot_path.SetColor(1, 0, 0);
-  gui_vars_.noisy_observations.SetLineWidth(1.5);
-
-  // and the ground truth map
-  gui_vars_.scene_graph.AddChild(&gui_vars_.ground_truth_map);
-
-  // and the observations
-  gui_vars_.scene_graph.AddChild(&gui_vars_.ground_truth_observations);
-  gui_vars_.ground_truth_observations.SetColor(1, 1, 1);  // white
-  gui_vars_.scene_graph.AddChild(&gui_vars_.noisy_observations);
-  gui_vars_.noisy_observations.SetColor(0.6, 0.1, 0.1);  // dark red
+  AddObjectsToSceneGraph();
 
   // create view that will contain the robot/landmarks
   gui_vars_.world_view_ptr.reset(&pangolin::CreateDisplay()
                                  .SetAspect(-(float)options_.window_width/(float)options_.window_height)
-                                 .SetBounds(0, 1.0, 0, 1.0));
+                                 .SetBounds(0.0, 1.0, pangolin::Attach::Pix(options_.panel_size), 1.0));
 
   // create view for the controls panel
   gui_vars_.panel_view_ptr.reset(&pangolin::CreatePanel("ui").
-                                 SetBounds(0, 1.0, 0, pangolin::Attach::Pix(options_.panel_size)));
+                                 SetBounds(0.0, 1.0, 0.0, pangolin::Attach::Pix(options_.panel_size)));
 
   // create handler to allow user input to update modelview matrix and flow through to the scene graph
   gui_vars_.handler.reset(new SceneGraph::HandlerSceneGraph(gui_vars_.scene_graph, gui_vars_.camera,
@@ -93,7 +108,9 @@ void Visualizer::InitGui() {
   gui_vars_.multi_view_ptr->AddDisplay(*(gui_vars_.world_view_ptr));
 
 
-  // set the keybindings
+  ////////////////////////////////////////////////////
+  /// KEYBINDINGS
+  ///////////////////////////////////////////////////
   pangolin::RegisterKeyPressCallback('p', std::bind(&Visualizer::SwitchProjection,
                                                     this, ProjectionMatrixTypes::Perspective));
   pangolin::RegisterKeyPressCallback('o', std::bind(&Visualizer::SwitchProjection,
@@ -101,6 +118,15 @@ void Visualizer::InitGui() {
   pangolin::RegisterKeyPressCallback(' ' , [&]() { running_ = !running_; });
   pangolin::RegisterKeyPressCallback(pangolin::PANGO_SPECIAL + pangolin::PANGO_KEY_RIGHT,
                                      [&]() { single_step_ = true; });
+
+  ////////////////////////////////////////////////////
+  /////UI VARIABLES
+  /// ////////////////////////////////////////////////
+  gui_vars_.ui.reset = util::make_unique<pangolin::Var<bool>>("ui.Reset", false, false);
+  gui_vars_.ui.show_gt = util::make_unique<pangolin::Var<bool>>("ui.Show_ground_truth", true, true);
+  gui_vars_.ui.show_observations = util::make_unique<pangolin::Var<bool>>("ui.Show_observations", true, true);
+  gui_vars_.ui.show_landmarks = util::make_unique<pangolin::Var<bool>>("ui.Show_landmarks", true, true);
+  gui_vars_.ui.show_odometry = util::make_unique<pangolin::Var<bool>>("ui.Show_odometry", true, true);
 }
 
 void Visualizer::Run() {
@@ -113,6 +139,17 @@ void Visualizer::Run() {
 
     // clear whole screen
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    // check toggles
+    gui_vars_.ground_truth_map->SetVisible(*gui_vars_.ui.show_landmarks);
+    gui_vars_.ground_truth_observations->SetVisible(*gui_vars_.ui.show_observations);
+    gui_vars_.noisy_observations->SetVisible(*gui_vars_.ui.show_observations);
+    gui_vars_.noisy_robot_path->SetVisible(*gui_vars_.ui.show_odometry);
+    gui_vars_.gt_robot_path->SetVisible(*gui_vars_.ui.show_gt);
+
+    if (pangolin::Pushed(*gui_vars_.ui.reset) ) {
+      RequestReset();
+    }
 
     pangolin::FinishFrame();
 
@@ -128,10 +165,10 @@ void Visualizer::SetData(ViewerData::Ptr data) {
 }
 
 void Visualizer::AddLandmarks() {
-  if(gui_vars_.ground_truth_map.GetMapRef().size() == 0) {
+  if(gui_vars_.ground_truth_map->GetMapRef().size() == 0) {
     if (data_->ground_truth_map != nullptr) {
       for (const auto& lm : *data_->ground_truth_map) {
-        gui_vars_.ground_truth_map.GetMapRef().push_back(GLLandmark(lm));
+        gui_vars_.ground_truth_map->GetMapRef().push_back(GLLandmark(lm));
       }
     }
   }
@@ -151,7 +188,7 @@ bool Visualizer::AddTimesteps(std::vector<size_t> timesteps) {
     if (data_->ground_truth_robot_poses != nullptr && data_->ground_truth_robot_poses->size() > ts) {
       // data exsits, add this pose to the display
       RobotPose& robot = data_->ground_truth_robot_poses->at(ts);
-      std::vector<Sophus::SE2d>& poses_path_ref = gui_vars_.gt_robot_path.GetPathRef();
+      std::vector<Sophus::SE2d>& poses_path_ref = gui_vars_.gt_robot_path->GetPathRef();
       poses_path_ref.push_back(robot.pose);
       VLOG(3) << fmt::format("Added pose to path at: {}, {}", robot.pose.translation().x(), robot.pose.translation().y());
 
@@ -159,14 +196,14 @@ bool Visualizer::AddTimesteps(std::vector<size_t> timesteps) {
       if (data_->ground_truth_observation_map.find(ts) != data_->ground_truth_observation_map.end()) {
         // get the observations for this timestep
         const RangeFinderObservationVector& gt_observations = data_->ground_truth_observation_map.at(ts);
-        gui_vars_.ground_truth_observations.SetPoseAndObservations(robot, gt_observations);
+        gui_vars_.ground_truth_observations->SetPoseAndObservations(robot, gt_observations);
       }
 
       // add the noisy landmark observations
       if (data_->noisy_observation_map.find(ts) != data_->noisy_observation_map.end()) {
         // get the observations for this timestep
         const RangeFinderObservationVector& noisy_observations = data_->noisy_observation_map.at(ts);
-        gui_vars_.noisy_observations.SetPoseAndObservations(robot, noisy_observations);
+        gui_vars_.noisy_observations->SetPoseAndObservations(robot, noisy_observations);
       }
 
     } else {
@@ -177,7 +214,7 @@ bool Visualizer::AddTimesteps(std::vector<size_t> timesteps) {
     if (data_->noisy_robot_poses != nullptr && data_->noisy_robot_poses->size() > ts) {
       // data exsits, add this pose to the display
       RobotPose& noisy_robot = data_->noisy_robot_poses->at(ts);
-      std::vector<Sophus::SE2d>& poses_path_ref = gui_vars_.noisy_robot_path.GetPathRef();
+      std::vector<Sophus::SE2d>& poses_path_ref = gui_vars_.noisy_robot_path->GetPathRef();
       poses_path_ref.push_back(noisy_robot.pose);
       VLOG(3) << fmt::format("Added noisy pose to path at: {}, {}", noisy_robot.pose.translation().x(), noisy_robot.pose.translation().y());
     } else {
@@ -220,6 +257,23 @@ bool Visualizer::SetStepping(bool stepping) {
 bool Visualizer::IsRunning() {
   std::unique_lock<std::mutex> lock(status_mutex_);
   return running_;
+}
+
+void Visualizer::RequestReset() {
+  std::unique_lock<std::mutex> lock(status_mutex_);
+  reset_requested_ = true;
+}
+
+bool Visualizer::IsResetRequested() {
+  std::unique_lock<std::mutex> lock(status_mutex_);
+  return reset_requested_;
+}
+
+void Visualizer::SetReset() {
+  std::unique_lock<std::mutex> lock(status_mutex_);
+  // reset set on the application, clear the scene graph;
+  reset_requested_ = false;
+  ResetSceneGraph();
 }
 
 

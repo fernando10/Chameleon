@@ -67,11 +67,11 @@ LandmarkVectorPtr WorldGenerator::GenerateWorld(const RobotPoseVectorPtr& robot_
   }
 
   for (size_t lm_idx = 0; lm_idx < 5; ++lm_idx) {
-    map->push_back(Landmark(20/4. * lm_idx - 4, max_translation.y() * 0.5));
+    map->push_back(Landmark(map->size(), 20/4. * lm_idx - 4, max_translation.y() * 0.5));
   }
 
   for (size_t lm_idx = 0; lm_idx < 5; ++lm_idx) {
-    map->push_back(Landmark(20/4. * lm_idx - 4, -max_translation.y() * 1.5));
+    map->push_back(Landmark(map->size(), 20/4. * lm_idx - 4, -max_translation.y() * 1.5));
   }
 
   map_ = map; // store the map locally in case it's neeeded in the future

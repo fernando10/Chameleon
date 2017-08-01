@@ -8,18 +8,27 @@ namespace chameleon
 {
 
 DataGenerator::DataGenerator(const DataGeneratorOptions& options):
-  options_(options),
-  world_generator_(util::make_unique<WorldGenerator>()),
-  path_generator_(util::make_unique<PathGenerator>(options.path_options)),
-  odometry_generator_(util::make_unique<OdometryGenerator>(options.odometry_noise)),
-  observation_generator_(util::make_unique<ObservationGenerator>()) {
+  options_(options){
+  InitializeSimulation();
+}
 
-  // build up the sim poses/landmarks
+void DataGenerator::InitializeSimulation() {
+  world_generator_ = util::make_unique<WorldGenerator>();
+  path_generator_ = util::make_unique<PathGenerator>(options_.path_options);
+  odometry_generator_ = util::make_unique<OdometryGenerator>(options_.odometry_noise);
+  observation_generator_ = util::make_unique<ObservationGenerator>();
+
   measurement_covariance_ = options_.measurement_noise.asDiagonal();
   odometry_generator_->SetPath(path_generator_->GetRobotPath());
   world_generator_->GenerateWorld(path_generator_->GetRobotPath());
   observation_generator_->Reset(world_generator_->GetWorld(), path_generator_->GetRobotPath());
   observation_generator_->SetCovariance(options_.measurement_noise.asDiagonal());
+  current_timestep_ = 0;
+}
+
+void DataGenerator::Reset() {
+  // start from scratch
+  InitializeSimulation();
 }
 
 bool DataGenerator::GetRobotData(RobotData* const data) {
@@ -49,7 +58,6 @@ bool DataGenerator::GetRobotData(RobotData* const data) {
   // generate some observations (with and without noise)
   RangeFinderObservationVector noise_free_obs =  observation_generator_->GenerateObservations(current_timestep_);
   RangeFinderObservationVector noisy_obs = observation_generator_->GenerateNoisyObservations(current_timestep_);
-  VLOG(3) << fmt::format("{:=^90}", "done generating observations");
 
   data->debug.noisy_pose = noisy_robot;
   data->debug.ground_truth_map = world_generator_->GetWorld(); // this always points to the same data

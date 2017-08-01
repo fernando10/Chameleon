@@ -39,12 +39,17 @@ struct RangeFinderReading {
   RangeFinderReading(double theta, double range): theta(theta), range(range) {
   }
 
+  RangeFinderReading(uint64_t lm_id, double theta, double range): RangeFinderReading(theta, range) {
+    lm_id = lm_id;
+  }
+
+
   RangeFinderReading operator+(const Eigen::Vector2d& rhs) const {
     return RangeFinderReading(theta + rhs[0], range + rhs[1]);
   }
-
   double theta;  // [rad]
   double range;  // [m]
+  uint64_t lm_id = 0; // landmark id (only populated when generating simulated data
 };
 
 struct OdometryMeasurement {
@@ -59,6 +64,7 @@ struct OdometryMeasurement {
   }
 };
 
+typedef Eigen::Matrix4d OdometryCovariance;
 typedef std::vector<OdometryMeasurement> OdometryMeasurementVector;
 typedef std::shared_ptr<std::vector<OdometryMeasurement>> OdometryMeasurementVectorPtr;
 typedef Observation<RangeFinderReading> RangeFinderObservation;
@@ -75,7 +81,9 @@ struct Landmark {
 
   Landmark(): covariance(LandmarkCovariance::Identity()), id(0) {
   }
-
+  Landmark(uint64_t id, double x, double y): Landmark(x, y) {
+    id = id;
+  }
   Landmark(double x, double y): Landmark() {
     data_[0] = x;
     data_[1] = y;
@@ -258,6 +266,9 @@ struct VictoriaParkData {
 struct RobotData {
   double timestamp;
   DebugData debug;
+  // this is all that is available to the estimation algorithm (below)
+  OdometryMeasurement odometry;
+  RangeFinderObservationVector observations;
 };
 
 } // namespace chameleon

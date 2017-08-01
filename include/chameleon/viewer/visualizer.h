@@ -57,22 +57,34 @@ public:
     RangeFinderObservationVectorMap noisy_observation_map;
   };
 
+  // variables that will be displayed in the GUI
+  struct DebugGUIVariables {
+    std::unique_ptr<pangolin::Var<bool>> show_gt;
+    std::unique_ptr<pangolin::Var<bool>> show_observations;
+    std::unique_ptr<pangolin::Var<bool>> show_landmarks;
+    std::unique_ptr<pangolin::Var<bool>> show_odometry;
+    std::unique_ptr<pangolin::Var<bool>> reset;
+  };
+
   struct GuiVars {
     pangolin::OpenGlRenderState camera;
     pangolin::OpenGlRenderState camera3d;
     SceneGraph::GLSceneGraph scene_graph;  // Scene Graph to hold GLObjects and realtive transforms
-    SceneGraph::GLDynamicGrid dynamic_grid;  // Grid object to be the world plane
     std::unique_ptr<SceneGraph::HandlerSceneGraph> handler;
     SceneGraph::AxisAlignedBoundingBox aa_bounding_box;
     std::unique_ptr<pangolin::View> world_view_ptr;
     std::unique_ptr<pangolin::View> panel_view_ptr;
     std::unique_ptr<pangolin::View> multi_view_ptr;
-    SceneGraph::GLLight light;
-    GLPathAbs gt_robot_path;
-    GLPathAbs noisy_robot_path;
-    GLMap ground_truth_map;
-    GLObservations ground_truth_observations;
-    GLObservations noisy_observations;
+    // scene graph objects
+    std::unique_ptr<SceneGraph::GLLight> light;
+    std::unique_ptr<SceneGraph::GLDynamicGrid> dynamic_grid;  // Grid object to be the world plane
+    std::unique_ptr<GLPathAbs> gt_robot_path;
+    std::unique_ptr<GLPathAbs> noisy_robot_path;
+    std::unique_ptr<GLMap> ground_truth_map;
+    std::unique_ptr<GLObservations> ground_truth_observations;
+    std::unique_ptr<GLObservations> noisy_observations;
+
+    DebugGUIVariables ui;  // user interface
   };
 
   Visualizer(const ViewerOptions& options);
@@ -85,7 +97,9 @@ public:
   bool IsFinished();
   bool IsStepping();
   bool SetStepping(bool stepping);
+  void SetReset();
   bool IsRunning();
+  bool IsResetRequested();
 
 private:
 
@@ -100,10 +114,14 @@ private:
   void Run();
   void SetFinish();
   bool CheckFinish();
+  void RequestReset();
+  void AddObjectsToSceneGraph();
+  void ResetSceneGraph();
 
   const ViewerOptions& options_;
   bool single_step_ = false;
   bool running_ = false;
+  bool reset_requested_ = false;
 
   GuiVars gui_vars_;
   ViewerData::Ptr data_;

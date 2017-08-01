@@ -72,7 +72,7 @@ OdometryMeasurement OdometryGenerator::GenerateNoisyOdometryMeasurement(size_t s
   return OdometryMeasurement(noisy_theta_1, noisy_trans, noisy_theta_2);
 }
 
-OdometryMeasurementVectorPtr OdometryGenerator::GenereteOdometry(bool noisy) const {
+OdometryMeasurementVectorPtr OdometryGenerator::GenerateOdometry(bool noisy) const {
   OdometryMeasurementVectorPtr odometry_measurements = std::make_shared<OdometryMeasurementVector>();
 
   for (size_t ii = 0; ii < robot_poses_->size() - 1; ++ii) {

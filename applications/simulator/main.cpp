@@ -49,6 +49,13 @@ int main(int argc, char **argv) {
     // until the user requests to finish
     while (!viewer.IsFinished()) {
 
+      if (viewer.IsResetRequested()) {
+        LOG(INFO) << " Reseting...";
+        //data_generator->Reset();
+        data_generator = util::make_unique<DataGenerator>(options);
+        viewer.SetReset();
+      }
+
       //  feed the viewer some data so we have something to display
       go = viewer.IsStepping() || viewer.IsRunning();
       if (go && !viewer.IsRunning()) {
