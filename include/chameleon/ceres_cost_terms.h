@@ -39,5 +39,20 @@ struct OdometryCostFunction {
   const OdometryMeasurement measurement;
   const OdometryCovariance covariance;
 };
+
+struct RangeFinderObservationCostFunction {
+  RangeFinderObservationCostFunction(const RangeFinderObservation& measurement,
+                                     const Eigen::Matrix2d cov): observation(measurement),
+  covariance(cov) {
+  }
+
+  template <typename T>
+  bool operator()(const T* const T_WS, const T* const LM_W, T* residual) const {
+    // TODO range finder cost term
+  }
+
+  const RangeFinderObservation observation;
+  const Eigen::Matrix2d covariance;
+};
 }  // namespace ceres
 }  // namespace chameleon

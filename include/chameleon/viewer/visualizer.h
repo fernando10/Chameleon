@@ -130,7 +130,6 @@ private:
   std::mutex data_mutex_;
   bool finished_ = false;
   bool finish_requested_ = false;
-  bool reset_ = true;
 };
 
 }  // namespace chameleon
