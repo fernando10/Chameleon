@@ -91,9 +91,9 @@ TEST_CASE("Only visible landmarks should generate observations") {
     double dist = poses->back().range;
     lm_r = Landmark(dist* std::cos(lm_angle), dist * std::sin(lm_angle));
     // now transfer this landmark over to the world frame, using the util homogenize/dehomogenize functions
-    lm_r_homogeneous = chameleon::util::HomogenizeLandmark(lm_r.vec());
+    lm_r_homogeneous = chameleon::util::HomogenizeLandmark<>(lm_r.vec());
     lm_w_homogeneous = poses->back().pose.matrix() * lm_r_homogeneous;
-    lm_w = Landmark(chameleon::util::DeHomogenizeLandmark(lm_w_homogeneous));
+    lm_w = Landmark(chameleon::util::DeHomogenizeLandmark<>(lm_w_homogeneous));
     map->clear();
     map->push_back(lm_w);
     obs = observation_generator.GenerateObservations(1);
@@ -108,9 +108,9 @@ TEST_CASE("Only visible landmarks should generate observations") {
     dist = poses->back().range;
     lm_r = Landmark(dist* std::cos(lm_angle), dist * std::sin(lm_angle));
     // now transfer this landmark over to the world frame, using the util homogenize/dehomogenize functions
-    lm_r_homogeneous = chameleon::util::HomogenizeLandmark(lm_r.vec());
+    lm_r_homogeneous = chameleon::util::HomogenizeLandmark<>(lm_r.vec());
     lm_w_homogeneous = poses->back().pose.matrix() * lm_r_homogeneous;
-    lm_w = Landmark(chameleon::util::DeHomogenizeLandmark(lm_w_homogeneous));
+    lm_w = Landmark(chameleon::util::DeHomogenizeLandmark<>(lm_w_homogeneous));
     map->clear();
     map->push_back(lm_w);
     obs = observation_generator.GenerateObservations(1);
@@ -121,9 +121,9 @@ TEST_CASE("Only visible landmarks should generate observations") {
     dist = poses->back().range / 2;
     lm_r = Landmark(dist* std::cos(lm_angle), dist * std::sin(lm_angle));
     // now transfer this landmark over to the world frame, using the util homogenize/dehomogenize functions
-    lm_r_homogeneous = chameleon::util::HomogenizeLandmark(lm_r.vec());
+    lm_r_homogeneous = chameleon::util::HomogenizeLandmark<>(lm_r.vec());
     lm_w_homogeneous = poses->back().pose.matrix() * lm_r_homogeneous;
-    lm_w = Landmark(chameleon::util::DeHomogenizeLandmark(lm_w_homogeneous));
+    lm_w = Landmark(chameleon::util::DeHomogenizeLandmark<>(lm_w_homogeneous));
     map->clear();
     map->push_back(lm_w);
     obs = observation_generator.GenerateObservations(1);
@@ -137,9 +137,9 @@ TEST_CASE("Only visible landmarks should generate observations") {
     dist = poses->back().range * 1.02;
     lm_r = Landmark(dist* std::cos(lm_angle), dist * std::sin(lm_angle));
     // now transfer this landmark over to the world frame, using the util homogenize/dehomogenize functions
-    lm_r_homogeneous = chameleon::util::HomogenizeLandmark(lm_r.vec());
+    lm_r_homogeneous = chameleon::util::HomogenizeLandmark<>(lm_r.vec());
     lm_w_homogeneous = poses->back().pose.matrix() * lm_r_homogeneous;
-    lm_w = Landmark(chameleon::util::DeHomogenizeLandmark(lm_w_homogeneous));
+    lm_w = Landmark(chameleon::util::DeHomogenizeLandmark<>(lm_w_homogeneous));
     map->clear();
     map->push_back(lm_w);
     obs = observation_generator.GenerateObservations(1);
@@ -150,9 +150,9 @@ TEST_CASE("Only visible landmarks should generate observations") {
     dist = poses->back().range;
     lm_r = Landmark(dist* std::cos(lm_angle), dist * std::sin(lm_angle));
     // now transfer this landmark over to the world frame, using the util homogenize/dehomogenize functions
-    lm_r_homogeneous = chameleon::util::HomogenizeLandmark(lm_r.vec());
+    lm_r_homogeneous = chameleon::util::HomogenizeLandmark<>(lm_r.vec());
     lm_w_homogeneous = poses->back().pose.matrix() * lm_r_homogeneous;
-    lm_w = Landmark(chameleon::util::DeHomogenizeLandmark(lm_w_homogeneous));
+    lm_w = Landmark(chameleon::util::DeHomogenizeLandmark<>(lm_w_homogeneous));
     map->clear();
     map->push_back(lm_w);
     obs = observation_generator.GenerateObservations(1);
@@ -167,9 +167,9 @@ TEST_CASE("Only visible landmarks should generate observations") {
     double dist = poses->back().range;
     Landmark lm_r(dist* std::cos(lm_angle), dist * std::sin(lm_angle));
     // now transfer this landmark over to the world frame
-    Eigen::Vector3d lm_r_homogeneous =  chameleon::util::HomogenizeLandmark(lm_r.vec());
+    Eigen::Vector3d lm_r_homogeneous =  chameleon::util::HomogenizeLandmark<>(lm_r.vec());
     Eigen::Vector3d lm_w_homogeneous = poses->back().pose.matrix() * lm_r_homogeneous;
-    Landmark lm_w(chameleon::util::DeHomogenizeLandmark(lm_w_homogeneous));
+    Landmark lm_w(chameleon::util::DeHomogenizeLandmark<>(lm_w_homogeneous));
     map->clear();
     map->push_back(lm_w);
     RangeFinderObservationVector obs = observation_generator.GenerateObservations(1);

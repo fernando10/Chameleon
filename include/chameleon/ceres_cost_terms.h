@@ -4,6 +4,7 @@
 #include "ceres/ceres.h"
 #include <Eigen/Core>
 #include "chameleon/types.h"
+#include <memory>
 
 namespace chameleon
 {
@@ -11,48 +12,65 @@ namespace ceres
 {
 struct OdometryCostFunction {
   OdometryCostFunction(const OdometryMeasurement& measurement, const OdometryCovariance &cov):
-  measurement(measurement), covariance(cov){
+    measurement(measurement), inv_sqrt_cov(cov){
   }
 
   template<typename T>
   bool operator()(const T* const T1, const T* const T2, T* residual) const {
     // build odometry residual
-    Eigen::Map<Sophus::SE2Group<T>>T_WS_prev(T1);
-    Eigen::Map<Sophus::SE2Group<T>>T_WS_current(T2);
+    const Eigen::Map<const Sophus::SE2Group<T>>T_WS_prev(T1);
+    const Eigen::Map<const Sophus::SE2Group<T>>T_WS_current(T2);
 
-    Eigen::Map<Eigen::Matrix<T, 3, 1>>error(residual);
+    Eigen::Map<Eigen::Matrix<T, OdometryMeasurement::kMeasurementDim, 1>>error(residual);
 
     T theta1 = ::ceres::atan2(T_WS_current.translation().y() - T_WS_prev.translation().y(),
-                             T_WS_current.translation().x() - T_WS_prev.translation().x()) - T_WS_prev.so2().log();
+                              T_WS_current.translation().x() - T_WS_prev.translation().x()) - T_WS_prev.so2().log();
     T translation = (T_WS_current.translation() - T_WS_prev.translation()).norm();
     T theta2 = T_WS_current.so2().log() - T_WS_prev.so2().log() - theta1;
 
-    error[0] = theta1 - measurement.theta_1.template cast<T>();
-    error[1] = translation - measurement.translation.template cast<T>();
-    error[2] = theta2 - measurement.theta_2.template cast<T>();
+    // hardcoded for now
+    // TODO: use kConsts for the component indexing
+    error[0] = theta1 - (T)measurement.theta_1;
+    error[1] = translation - (T)measurement.translation;
+    error[2] = theta2 - (T)measurement.theta_2;
 
-    error = error * covariance.template cast<T>();
-
+    error = inv_sqrt_cov.template cast<T>() * error;
     return true;
   }
 
   const OdometryMeasurement measurement;
-  const OdometryCovariance covariance;
+  const OdometryCovariance inv_sqrt_cov;
 };
 
 struct RangeFinderObservationCostFunction {
   RangeFinderObservationCostFunction(const RangeFinderObservation& measurement,
-                                     const Eigen::Matrix2d cov): observation(measurement),
-  covariance(cov) {
+                                     const RangeFinderCovariance cov): obs(measurement),
+    inv_sqrt_cov(cov) {
   }
 
   template <typename T>
-  bool operator()(const T* const T_WS, const T* const LM_W, T* residual) const {
-    // TODO range finder cost term
+  bool operator()(const T* const T_WS_raw, const T* const LM_W_raw, T* residual) const {
+    const Eigen::Map<const Sophus::SE2Group<T>>t_ws(T_WS_raw);
+    const Eigen::Map<const Eigen::Matrix<T, Landmark::kLandmarkDim, 1>> lm_w(LM_W_raw);
+
+    Eigen::Map<Eigen::Matrix<T, RangeFinderReading::kMeasurementDim, 1>> error(residual);
+
+    // transfer landmark to robot frame
+    Eigen::Matrix<T,  Landmark::kLandmarkDim, 1> lm_r =
+        util::DeHomogenizeLandmark<T>(t_ws.matrix().inverse() * util::HomogenizeLandmark<T>(lm_w));
+
+    // get the range and bearing information
+    T range_pred = lm_r.norm();
+    T bearing_pred = ::ceres::atan2(lm_r.y(), lm_r.x());
+    error[RangeFinderReading::kIndexRange] = range_pred - (T)obs.observation.range;
+    error[RangeFinderReading::kIndexBearing] = bearing_pred - (T)obs.observation.theta;
+
+    error = inv_sqrt_cov.template cast<T>() * error;
+    return true;
   }
 
-  const RangeFinderObservation observation;
-  const Eigen::Matrix2d covariance;
+  const RangeFinderObservation obs;
+  const RangeFinderCovariance inv_sqrt_cov;
 };
 }  // namespace ceres
 }  // namespace chameleon

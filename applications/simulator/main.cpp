@@ -7,6 +7,7 @@
 
 #include "chameleon/viewer/visualizer.h"
 #include "chameleon/data_generator.h"
+#include "chameleon/estimator.h"
 #include "fmt/printf.h"
 
 /*-----------COMMAND LINE FLAGS-----------------------------------------------*/
@@ -30,10 +31,17 @@ int main(int argc, char **argv) {
   FLAGS_colorlogtostderr = 1;
   FLAGS_logtostderr = 1;
 
-  DataGenerator::DataGeneratorOptions options;  // use default options
-  std::unique_ptr<DataGenerator> data_generator = util::make_unique<DataGenerator>(options);
+  // Setup Data Generator so we have some simulated data
+  DataGenerator::DataGeneratorOptions sim_options;  // use default options
+  std::unique_ptr<DataGenerator> data_generator = util::make_unique<DataGenerator>(sim_options);
 
   RobotData data;  // data corresponding to a single timestep
+
+  // Setup estimator
+ chameleon::ceres::Estimator::EstimatorOptions estimator_options;
+ estimator_options.print_full_summary = true;
+ estimator_options.data_association_strategy = DataAssociation::DataAssociationType::Known;
+ std::unique_ptr<chameleon::ceres::Estimator> SLAM = util::make_unique<chameleon::ceres::Estimator>(estimator_options);
 
   if (FLAGS_display) {
     Visualizer::ViewerOptions viewer_options;
@@ -52,12 +60,12 @@ int main(int argc, char **argv) {
       if (viewer.IsResetRequested()) {
         LOG(INFO) << " Reseting...";
         data_generator->Reset();
+        SLAM->Reset();
         viewer_data = std::make_shared<Visualizer::ViewerData>();
         viewer.SetData(viewer_data);
         viewer.SetReset();
       }
 
-      //  feed the viewer some data so we have something to display
       go = viewer.IsStepping() || viewer.IsRunning();
       if (go && !viewer.IsRunning()) {
         // not running continuously, set step to false so we pause after 1 pose
@@ -67,9 +75,17 @@ int main(int argc, char **argv) {
       if (go) {
         // Get some data
         if (data_generator->GetRobotData(&data)) {
-          // and display it
+          // add it to the SLAM backend
+          SLAM->AddData(data);
+          // and solve for the latest pose (currently synchronous....TBD if needs to be threaded)
+          SLAM->Solve();
+
+          // display debug + estimated states
           viewer_data->AddData(data);
           viewer.AddTimesteps({size_t(data.timestamp)});  // add the current timestep to the display
+        }else {
+          LOG(ERROR) << "Unable to get data.";
+          std::this_thread::sleep_for(std::chrono::seconds(1));
         }
       }
       std::this_thread::sleep_for(std::chrono::milliseconds(100));

@@ -38,7 +38,8 @@ RangeFinderObservationVector ObservationGenerator::GenerateObservations(size_t p
   // serach for the n landmarks that are within the field of view of this robot (and within range)
   for (const auto& lm_w : *map_) {
     // transfer landmark over to pose frame
-    Eigen::Vector2d lm_r= util::DeHomogenizeLandmark(robot.pose.matrix().inverse() * util::HomogenizeLandmark(lm_w.vec()));
+    Eigen::Vector2d lm_r= util::DeHomogenizeLandmark<double>(robot.pose.matrix().inverse()
+                                                             * util::HomogenizeLandmark<double>(lm_w.vec()));
 
     if(lm_r.x() < 1e-2) {
       continue;  // landmark too close or behind

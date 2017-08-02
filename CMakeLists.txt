@@ -154,13 +154,16 @@ set( REQUIRED_LIBRARIES
   pthread
   )
 
+set( SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
 set(LIB_SRCS
-  src/visualizer.cpp
-  src/path_generator.cpp
-  src/odometry_generator.cpp
-  src/world_generator.cpp
-  src/observation_generator.cpp
-  src/data_generator.cpp
+  ${SRC_DIR}/visualizer.cpp
+  ${SRC_DIR}/path_generator.cpp
+  ${SRC_DIR}/odometry_generator.cpp
+  ${SRC_DIR}/world_generator.cpp
+  ${SRC_DIR}/observation_generator.cpp
+  ${SRC_DIR}/data_generator.cpp
+  ${SRC_DIR}/data_association.cpp
+  ${SRC_DIR}/estimator.cpp
   )
 
 set( INC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include/${LIBRARY_NAME} )
@@ -175,6 +178,9 @@ set(LIB_HEADERS
   ${INC_DIR}/path_generator.h
   ${INC_DIR}/world_generator.h
   ${INC_DIR}/viewer/visualizer.h
+  ${INC_DIR}/data_association.h
+  ${INC_DIR}/auto_diff_local_param_SE2.h
+  ${INC_DIR}/estimator.h
   )
 
 include_directories( ${REQUIRED_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/include )

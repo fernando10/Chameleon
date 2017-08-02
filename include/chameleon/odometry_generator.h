@@ -24,7 +24,7 @@ public:
   OdometryMeasurement GenerateNoiseFreeOdometryMeasurement(size_t step) const;
   OdometryMeasurement GenerateNoisyOdometryMeasurement(size_t step) const;
 
-  RobotPose PropagateMeasurement(const OdometryMeasurement& meas, const RobotPose& current_pose) const;
+  static RobotPose PropagateMeasurement(const OdometryMeasurement& meas, const RobotPose& current_pose);
   RobotPose& PropagateMeasurement(const OdometryMeasurement& meas);
 
 

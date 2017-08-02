@@ -98,11 +98,11 @@ RobotPose& OdometryGenerator::PropagateMeasurement(const OdometryMeasurement& me
   }
 
   // propagate the last integrated pose through the new measurements we just recieved
-  noisy_robot_poses_->push_back(PropagateMeasurement(meas, noisy_robot_poses_->back()));
+  noisy_robot_poses_->push_back(OdometryGenerator::PropagateMeasurement(meas, noisy_robot_poses_->back()));
   return noisy_robot_poses_->back();
 }
 
-RobotPose OdometryGenerator::PropagateMeasurement(const OdometryMeasurement &meas, const RobotPose &start_pose) const {
+RobotPose OdometryGenerator::PropagateMeasurement(const OdometryMeasurement &meas, const RobotPose &start_pose) {
   RobotPose propagated_pose = start_pose;
 
   // first rotation

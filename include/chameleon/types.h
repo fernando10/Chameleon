@@ -32,10 +32,12 @@ struct Observation {
   Observation(const double& time, const T& obs) :
     timestamp(time), observation(obs) {
   }
-
 };
 
 struct RangeFinderReading {
+  static constexpr size_t kMeasurementDim = 2;
+  static constexpr size_t kIndexRange = 0;
+  static constexpr size_t kIndexBearing = 1;
   RangeFinderReading(double theta, double range): theta(theta), range(range) {
   }
 
@@ -53,6 +55,7 @@ struct RangeFinderReading {
 };
 
 struct OdometryMeasurement {
+  static constexpr size_t kMeasurementDim = 3;
   double theta_1;
   double translation;
   double theta_2;
@@ -64,7 +67,12 @@ struct OdometryMeasurement {
   }
 };
 
-typedef Eigen::Matrix4d OdometryCovariance;
+typedef Eigen::Matrix<double, RangeFinderReading::kMeasurementDim,
+RangeFinderReading::kMeasurementDim> RangeFinderCovariance;
+
+typedef Eigen::Matrix<double, OdometryMeasurement::kMeasurementDim,
+OdometryMeasurement::kMeasurementDim> OdometryCovariance;
+
 typedef std::vector<OdometryMeasurement> OdometryMeasurementVector;
 typedef std::shared_ptr<std::vector<OdometryMeasurement>> OdometryMeasurementVectorPtr;
 typedef Observation<RangeFinderReading> RangeFinderObservation;
@@ -76,6 +84,7 @@ typedef std::map<size_t, RangeFinderObservationVector> RangeFinderObservationVec
 typedef Eigen::Matrix2d LandmarkCovariance;
 
 struct Landmark {
+  static constexpr size_t kLandmarkDim = 2;
   LandmarkCovariance covariance;
   uint64_t id;
 
@@ -87,6 +96,12 @@ struct Landmark {
   Landmark(double x, double y): Landmark() {
     data_[0] = x;
     data_[1] = y;
+  }
+
+  Landmark(const Landmark& lm) {
+    id = lm.id;
+    data_[0] = lm.x();
+    data_[1] = lm.y();
   }
 
   Landmark(Eigen::Vector2d vec): Landmark() {
@@ -175,7 +190,7 @@ struct RobotPose {
 
   // Multiplication with an landmark
   Landmark operator*(const Landmark& rhs) const {
-    return Landmark(util::DeHomogenizeLandmark(pose.matrix() * util::HomogenizeLandmark(rhs.vec())));
+    return Landmark(util::DeHomogenizeLandmark<double>(pose.matrix() * util::HomogenizeLandmark<double>(rhs.vec())));
   }
 
   // Assignment -- copy
@@ -206,6 +221,9 @@ struct RobotPose {
   double y() const { return pose.translation().y(); }
   double& y() { return pose.translation().y(); }
 
+  // only to be used by ceres parameter block
+  double* data() { return pose.data(); }
+
   friend std::ostream& operator<<(std::ostream& os, const RobotPose& robot) {
     os << "theta: " << Rad2Deg(robot.theta()) << ", position: " << robot.translation().transpose();
     return os;
@@ -213,10 +231,13 @@ struct RobotPose {
 
 };
 
+typedef std::shared_ptr<Landmark> LandmarkPtr;
+typedef std::map<uint64_t, LandmarkPtr> LandmarkPtrMap;
 typedef std::vector<Landmark> LandmarkVector;
 typedef std::shared_ptr<LandmarkVector> LandmarkVectorPtr;
 typedef std::vector<RobotPose> RobotPoseVector;
 typedef std::shared_ptr<RobotPoseVector> RobotPoseVectorPtr;
+typedef std::map<size_t, uint64_t> DataAssociationMap;
 
 
 //------------------------DATA STRUCTURES------------------------//
@@ -270,5 +291,20 @@ struct RobotData {
   OdometryMeasurement odometry;
   RangeFinderObservationVector observations;
 };
+
+//------------------------STATE ESTIMATION STUFF------------------------//
+struct State {
+  State():id(0), timestamp(0) {}
+  uint64_t id;
+  RobotPose robot;
+  double timestamp;
+  double* data() { return robot.data(); }
+  int DoF() { return robot.pose.DoF; }
+};
+
+typedef std::shared_ptr<State> StatePtr;
+typedef std::map<uint64_t, StatePtr> StatePtrMap;
+typedef std::multimap<uint64_t, uint64_t> State2Landmark_Multimap;
+typedef std::multimap<uint64_t, uint64_t> Landmark2State_MultiMap;
 
 } // namespace chameleon

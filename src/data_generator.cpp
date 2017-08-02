@@ -52,6 +52,9 @@ bool DataGenerator::GetRobotData(RobotData* const data) {
         odometry_generator_->GenerateNoisyOdometryMeasurement(current_timestep_);
     data->debug.noisy_odometry = noisy_odometry;
 
+    // odometry data which would be sensed (to be used in the optimization)
+    data->odometry = noisy_odometry;
+
     // propagate to get new integrated pose
     noisy_robot = odometry_generator_->PropagateMeasurement(noisy_odometry);
   }
@@ -65,6 +68,7 @@ bool DataGenerator::GetRobotData(RobotData* const data) {
   data->debug.noise_free_observations = noise_free_obs;
   data->debug.noisy_observations = noisy_obs;
   data->timestamp = current_timestep_;
+  data->observations = noisy_obs;
   current_timestep_++;
   return true;
 }

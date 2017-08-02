@@ -19,16 +19,18 @@ std::unique_ptr<T> make_unique( Args&& ...args )
     return std::unique_ptr<T>( new T( std::forward<Args>(args)... ) );
 }
 
-inline Eigen::Vector3d HomogenizeLandmark(Eigen::Vector2d lm) {
-  return Eigen::Vector3d(lm.x(), lm.y(), 1.);
+template<typename T = double>
+inline Eigen::Matrix<T, 3, 1> HomogenizeLandmark(Eigen::Matrix<T, 2, 1> lm) {
+  return Eigen::Matrix<T, 3, 1>(lm.x(), lm.y(), (T)1.);
 }
 
-inline Eigen::Vector2d DeHomogenizeLandmark(Eigen::Vector3d lm_h) {
-  if (lm_h[2] > 1e-4) {
-    return Eigen::Vector2d(lm_h[0] / lm_h[2], lm_h[1] / lm_h[2]);
+template<typename T = double>
+inline Eigen::Matrix<T, 2, 1> DeHomogenizeLandmark(Eigen::Matrix<T, 3, 1> lm_h) {
+  if (lm_h[2] > (T)1e-6) {
+    return Eigen::Matrix<T, 2, 1>(lm_h[0] / lm_h[2], lm_h[1] / lm_h[2]);
   }
   else {
-    return Eigen::Vector2d::Zero();
+    return Eigen::Matrix<T, 2, 1>::Zero();
   }
 }
 
