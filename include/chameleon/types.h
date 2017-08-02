@@ -304,7 +304,14 @@ struct State {
 
 typedef std::shared_ptr<State> StatePtr;
 typedef std::map<uint64_t, StatePtr> StatePtrMap;
+typedef std::vector<StatePtr> StatePtrVector;
 typedef std::multimap<uint64_t, uint64_t> State2Landmark_Multimap;
 typedef std::multimap<uint64_t, uint64_t> Landmark2State_MultiMap;
+
+struct EstimatedData {
+  //const StatePtr state;
+  StatePtrMap states;
+  LandmarkPtrMap landmarks;
+};
 
 } // namespace chameleon

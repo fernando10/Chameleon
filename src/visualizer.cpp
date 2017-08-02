@@ -57,6 +57,15 @@ void Visualizer::AddObjectsToSceneGraph() {
   gui_vars_.scene_graph.AddChild(gui_vars_.noisy_observations.get());
   gui_vars_.noisy_observations->SetColor(0.6, 0.1, 0.1);  // dark red
   gui_vars_.noisy_observations->SetLineWidth(1.5);
+
+  // add estimated quantities
+  gui_vars_.estimated_robot_path = util::make_unique<GLPathAbs>();
+  gui_vars_.scene_graph.AddChild(gui_vars_.estimated_robot_path.get());
+  gui_vars_.estimated_robot_path->SetColor(0, 1, 0);
+
+  gui_vars_.estimated_map = util::make_unique<GLMap>();
+  gui_vars_.estimated_map->SetColor(1, 0, 1);  // magenta
+  gui_vars_.scene_graph.AddChild(gui_vars_.estimated_map.get());
 }
 
 void Visualizer::ResetSceneGraph() {
@@ -126,7 +135,9 @@ void Visualizer::InitGui() {
   gui_vars_.ui.show_gt = util::make_unique<pangolin::Var<bool>>("ui.Show_ground_truth", true, true);
   gui_vars_.ui.show_observations = util::make_unique<pangolin::Var<bool>>("ui.Show_observations", true, true);
   gui_vars_.ui.show_landmarks = util::make_unique<pangolin::Var<bool>>("ui.Show_landmarks", true, true);
-  gui_vars_.ui.show_odometry = util::make_unique<pangolin::Var<bool>>("ui.Show_odometry", true, true);
+  gui_vars_.ui.show_odometry = util::make_unique<pangolin::Var<bool>>("ui.Show_odometry", false, true);
+  gui_vars_.ui.show_estimated = util::make_unique<pangolin::Var<bool>>("ui.Show_estimated", true, true);
+
 }
 
 void Visualizer::Run() {
@@ -146,6 +157,9 @@ void Visualizer::Run() {
     gui_vars_.noisy_observations->SetVisible(*gui_vars_.ui.show_observations);
     gui_vars_.noisy_robot_path->SetVisible(*gui_vars_.ui.show_odometry);
     gui_vars_.gt_robot_path->SetVisible(*gui_vars_.ui.show_gt);
+    gui_vars_.estimated_robot_path->SetVisible(*gui_vars_.ui.show_estimated);
+    gui_vars_.estimated_map->SetVisible(*gui_vars_.ui.show_estimated);
+
 
     if (pangolin::Pushed(*gui_vars_.ui.reset) ) {
       RequestReset();
@@ -165,6 +179,8 @@ void Visualizer::SetData(ViewerData::Ptr data) {
 }
 
 void Visualizer::AddLandmarks() {
+
+  // update the ground truth landmarks (if they havent been added yet)
   if(gui_vars_.ground_truth_map->GetMapRef().size() == 0) {
     if (data_->ground_truth_map != nullptr) {
       for (const auto& lm : *data_->ground_truth_map) {
@@ -172,6 +188,13 @@ void Visualizer::AddLandmarks() {
       }
     }
   }
+
+  // and add the estimated landmarks (update every time since they can change location at every timestep)
+  gui_vars_.estimated_map->Clear();
+  for (const auto& e : data_->estimated_landmarks) {
+    gui_vars_.estimated_map->GetMapRef().push_back(GLLandmark(*(e.second)));
+  }
+
 }
 
 bool Visualizer::AddTimesteps(std::vector<size_t> timesteps) {
@@ -219,6 +242,17 @@ bool Visualizer::AddTimesteps(std::vector<size_t> timesteps) {
       VLOG(3) << fmt::format("Added noisy pose to path at: {}, {}", noisy_robot.pose.translation().x(), noisy_robot.pose.translation().y());
     } else {
       LOG(ERROR) << fmt::format("Error adding noisy robot pose at timestep: {}, either data is null or index does not exist.", ts);
+    }
+
+    // and the estimated quantities
+    if (data_->estimated_poses.size() > ts) {
+      std::vector<Sophus::SE2d>& poses_path_ref = gui_vars_.estimated_robot_path->GetPathRef();
+
+      // remove all states and re-add (for now)
+      gui_vars_.estimated_robot_path->Clear();
+      for (const auto& state : data_->estimated_poses) {
+          poses_path_ref.push_back(state.second->robot.pose);
+      }
     }
   }
   return true;

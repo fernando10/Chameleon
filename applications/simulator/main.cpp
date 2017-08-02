@@ -35,7 +35,7 @@ int main(int argc, char **argv) {
   DataGenerator::DataGeneratorOptions sim_options;  // use default options
   std::unique_ptr<DataGenerator> data_generator = util::make_unique<DataGenerator>(sim_options);
 
-  RobotData data;  // data corresponding to a single timestep
+  RobotData simulator_data;  // data corresponding to a single timestep
 
   // Setup estimator
  chameleon::ceres::Estimator::EstimatorOptions estimator_options;
@@ -52,6 +52,8 @@ int main(int argc, char **argv) {
 
     Visualizer::ViewerData::Ptr viewer_data = std::make_shared<Visualizer::ViewerData>();
     viewer.SetData(viewer_data);  // point to our local viewer data object so everyone is looking at the same data
+
+    EstimatedData estimator_results;  // for collecting the latest updates form the estimator
 
     bool go = false;
     // until the user requests to finish
@@ -74,15 +76,16 @@ int main(int argc, char **argv) {
 
       if (go) {
         // Get some data
-        if (data_generator->GetRobotData(&data)) {
-          // add it to the SLAM backend
-          SLAM->AddData(data);
-          // and solve for the latest pose (currently synchronous....TBD if needs to be threaded)
+        if (data_generator->GetRobotData(&simulator_data)) {
+          SLAM->AddData(simulator_data);
+          // solve is currently synchronous....TBD if needs to be threaded
           SLAM->Solve();
+          SLAM->GetEstimationResult(&estimator_results);
 
-          // display debug + estimated states
-          viewer_data->AddData(data);
-          viewer.AddTimesteps({size_t(data.timestamp)});  // add the current timestep to the display
+          // display debug and estimated data
+          viewer_data->AddData(simulator_data);
+          viewer_data->AddData(estimator_results);
+          viewer.AddTimesteps({size_t(simulator_data.timestamp)});  // add the current timestep to the display
         }else {
           LOG(ERROR) << "Unable to get data.";
           std::this_thread::sleep_for(std::chrono::seconds(1));

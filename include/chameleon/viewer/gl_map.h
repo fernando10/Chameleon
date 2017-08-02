@@ -12,7 +12,9 @@
 class GLMap : public SceneGraph::GLObject
 {
 public:
-  GLMap() {}
+  GLMap() {
+    map_color_ << 0.f, 1.f, 0.f, 1.f;
+  }
   ~GLMap() {}
 
   void DrawCanonicalObject() {
@@ -21,6 +23,7 @@ public:
     glPushMatrix();
     glEnable(GL_LINE_SMOOTH);
     for(auto& landmark : map_) {
+      landmark.SetColor(map_color_);
       landmark.DrawCanonicalObject();
     }
     glEnd();
@@ -31,6 +34,15 @@ public:
     return map_;
   }
 
+  void Clear() {
+    map_.clear();
+  }
+
+  void SetColor( float R, float G, float B, float A = 1.0) {
+    map_color_ << R, G, B, A;
+  }
+
 private:
   std::vector<GLLandmark> map_;
+  Eigen::Vector4f map_color_;
 };

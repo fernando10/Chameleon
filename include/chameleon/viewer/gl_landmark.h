@@ -47,6 +47,10 @@ class GLLandmark : public SceneGraph::GLObject
     lm_color_ << R, G, B, A;
   }
 
+  void SetColor( Eigen::Vector4f color) {
+    lm_color_ = color;
+  }
+
 private:
   Eigen::Vector4f lm_color_ = Eigen::Vector4f::Zero();
   Eigen::Vector2d lm_position_;

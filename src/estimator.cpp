@@ -56,6 +56,7 @@ void Estimator::AddData(const RobotData &data) {
   uint64_t id = GetNewStateId();
   new_state->id = id;
   states_.insert({id, new_state});
+  last_optimized_state_ = new_state;
   VLOG(3) << fmt::format("Added state with id: {} to problem.", id);
   //last_state_rit--; // move so it points to the newly inserted state;
   VLOG(1) << fmt::format(" last state rit points to state id: {}", last_state_rit->first);
@@ -257,6 +258,13 @@ uint64_t Estimator::CreateLandmark(const RangeFinderObservation &obs, uint64_t s
   landmarks_.insert({lm_id, std::make_shared<Landmark>(lm_w)});
   VLOG(2) << fmt::format("Created landmark observed from state id: {}, lm id: {}", state_id, lm_id);
   return lm_id;
+}
+
+void Estimator::GetEstimationResult(EstimatedData* data) const {
+  if(data != nullptr) {
+    data->landmarks = landmarks_;
+    data->states = states_;  //TODO: dont copy entire map of pointers over every time
+  }
 }
 
 }  // namespace ceres

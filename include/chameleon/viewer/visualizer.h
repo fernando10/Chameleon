@@ -49,12 +49,21 @@ public:
       noisy_observation_map.insert({data.timestamp, data.debug.noisy_observations});
     }
 
+    void AddData(const EstimatedData& data) {
+       estimated_landmarks = data.landmarks;
+       estimated_poses = data.states;
+    }
+
     typedef std::shared_ptr<ViewerData> Ptr;
     RobotPoseVectorPtr ground_truth_robot_poses;
     RobotPoseVectorPtr noisy_robot_poses;
     LandmarkVectorPtr ground_truth_map;
     RangeFinderObservationVectorMap ground_truth_observation_map;
     RangeFinderObservationVectorMap noisy_observation_map;
+
+    // estimated quantities
+    LandmarkPtrMap estimated_landmarks;
+    StatePtrMap estimated_poses;
   };
 
   // variables that will be displayed in the GUI
@@ -63,6 +72,7 @@ public:
     std::unique_ptr<pangolin::Var<bool>> show_observations;
     std::unique_ptr<pangolin::Var<bool>> show_landmarks;
     std::unique_ptr<pangolin::Var<bool>> show_odometry;
+    std::unique_ptr<pangolin::Var<bool>> show_estimated;
     std::unique_ptr<pangolin::Var<bool>> reset;
   };
 
@@ -83,6 +93,10 @@ public:
     std::unique_ptr<GLMap> ground_truth_map;
     std::unique_ptr<GLObservations> ground_truth_observations;
     std::unique_ptr<GLObservations> noisy_observations;
+    // estimated quantities
+    std::unique_ptr<GLMap> estimated_map;
+    std::unique_ptr<GLPathAbs> estimated_robot_path;
+
 
     DebugGUIVariables ui;  // user interface
   };

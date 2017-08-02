@@ -42,6 +42,9 @@ public:
   void Solve();
   void Reset();
 
+  void GetEstimationResult(EstimatedData* data) const;
+
+
 private:
 
 
@@ -71,7 +74,6 @@ private:
   bool CheckStateExists(uint64_t state_id);
   bool CheckLandmarkExists(uint64_t lm_id);
 
-
   std::unique_ptr<::ceres::Problem> ceres_problem_;
   std::unique_ptr<::ceres::LossFunction> ceres_loss_function_;
   std::unique_ptr<::ceres::LocalParameterization> local_param_;
@@ -79,6 +81,7 @@ private:
 
   LandmarkPtrMap landmarks_;
   StatePtrMap states_;
+  StatePtr last_optimized_state_;
 
   const EstimatorOptions& options_;
 

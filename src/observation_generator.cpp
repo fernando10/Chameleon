@@ -56,9 +56,7 @@ RangeFinderObservationVector ObservationGenerator::GenerateObservations(size_t p
       }
     }
   }
-
   VLOG(3) << fmt::format("Generated observations for ts: {}, generated {} observations.", pose_idx, observations.size());
-
   return observations;
 }
 

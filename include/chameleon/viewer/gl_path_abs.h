@@ -51,6 +51,10 @@ public:
     line_color_ = color;
   }
 
+  void Clear() {
+    path_.clear();
+  }
+
   void SetColor(float R, float G, float B, float A = 1.f) {
     line_color_[0] = R;
     line_color_[1] = G;
