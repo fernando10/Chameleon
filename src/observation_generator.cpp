@@ -2,6 +2,7 @@
 //
 #include "chameleon/observation_generator.h"
 #include "chameleon/util.h"
+#include "glog/logging.h"
 
 namespace chameleon
 {
@@ -26,7 +27,7 @@ void ObservationGenerator::Reset(const LandmarkVectorPtr map, const RobotPoseVec
 RangeFinderObservationVector ObservationGenerator::GenerateObservations(size_t pose_idx) const {
   RangeFinderObservationVector observations;
 
-  if (map_ == nullptr || path_ == nullptr || pose_idx < 0) {
+  if (map_ == nullptr || path_ == nullptr) {
     LOG(ERROR) << "Inalid input to generate observations.";
     return observations;
   }

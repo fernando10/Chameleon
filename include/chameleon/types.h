@@ -39,8 +39,8 @@ struct RangeFinderReading {
   RangeFinderReading(double theta, double range): theta(theta), range(range) {
   }
 
-  RangeFinderReading(uint64_t lm_id, double theta, double range): RangeFinderReading(theta, range) {
-    lm_id = lm_id;
+  RangeFinderReading(uint64_t lm_id_, double theta, double range): RangeFinderReading(theta, range) {
+    lm_id = lm_id_;
   }
 
 
@@ -81,8 +81,8 @@ struct Landmark {
 
   Landmark(): covariance(LandmarkCovariance::Identity()), id(0) {
   }
-  Landmark(uint64_t id, double x, double y): Landmark(x, y) {
-    id = id;
+  Landmark(uint64_t id_, double x, double y): Landmark(x, y) {
+    id = id_;
   }
   Landmark(double x, double y): Landmark() {
     data_[0] = x;

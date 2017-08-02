@@ -58,11 +58,11 @@ LandmarkVectorPtr WorldGenerator::GenerateWorld(const RobotPoseVectorPtr& robot_
   Eigen::Vector2d max_translation;
   for (const auto& p : *robot_poses) {
     if( std::abs(p.pose.translation().y()) > max_translation.y()) {
-      max_translation.y() = abs(p.pose.translation().y());
+      max_translation.y() = std::abs(p.pose.translation().y());
     }
 
     if( std::abs(p.pose.translation().x()) > max_translation.x()) {
-      max_translation.x() = abs(p.pose.translation().x());
+      max_translation.x() = std::abs(p.pose.translation().x());
     }
   }
 

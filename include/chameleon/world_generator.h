@@ -29,8 +29,8 @@ private:
 
   LandmarkVectorPtr map_;
   double GetTotalDistanceTraveled(const RobotPoseVectorPtr& poses);
-  const double kLandmarkDensity = 0.5;  // landmarks / meter
-  const double kLandmarkdDistance = 3; // [m]
+//  const double kLandmarkDensity = 0.5;  // landmarks / meter
+//  const double kLandmarkdDistance = 3; // [m]
 };
 
 }  // namespace chameleon

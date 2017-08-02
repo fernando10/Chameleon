@@ -4,7 +4,6 @@
 
 #include <memory>
 #include <Eigen/Core>
-#include "glog/logging.h"
 #include "fmt/string.h"
 #include "fmt/format.h"
 #include "fmt/ostream.h"
@@ -29,7 +28,6 @@ inline Eigen::Vector2d DeHomogenizeLandmark(Eigen::Vector3d lm_h) {
     return Eigen::Vector2d(lm_h[0] / lm_h[2], lm_h[1] / lm_h[2]);
   }
   else {
-    LOG(ERROR) << "Dehomogenizing point at infinity.";
     return Eigen::Vector2d::Zero();
   }
 }
