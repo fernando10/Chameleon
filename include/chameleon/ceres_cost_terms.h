@@ -61,7 +61,7 @@ struct RangeFinderObservationCostFunction {
 
     // get the range and bearing information
     T range_pred = lm_r.norm();
-    T bearing_pred = ::ceres::atan2(lm_r.y(), lm_r.x());
+    T bearing_pred = AngleWraparound<T>(::ceres::atan2(lm_r.y(), lm_r.x()));
     error[RangeFinderReading::kIndexRange] = range_pred - (T)obs.observation.range;
     error[RangeFinderReading::kIndexBearing] = bearing_pred - (T)obs.observation.theta;
 

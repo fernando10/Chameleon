@@ -4,6 +4,7 @@
 #include "glog/logging.h"
 #include  "fmt/format.h"
 #include "fmt/ostream.h"
+#include "chameleon/id_provider.h"
 
 namespace chameleon
 {
@@ -66,13 +67,20 @@ LandmarkVectorPtr WorldGenerator::GenerateWorld(const RobotPoseVectorPtr& robot_
     }
   }
 
-  for (size_t lm_idx = 0; lm_idx < 5; ++lm_idx) {
-    map->push_back(Landmark(map->size(), 20/4. * lm_idx - 4, max_translation.y() * 0.5));
+  for (size_t lm_idx = 0; lm_idx < 8; ++lm_idx) {
+    map->push_back(Landmark(IdGenerator::Instance::NewId(), 20/7. * lm_idx - 4,
+                            max_translation.y() * 0.5 + 1 * lm_idx % 2));
   }
 
-  for (size_t lm_idx = 0; lm_idx < 5; ++lm_idx) {
-    map->push_back(Landmark(map->size(), 20/4. * lm_idx - 4, -max_translation.y() * 1.5));
+  for (size_t lm_idx = 0; lm_idx < 8; ++lm_idx) {
+    map->push_back(Landmark(IdGenerator::Instance::NewId(), 20/7. * lm_idx - 4,
+                            -max_translation.y() * 1.5 - 1 * lm_idx % 2));
   }
+
+  double mid_pt =  (max_translation.y() * 0.5 - max_translation.y() * 1.5 ) /2.;
+  map->push_back(Landmark(IdGenerator::Instance::NewId(),-4.5, mid_pt));
+  map->push_back(Landmark(IdGenerator::Instance::NewId(), 20 - 3.5 , mid_pt));
+
 
   map_ = map; // store the map locally in case it's neeeded in the future
   return map;

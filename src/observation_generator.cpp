@@ -45,7 +45,7 @@ RangeFinderObservationVector ObservationGenerator::GenerateObservations(size_t p
       continue;  // landmark too close or behind
     }
     // get angle
-    double theta = std::atan2(lm_r.y(), lm_r.x());
+    double theta = AngleWraparound<double>(std::atan2(lm_r.y(), lm_r.x()));
 
     if (std::abs(theta) <= robot.field_of_view/2.) {
       // lm in the field of view, get distance

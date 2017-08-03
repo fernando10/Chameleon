@@ -41,6 +41,10 @@ public:
       ground_truth_map = std::make_shared<LandmarkVector>();
     }
 
+    ///
+    /// \brief AddData > Adds simulated data to the visualizer
+    /// \param data > simulated data (with and without noise)
+    ///
     void AddData(const RobotData& data) {
       ground_truth_robot_poses->push_back(data.debug.ground_truth_pose);
       noisy_robot_poses->push_back(data.debug.noisy_pose);
@@ -49,6 +53,10 @@ public:
       noisy_observation_map.insert({data.timestamp, data.debug.noisy_observations});
     }
 
+    ///
+    /// \brief AddData > Adds outputs from the estimator
+    /// \param data > inferred data
+    ///
     void AddData(const EstimatedData& data) {
        estimated_landmarks = data.landmarks;
        estimated_poses = data.states;
@@ -74,6 +82,7 @@ public:
     std::unique_ptr<pangolin::Var<bool>> show_odometry;
     std::unique_ptr<pangolin::Var<bool>> show_estimated;
     std::unique_ptr<pangolin::Var<bool>> do_SLAM;
+    std::unique_ptr<pangolin::Var<bool>> do_Localization;
     std::unique_ptr<pangolin::Var<bool>> reset;
   };
 
@@ -98,7 +107,6 @@ public:
     std::unique_ptr<GLMap> estimated_map;
     std::unique_ptr<GLPathAbs> estimated_robot_path;
 
-
     DebugGUIVariables ui;  // user interface
   };
 
@@ -115,6 +123,7 @@ public:
   void SetReset();
   bool IsRunning();
   bool IsResetRequested();
+  const DebugGUIVariables& GetDebugVariables();
 
 private:
 
@@ -132,7 +141,8 @@ private:
   void RequestReset();
   void AddObjectsToSceneGraph();
   void ResetSceneGraph();
-//  void GuiVarChangedCallback;
+  //void GuiVarChanged(void * data, const::std::string& name, pangolin::VarValueGeneric& var);
+
 
   const ViewerOptions& options_;
   bool single_step_ = false;

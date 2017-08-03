@@ -49,8 +49,10 @@ private:
   static constexpr double kAlpha3 = 5e-2;
   static constexpr double kAlpha4 = 1e-2;
 
-  static constexpr double kBearingStdDev = 0.174533;  // [rad] ~10 degrees
-  static constexpr double kRangeStdDev = 0.1;  // [m]
+//  static constexpr double kBearingStdDev = 0.174533;  // [rad] ~10 degrees
+//  static constexpr double kRangeStdDev = 0.1;  // [m]
+  static constexpr double kBearingStdDev = 0.087;  // [rad] ~10 degrees
+  static constexpr double kRangeStdDev = 0.05;  // [m]
 
 };
 }  // namespace chameleon

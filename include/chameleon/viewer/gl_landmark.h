@@ -27,8 +27,7 @@ class GLLandmark : public SceneGraph::GLObject
     lm_position_[1] = lm.y();
   }
 
-  ~GLLandmark() {
-  }
+  ~GLLandmark() {}
 
   void DrawCanonicalObject() {
 

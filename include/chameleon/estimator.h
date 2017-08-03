@@ -4,6 +4,7 @@
 #include "ceres/ceres.h"
 #include "ceres/problem.h"
 #include <Eigen/Core>
+#include <unordered_map>
 #include "chameleon/types.h"
 #include "chameleon/util.h"
 #include "chameleon/data_association.h"
@@ -23,6 +24,7 @@ public:
     double huber_loss_a = 1.0;
     bool print_brief_summary = true;
     bool add_observations = true;
+    size_t delayed_initalization_num = 10;  // wait till we have this many observations to initialize a landmark //TODO: add landmark at first observation but with high uncertainty
     size_t min_states_for_solve = 3;  // number of states to have in optimization window before we call solve
   };
 
@@ -42,8 +44,9 @@ public:
   /// \brief Solve
   /// - Solve the full problem (all poses + landmarks)
   void Solve();
-  void Reset();
 
+  void Reset();
+  void SetLocalizationMode(bool localization_only);
   void GetEstimationResult(EstimatedData* data) const;
 
 
@@ -58,7 +61,7 @@ private:
   /// - Add observation factor to problem
   /// \param data_association > association from measurements to existing landmarks
   /// \param observations > list of observations
-  void CreateNewLandmarks(const DataAssociationMap& data_association, const RangeFinderObservationVector& observations,
+  void CreateNewLandmarks(DataAssociationMap& data_association, const RangeFinderObservationVector& observations,
                           uint64_t state_id);
 
   ///
@@ -68,24 +71,29 @@ private:
   /// \return
   uint64_t CreateLandmark(const RangeFinderObservation& obs, uint64_t state_id);
   void CreateLandmark(const RangeFinderObservation &obs, uint64_t state_id, uint64_t lm_id);
-
+  void UpdateLandmarkMean(uint64_t landmark_id);
   uint64_t GetNewStateId();
   uint64_t GetNewLandmarkId();
   void CreateObservationFactor(const uint64_t state_id, const uint64_t landmark_id, const RangeFinderObservation& obs);
   void CreateOdometryFactor(const uint64_t prev_state_id, const uint64_t current_state_id, const OdometryMeasurement& odometry);
   bool CheckStateExists(uint64_t state_id);
   bool CheckLandmarkExists(uint64_t lm_id);
+  Landmark LandmarkFromMeasurement(uint64_t state_id, RangeFinderObservation obs);
+  void CheckAndAddObservationFactors(const uint64_t state_id, const DataAssociationMap& data_asssociation, const RangeFinderObservationVector& observations);
+
 
   std::unique_ptr<::ceres::Problem> ceres_problem_;
   std::unique_ptr<::ceres::LossFunction> ceres_loss_function_;
   std::unique_ptr<::ceres::LocalParameterization> local_param_;
   ::ceres::Solver::Summary summary_;
 
+  std::unordered_map<uint64_t, std::map<uint64_t, RangeFinderObservationVector>> unitialized_landmarks_;
   LandmarkPtrMap landmarks_;
   StatePtrMap states_;
   StatePtr last_optimized_state_;
-
+  uint64_t landmark_id_counter_ = 0;
   const EstimatorOptions& options_;
+  bool localization_mode_ = false;
 
   State2Landmark_Multimap state_2_landmark_multimap_;
   Landmark2State_MultiMap landmark_2_state_multimap_;

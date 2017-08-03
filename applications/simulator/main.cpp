@@ -19,9 +19,7 @@ DEFINE_int32(num_steps, 200, " number of steps to take");
 DEFINE_bool(print_optimization_full_summary, false, "print full summary");
 DEFINE_bool(print_optimization_brief_summary, false, "print brief summary");
 DEFINE_double(huber_loss, 1.0, " huber loss");
-
-
-
+DEFINE_int32(delayed_lm_init, 10, " delayed lm initalization");
 /*----------------------------------------------------------------------------*/
 
 using namespace chameleon;
@@ -60,6 +58,7 @@ int main(int argc, char **argv) {
   estimator_options.print_full_summary = FLAGS_print_optimization_full_summary;
   estimator_options.ceres_options.minimizer_progress_to_stdout = FLAGS_print_optimization_full_summary;
   estimator_options.huber_loss_a = FLAGS_huber_loss;
+  estimator_options.delayed_initalization_num = FLAGS_delayed_lm_init;
   std::unique_ptr<chameleon::ceres::Estimator> SLAM = util::make_unique<chameleon::ceres::Estimator>(estimator_options);
   EstimatedData estimator_results;  // for collecting the latest updates form the estimator
 
@@ -102,8 +101,10 @@ int main(int argc, char **argv) {
           // display debug data
           viewer_data->AddData(simulator_data);
 
-          if (FLAGS_do_slam) {
+         // FLAGS_do_slam = viewer.GetDebugVariables().do_SLAM;
+          if (*(viewer.GetDebugVariables().do_SLAM)) {
             SLAM->AddData(simulator_data);
+            SLAM->SetLocalizationMode(*(viewer.GetDebugVariables().do_Localization));
             // solve is currently batch synchronous....TBD if needs to be threaded
             SLAM->Solve();
             SLAM->GetEstimationResult(&estimator_results);
@@ -123,4 +124,4 @@ int main(int argc, char **argv) {
 
   LOG(INFO) << " Bye";
   return 0;
-}
+}  

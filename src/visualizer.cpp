@@ -29,12 +29,6 @@ void Visualizer::SwitchProjection(ProjectionMatrixTypes type) {
   }
 }
 
-//void Visualizer::GuiVarChangedCallback(void* data, const std::string& name, VarValueGeneric& var) {
-//  if (name.compare("ui.Do_SLAM") == 0) {
-//    //TODO
-//  }
-//}
-
 void Visualizer::AddObjectsToSceneGraph() {
   // create scene graph objects
   gui_vars_.light = util::make_unique<SceneGraph::GLLight>(10, 10, -1000);
@@ -134,6 +128,8 @@ void Visualizer::InitGui() {
   pangolin::RegisterKeyPressCallback(pangolin::PANGO_SPECIAL + pangolin::PANGO_KEY_RIGHT,
                                      [&]() { single_step_ = true; });
 
+  //pangolin::RegisterGuiVarChangedCallback(&Visualizer::GuiVarChanged, (void*)this, "ui");
+
   ////////////////////////////////////////////////////
   /////UI VARIABLES
   /// ////////////////////////////////////////////////
@@ -144,34 +140,39 @@ void Visualizer::InitGui() {
   gui_vars_.ui.show_odometry = util::make_unique<pangolin::Var<bool>>("ui.Show_odometry", false, true);
   gui_vars_.ui.show_estimated = util::make_unique<pangolin::Var<bool>>("ui.Show_estimated", true, true);
   gui_vars_.ui.do_SLAM = util::make_unique<pangolin::Var<bool>>("ui.Do_SLAM", true, true);
+  gui_vars_.ui.do_Localization = util::make_unique<pangolin::Var<bool>>("ui.Localization", false, true);
 }
 
 void Visualizer::Run() {
 
-  VLOG(1) << "Running viewer thread...";
   InitGui();  // the gui needs to be initialized in the same thread
 
   // Viewer loop.
   while (!pangolin::ShouldQuit() || CheckFinish()) {
 
-    // clear whole screen
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    {
+      std::unique_lock<std::mutex>(data_mutex_);
+      VLOG(3) << " viewer loop...";
 
-    // check toggles
-    gui_vars_.ground_truth_map->SetVisible(*gui_vars_.ui.show_landmarks);
-    gui_vars_.ground_truth_observations->SetVisible(*gui_vars_.ui.show_observations);
-    gui_vars_.noisy_observations->SetVisible(*gui_vars_.ui.show_observations);
-    gui_vars_.noisy_robot_path->SetVisible(*gui_vars_.ui.show_odometry);
-    gui_vars_.gt_robot_path->SetVisible(*gui_vars_.ui.show_gt);
-    gui_vars_.estimated_robot_path->SetVisible(*gui_vars_.ui.show_estimated);
-    gui_vars_.estimated_map->SetVisible(*gui_vars_.ui.show_estimated);
+      // clear whole screen
+      glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+      // check toggles
+      gui_vars_.ground_truth_map->SetVisible(*gui_vars_.ui.show_landmarks);
+      gui_vars_.ground_truth_observations->SetVisible(*gui_vars_.ui.show_observations);
+      gui_vars_.noisy_observations->SetVisible(*gui_vars_.ui.show_observations);
+      gui_vars_.noisy_robot_path->SetVisible(*gui_vars_.ui.show_odometry);
+      gui_vars_.gt_robot_path->SetVisible(*gui_vars_.ui.show_gt);
+      gui_vars_.estimated_robot_path->SetVisible(*gui_vars_.ui.show_estimated);
+      gui_vars_.estimated_map->SetVisible(*gui_vars_.ui.show_estimated);
 
 
-    if (pangolin::Pushed(*gui_vars_.ui.reset) ) {
-      RequestReset();
+      if (pangolin::Pushed(*gui_vars_.ui.reset) ) {
+        RequestReset();
+      }
+
+      pangolin::FinishFrame();
     }
-
-    pangolin::FinishFrame();
 
     // Pause for 1/60th of a second
     std::this_thread::sleep_for(std::chrono::microseconds(1000 / 60));
@@ -190,7 +191,7 @@ void Visualizer::AddLandmarks() {
   if(gui_vars_.ground_truth_map->GetMapRef().size() == 0) {
     if (data_->ground_truth_map != nullptr) {
       for (const auto& lm : *(data_->ground_truth_map)) {
-        gui_vars_.ground_truth_map->GetMapRef().push_back(GLLandmark(lm));
+        gui_vars_.ground_truth_map->GetMapRef().push_back(std::make_pair(lm.x(), lm.y()));
       }
     }
   }
@@ -198,10 +199,23 @@ void Visualizer::AddLandmarks() {
   // and add the estimated landmarks (update every time since they can change location at every timestep)
   gui_vars_.estimated_map->Clear();
   for (const auto& e : data_->estimated_landmarks) {
-    gui_vars_.estimated_map->GetMapRef().push_back(GLLandmark(*(e.second)));
+    gui_vars_.estimated_map->GetMapRef().push_back(std::make_pair(e.second->x(), e.second->y()));
   }
 
 }
+
+//void Visualizer::GuiVarChanged(void * data, const::std::string& name, pangolin::VarValueGeneric& var) {
+
+//  Visualizer* this_ptr = (Visualizer*)data;
+
+//  if (name.find("Localization") != std::string::npos) {
+//    // Localization toggled
+//    pangolin::Var<bool> toggle(var);
+
+//    LOG(INFO) << " Localizatoin: "  << toggle;
+//  }
+
+//}
 
 bool Visualizer::AddTimesteps(std::vector<size_t> timesteps) {
   std::unique_lock<std::mutex>(data_mutex_);
@@ -308,6 +322,12 @@ bool Visualizer::IsResetRequested() {
   std::unique_lock<std::mutex> lock(status_mutex_);
   return reset_requested_;
 }
+
+const Visualizer::DebugGUIVariables& Visualizer::GetDebugVariables() {
+  std::unique_lock<std::mutex> lock(status_mutex_);
+  return gui_vars_.ui;
+}
+
 
 void Visualizer::SetReset() {
   std::unique_lock<std::mutex> lock(status_mutex_);

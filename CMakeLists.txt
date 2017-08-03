@@ -164,6 +164,7 @@ set(LIB_SRCS
   ${SRC_DIR}/data_generator.cpp
   ${SRC_DIR}/data_association.cpp
   ${SRC_DIR}/estimator.cpp
+  ${SRC_DIR}/id_provider.cpp
   )
 
 set( INC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include/${LIBRARY_NAME} )

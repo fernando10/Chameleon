@@ -98,10 +98,22 @@ struct Landmark {
     data_[1] = y;
   }
 
+  // destructor
+  ~Landmark() noexcept {}
+
   Landmark(const Landmark& lm) {
     id = lm.id;
     data_[0] = lm.x();
     data_[1] = lm.y();
+    num_observations_ = lm.GetNumObservations();
+  }
+
+  // Assignment -- copy
+  Landmark& operator=(const Landmark& rhs) {
+    data_ = rhs.vec();
+    id = rhs.id;
+    num_observations_ = rhs.num_observations_;
+    return *this;
   }
 
   Landmark(Eigen::Vector2d vec): Landmark() {
@@ -122,6 +134,14 @@ struct Landmark {
     data_[1] = y;
   }
 
+  void AddObservation() {
+    num_observations_++;
+  }
+
+  uint64_t GetNumObservations() const {
+    return num_observations_;
+  }
+
   Eigen::Vector2d vec() const {
     return data_;
   }
@@ -136,7 +156,7 @@ struct Landmark {
 
 private:
   Eigen::Vector2d data_ = Eigen::Vector2d::Zero();
-  //std::array<double, kParamCount> data_ = {{0.}};
+  uint64_t num_observations_ = 0;
 };
 
 
@@ -150,6 +170,8 @@ struct RobotPose {
   // Default constructor
   RobotPose(): covariance(PoseCovariance::Identity()) {
   }
+
+  ~RobotPose() noexcept {}
 
   // Construct from angle and position
   RobotPose(const double theta, const Eigen::Vector2d position) : RobotPose() {

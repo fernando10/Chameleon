@@ -2,7 +2,9 @@
 //
 #include "chameleon/estimator.h"
 #include <memory>
+#include <numeric>
 #include "chameleon/ceres_cost_terms.h"
+#include "chameleon/id_provider.h"
 #include "chameleon/odometry_generator.h"  // here just for the odometry propagation, should prob. move elsewhere
 namespace chameleon
 {
@@ -13,7 +15,9 @@ Estimator::Estimator(const EstimatorOptions& options): options_(options) {
   Reset();
 }
 
-
+////////////////////////////////////////////////////////////////
+/// \brief Estimator::Reset
+////////////////////////////////////////////////////////////////
 void Estimator::Reset() {
   VLOG(1) << "Resetting estimator.";
   ::ceres::Problem::Options ceres_problem_options;
@@ -30,8 +34,12 @@ void Estimator::Reset() {
   states_.clear();
   state_2_landmark_multimap_.clear();
   landmark_2_state_multimap_.clear();
+  localization_mode_ = false;
 }
 
+////////////////////////////////////////////////////////////////
+/// \brief Estimator::AddData
+////////////////////////////////////////////////////////////////
 void Estimator::AddData(const RobotData &data) {
   VLOG(2) << "Adding new data to problem";
 
@@ -64,8 +72,6 @@ void Estimator::AddData(const RobotData &data) {
   states_.insert({id, new_state});
   last_optimized_state_ = new_state;
   VLOG(3) << fmt::format("Added state with id: {} to problem.", id);
-  //last_state_rit--; // move so it points to the newly inserted state;
-  VLOG(1) << fmt::format(" last state rit points to state id: {}", last_state_rit->first);
 
   if(states_.size() == 1) {
     VLOG(3) << fmt::format("Setting parameter block id:{} constant.", new_state->id);
@@ -74,28 +80,21 @@ void Estimator::AddData(const RobotData &data) {
 
   ///////////////////////////////////
   ////// OBSERVATION FACTORS
-  /// ///////////////////////////////
   if (!data.observations.empty() && options_.add_observations) {
     DataAssociationMap association =  DataAssociation::AssociateDataToLandmarks(data.observations, landmarks_,
                                                                                 DataAssociation::DataAssociationType::Known);
     // create new landmarks, if necessary
-    // - add new landmarks to problem
-    // - create factor between current state and newly added landmark
-    CreateNewLandmarks(association, data.observations, id);
-
-    // add factors between this state and exisitng landmakrs that have been associated to measurements
-    for (const auto& e : association) {
-      // association is: index in observation vector -> landmark_id
-      CreateObservationFactor(id, e.second, data.observations.at(e.first));
+    if (!localization_mode_) {
+      CreateNewLandmarks(association, data.observations, id);
     }
+
+    // add factors between this state and landmakrs that have been associated to measurements
+    CheckAndAddObservationFactors(id, association, data.observations);
   }
 
   ////////////////////////////////
   ////// ODOMETRY FACTOR
-  /// ////////////////////////////
   if (states_.size() > 1) {
-    VLOG(1) << fmt::format(" std::next(last_state_rit, 1) points to state id: {}", std::next(last_state_rit, 1)->first);
-
     // only add odometry if this is not the very first state
     CreateOdometryFactor(std::next(last_state_rit, 1)->first, last_state_rit->first, data.odometry);
   }
@@ -118,17 +117,31 @@ void Estimator::Solve() {
   }
 }
 
+
+////////////////////////////////////////////////////////////////
+/// \brief Estimator::GetNewStateId
+////////////////////////////////////////////////////////////////
 uint64_t Estimator::GetNewStateId() {
-  return states_.size() + 1;
+  return  IdGenerator::Instance::NewId();
 }
 
+
+////////////////////////////////////////////////////////////////
+/// \brief Estimator::GetNewLandmarkId
+////////////////////////////////////////////////////////////////
 uint64_t Estimator::GetNewLandmarkId() {
-  return landmarks_.size() +1;
+  return IdGenerator::Instance::NewId();
 }
 
-void Estimator::CreateNewLandmarks(const DataAssociationMap& data_association,
+
+////////////////////////////////////////////////////////////////
+/// \brief Estimator::CreateNewLandmarks
+////////////////////////////////////////////////////////////////
+void Estimator::CreateNewLandmarks(DataAssociationMap& data_association,
                                    const RangeFinderObservationVector& observations, uint64_t state_id) {
+
   VLOG(2) << fmt::format("Creating new landmakrs from state {}", state_id);
+
   for (size_t meas_idx = 0; meas_idx < observations.size(); ++ meas_idx) {
     uint64_t lm_id = 0;
 
@@ -138,11 +151,12 @@ void Estimator::CreateNewLandmarks(const DataAssociationMap& data_association,
       VLOG(2) << fmt::format("No data association for observation idx: {}, creating a new landmark and adding to map", meas_idx);
       lm_id = CreateLandmark(observations.at(meas_idx), state_id);
 
-      // add residual
-      CreateObservationFactor(state_id, lm_id, observations.at(meas_idx));
+      // and create the data association (for the factor which will be created later)
+      data_association[meas_idx] = lm_id;
 
     } else if (landmarks_.find(data_association.at(meas_idx)) == landmarks_.end() &&
                options_.data_association_strategy == DataAssociation::DataAssociationType::Known) {
+
       // if the measurement is associated to a landmark id that does not exist, but we have known data associations
       // create a landmark with the given id, the factor will be created later
       VLOG(2) << fmt::format("Observation idx: {} has a data association but the landmark id ({}) is not in map. Creating landmark.",
@@ -150,6 +164,7 @@ void Estimator::CreateNewLandmarks(const DataAssociationMap& data_association,
 
       lm_id = data_association.at(meas_idx);
       CreateLandmark(observations.at(meas_idx), state_id, lm_id);
+
     } else if (landmarks_.find(data_association.at(meas_idx)) == landmarks_.end()) {
       LOG(ERROR) << fmt::format("Observation idx: {} is associated to landmark id: {}, however no such landmark exists in the map. Should not happen",
                                 meas_idx, data_association.at(meas_idx));
@@ -165,14 +180,139 @@ void Estimator::CreateNewLandmarks(const DataAssociationMap& data_association,
   }
 }
 
+////////////////////////////////////////////////////////////////
+/// \brief Estimator::SetLocalizationMode
+////////////////////////////////////////////////////////////////
+void Estimator::SetLocalizationMode(bool localization_only) {
+  if(localization_mode_ == localization_only) {
+    return;
+  }
+  VLOG(1) << "Localization mode requested with flag: " << localization_only;
+  for (const auto e : landmarks_) {
+    if (localization_only) {
+      ceres_problem_->SetParameterBlockConstant(e.second->data());
+    } else {
+      ceres_problem_->SetParameterBlockVariable(e.second->data());
+    }
+  }
+
+}
+
+////////////////////////////////////////////////////////////////
+/// \brief Estimator::CheckStateExists
+////////////////////////////////////////////////////////////////
 bool Estimator::CheckStateExists(uint64_t state_id) {
   return states_.find(state_id) != states_.end();
 }
 
+////////////////////////////////////////////////////////////////////////////
+/// \brief Estimator::CheckLandmarkExists
+//////////////////////////////////////////////////////////////////////////
 bool Estimator::CheckLandmarkExists(uint64_t lm_id) {
   return landmarks_.find(lm_id) != landmarks_.end();
 }
 
+//////////////////////////////////////////////////////////////////////////
+/// \brief Estimator::LandmarkFromMeasurement
+////////////////////////////////////////////////////////////////////////
+Landmark Estimator::LandmarkFromMeasurement(uint64_t state_id, RangeFinderObservation obs) {
+  if (!CheckStateExists(state_id)) {
+    LOG(ERROR) << fmt::format("Error obtaining landmark from state. State id {} requested but not in states map.", state_id);
+    return Landmark();
+  }
+
+  StatePtr& state = states_.at(state_id);
+
+  // get the landmark in the robot reference frame
+  Landmark lm_r(obs.observation.range * std::cos(obs.observation.theta),
+                obs.observation.range * std::sin(obs.observation.theta));
+
+  // transfer the landmark over to the world frame
+  Landmark lm_w = state->robot * lm_r;
+
+  return lm_w;
+}
+
+
+//////////////////////////////////////////////////////////////////////////
+/// \brief Estimator::UpdateLandmarkMean
+////////////////////////////////////////////////////////////////////////
+void Estimator::UpdateLandmarkMean(uint64_t landmark_id) {
+  if (unitialized_landmarks_.find(landmark_id) != unitialized_landmarks_.end()) {
+
+    std::vector<double> x_vals;
+    std::vector<double> y_vals;
+
+    std::map<uint64_t, RangeFinderObservationVector> state_2_obs_map = unitialized_landmarks_.at(landmark_id);
+    // for every state that observed this landmark
+    for (const auto& state  : state_2_obs_map) {
+      uint64_t state_id = state.first;
+
+      for (const auto& obs : state.second) {
+        // obtain the landmark from this state
+        Landmark lm = LandmarkFromMeasurement(state_id, obs);
+        x_vals.push_back(lm.x());
+        y_vals.push_back(lm.y());
+      }
+    }
+    // get the mean
+    double x_avg = std::accumulate(x_vals.begin(), x_vals.end(), 0.0) / x_vals.size();
+    double y_avg = std::accumulate(y_vals.begin(), y_vals.end(), 0.0) / y_vals.size();
+
+    // and update the landmark
+    landmarks_.at(landmark_id)->SetPosition(x_avg, y_avg);
+  }
+}
+
+
+////////////////////////////////////////////////////////////////////////
+/// \brief Estimator::CheckAndAddObservationFactors
+////////////////////////////////////////////////////////////////////////
+void Estimator::CheckAndAddObservationFactors(const uint64_t state_id,
+                                              const DataAssociationMap& data_asssociation, const RangeFinderObservationVector &observations) {
+
+  for (const auto& e : data_asssociation) {
+    // association is: index in observation vector -> landmark_id
+
+    uint64_t landmark_id = e.second;
+    size_t meas_idx = e.first;
+
+    LandmarkPtr lm = landmarks_.at(landmark_id);
+    lm->AddObservation();
+
+    if (lm->GetNumObservations() < options_.delayed_initalization_num) {
+      VLOG(2) << fmt::format("landmark id: {} has {} observations, but {} are needed.", landmark_id, lm->GetNumObservations(),
+                             options_.delayed_initalization_num);
+      unitialized_landmarks_[landmark_id][state_id].push_back(observations.at(meas_idx)); // save observation for later.
+    }
+    else if (unitialized_landmarks_.find(landmark_id) != unitialized_landmarks_.end() &&
+             lm->GetNumObservations() == options_.delayed_initalization_num) {
+
+      VLOG(2) << fmt::format("have enough measurements to initalize landmark id: {}", landmark_id);
+
+      unitialized_landmarks_[landmark_id][state_id].push_back(observations.at(meas_idx)); // save the current observation.
+      UpdateLandmarkMean(landmark_id);
+
+      // add a factor for every observation we saved
+      for (const auto& states  : unitialized_landmarks_.at(landmark_id)) {
+        // for every observation from that state
+        for (const auto& obs : states.second) {
+          // obtain the landmark from this state
+          uint64_t s_id = states.first;
+          CreateObservationFactor(s_id, landmark_id, obs);
+        }
+      }
+    }
+    else {
+      CreateObservationFactor(state_id, landmark_id, observations.at(meas_idx));
+    }
+  }
+}
+
+
+////////////////////////////////////////////////////////////////////////
+/// \brief Estimator::CreateObservationFactor
+////////////////////////////////////////////////////////////////////////
 void Estimator::CreateObservationFactor(const uint64_t state_id,
                                         const uint64_t landmark_id, const RangeFinderObservation &obs) {
   VLOG(2) << fmt::format("Trying to create observation factor between state {} and landmark {}", state_id, landmark_id);
@@ -186,11 +326,26 @@ void Estimator::CreateObservationFactor(const uint64_t state_id,
     return;
   }
 
+  //  LandmarkPtr lm = landmarks_.at(landmark_id);
+  //  lm->AddObservation();
+
+  //  if (lm->GetNumObservations() < options_.delayed_initalization_num) {
+  //    VLOG(2) << fmt::format("landmark id: {} has {} observations, but {} are needed.", landmark_id, lm->GetNumObservations(),
+  //                           options_.delayed_initalization_num);
+  //    unitialized_landmarks_[landmark_id][state_id].push_back(obs); // save observation for later.
+  //    return;
+  //  } else if (unitialized_landmarks_.find(landmark_id) != unitialized_landmarks_.end() &&
+  //             lm->GetNumObservations() == options_.delayed_initalization_num) {
+  //    VLOG(2) << fmt::format("have enough measurements to initalize landmark id: {}", landmark_id);
+  //    unitialized_landmarks_[landmark_id][state_id].push_back(obs); // save the current observation.
+  //    UpdateLandmarkMean(landmark_id);
+  //  }
+
   // add observation factor between state and landmark to problem
   //TODO: Get correct measurement covariance
   RangeFinderCovariance range_cov = RangeFinderCovariance::Identity();
-  range_cov(RangeFinderReading::kIndexBearing, RangeFinderReading::kIndexBearing) = Deg2Rad(15); // 10 degrees
-  range_cov(RangeFinderReading::kIndexRange, RangeFinderReading::kIndexRange) = 0.2; // 20cm
+  range_cov(RangeFinderReading::kIndexBearing, RangeFinderReading::kIndexBearing) = Square(0.087);
+  range_cov(RangeFinderReading::kIndexRange, RangeFinderReading::kIndexRange) = Square(0.05); // 10cm
   Eigen::LLT<RangeFinderCovariance> llt_of_information(range_cov.inverse());
   RangeFinderCovariance sqrt_information = llt_of_information.matrixL().transpose();
 
@@ -204,6 +359,10 @@ void Estimator::CreateObservationFactor(const uint64_t state_id,
 
 }
 
+
+//////////////////////////////////////////////////////////////////////////////
+/// \brief Estimator::CreateOdometryFactor
+///////////////////////////////////////////////////////////////////////////
 void Estimator::CreateOdometryFactor(const uint64_t prev_state_id, const uint64_t current_state_id,
                                      const OdometryMeasurement& odometry) {
   VLOG(2) << fmt::format("Trying to create odometry factor between state {} and state {}", prev_state_id, current_state_id);
@@ -218,9 +377,9 @@ void Estimator::CreateOdometryFactor(const uint64_t prev_state_id, const uint64_
   // add observation factor between state and landmark to problem
   //TODO: Get correct odometry covariance
   OdometryCovariance odometry_cov = OdometryCovariance::Identity();
-  odometry_cov(0,0) = 5e-2;
-  odometry_cov(1,1) = 1e-3;
-  odometry_cov(2,2) = 5e-2;
+  odometry_cov(0,0) = Square(5e-2);
+  odometry_cov(1,1) = Square(1e-3);
+  odometry_cov(2,2) = Square(5e-2);
   OdometryCovariance inv_cov = odometry_cov.inverse();
   Eigen::LLT<OdometryCovariance> llt_of_information(inv_cov);
   OdometryCovariance sqrt_information = llt_of_information.matrixL().transpose();
@@ -237,7 +396,9 @@ void Estimator::CreateOdometryFactor(const uint64_t prev_state_id, const uint64_
 }
 
 
-// TODO: remove duplicated code
+//////////////////////////////////////////////////////////////////////////////
+/// \brief Estimator::CreateLandmark
+/////////////////////////////////////////////////////////////////////////
 void Estimator::CreateLandmark(const RangeFinderObservation &obs, uint64_t state_id, uint64_t lm_id) {
   VLOG(2) << fmt::format("Trying to create landmark observed from state id: {}, landmark id was given: {}", state_id, lm_id);
   if (!CheckStateExists(state_id)) {
@@ -264,18 +425,24 @@ uint64_t Estimator::CreateLandmark(const RangeFinderObservation &obs, uint64_t s
   }
 
   const StatePtr& state = states_.at(state_id);
+
   // get the landmark in the robot reference frame
   Landmark lm_r(obs.observation.range * std::cos(obs.observation.theta),
                 obs.observation.range * std::sin(obs.observation.theta));
+
   // transfer the landmark over to the world frame
   Landmark lm_w = state->robot * lm_r;
 
-  uint64_t lm_id = GetNewLandmarkId();
+  uint64_t lm_id = IdGenerator::Instance::NewId();
   landmarks_.insert({lm_id, std::make_shared<Landmark>(lm_w)});
+
   VLOG(2) << fmt::format("Created landmark observed from state id: {}, lm id: {}", state_id, lm_id);
   return lm_id;
 }
 
+///////////////////////////////////////////////////////////////////
+/// \brief Estimator::GetEstimationResult
+/////////////////////////////////////////////////////////////////////
 void Estimator::GetEstimationResult(EstimatedData* data) const {
   if(data != nullptr) {
     data->landmarks = landmarks_;
