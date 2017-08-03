@@ -16,10 +16,10 @@ DEFINE_bool(start_running, false, "start running immediately");
 DEFINE_bool(do_slam, true, "do state estimation");
 DEFINE_bool(add_observations, true, "add landmark observation/estimation");
 DEFINE_int32(num_steps, 200, " number of steps to take");
-DEFINE_bool(add_noise_odometry, true, "add noise to odometry");
 DEFINE_bool(print_optimization_full_summary, false, "print full summary");
 DEFINE_bool(print_optimization_brief_summary, false, "print brief summary");
 DEFINE_double(huber_loss, 1.0, " huber loss");
+
 
 
 /*----------------------------------------------------------------------------*/
@@ -45,7 +45,6 @@ int main(int argc, char **argv) {
   //////////////////////////////////////
   DataGenerator::DataGeneratorOptions sim_options;  // use default options
   sim_options.path_options.num_steps = FLAGS_num_steps;
-  sim_options.add_noise_to_odometry = FLAGS_add_noise_odometry;
   sim_options.path_options.initial_position = RobotPose(0, Eigen::Vector2d::Zero());
   std::unique_ptr<DataGenerator> data_generator = util::make_unique<DataGenerator>(sim_options);
   RobotData simulator_data;  // data corresponding to a single timestep

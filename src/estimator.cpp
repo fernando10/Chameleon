@@ -189,8 +189,8 @@ void Estimator::CreateObservationFactor(const uint64_t state_id,
   // add observation factor between state and landmark to problem
   //TODO: Get correct measurement covariance
   RangeFinderCovariance range_cov = RangeFinderCovariance::Identity();
-  range_cov(RangeFinderReading::kIndexBearing, RangeFinderReading::kIndexBearing) = Deg2Rad(10); // 10 degrees
-  range_cov(RangeFinderReading::kIndexRange, RangeFinderReading::kIndexRange) = 0.1; // 10cm
+  range_cov(RangeFinderReading::kIndexBearing, RangeFinderReading::kIndexBearing) = Deg2Rad(15); // 10 degrees
+  range_cov(RangeFinderReading::kIndexRange, RangeFinderReading::kIndexRange) = 0.2; // 20cm
   Eigen::LLT<RangeFinderCovariance> llt_of_information(range_cov.inverse());
   RangeFinderCovariance sqrt_information = llt_of_information.matrixL().transpose();
 
@@ -218,9 +218,9 @@ void Estimator::CreateOdometryFactor(const uint64_t prev_state_id, const uint64_
   // add observation factor between state and landmark to problem
   //TODO: Get correct odometry covariance
   OdometryCovariance odometry_cov = OdometryCovariance::Identity();
-  odometry_cov(0,0) = 5e-1;
-  odometry_cov(1,1) = 1e-1;
-  odometry_cov(2,2) = 5e-1;
+  odometry_cov(0,0) = 5e-2;
+  odometry_cov(1,1) = 1e-3;
+  odometry_cov(2,2) = 5e-2;
   OdometryCovariance inv_cov = odometry_cov.inverse();
   Eigen::LLT<OdometryCovariance> llt_of_information(inv_cov);
   OdometryCovariance sqrt_information = llt_of_information.matrixL().transpose();
