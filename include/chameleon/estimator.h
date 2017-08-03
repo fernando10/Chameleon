@@ -20,6 +20,7 @@ public:
     DataAssociation::DataAssociationType data_association_strategy = DataAssociation::DataAssociationType::Known;
     ::ceres::Solver::Options ceres_options;
     bool print_full_summary = false;
+    double huber_loss_a = 1.0;
     bool print_brief_summary = true;
     size_t min_states_for_solve = 3;  // number of states to have in optimization window before we call solve
   };

@@ -183,7 +183,7 @@ void Visualizer::AddLandmarks() {
   // update the ground truth landmarks (if they havent been added yet)
   if(gui_vars_.ground_truth_map->GetMapRef().size() == 0) {
     if (data_->ground_truth_map != nullptr) {
-      for (const auto& lm : *data_->ground_truth_map) {
+      for (const auto& lm : *(data_->ground_truth_map)) {
         gui_vars_.ground_truth_map->GetMapRef().push_back(GLLandmark(lm));
       }
     }

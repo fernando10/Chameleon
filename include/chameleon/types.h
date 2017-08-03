@@ -47,7 +47,7 @@ struct RangeFinderReading {
 
 
   RangeFinderReading operator+(const Eigen::Vector2d& rhs) const {
-    return RangeFinderReading(theta + rhs[0], range + rhs[1]);
+    return RangeFinderReading(lm_id, theta + rhs[0], range + rhs[1]);
   }
   double theta;  // [rad]
   double range;  // [m]

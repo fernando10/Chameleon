@@ -34,7 +34,6 @@ void DataGenerator::Reset() {
 bool DataGenerator::GetRobotData(RobotData* const data) {
   // since we're simulating should always return something here
   data->debug.ground_truth_pose = path_generator_->GetRobot(current_timestep_);
-  VLOG(3) << fmt::format("Getting pose for ts: {} at: {}",current_timestep_, data->debug.ground_truth_pose.translation().transpose());
 
   RobotPose noisy_robot;
   if (current_timestep_ == 0) {

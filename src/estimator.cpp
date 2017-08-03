@@ -20,8 +20,9 @@ void Estimator::Reset() {
   local_param_ = std::unique_ptr<::ceres::LocalParameterization>(
                    new ::ceres::AutoDiffLocalParameterization<Sophus::chameleon::AutoDiffLocalParamSE2, Sophus::SE2d::num_parameters,
                    Sophus::SE2d::DoF>);
+  ceres_loss_function_ = util::make_unique<::ceres::HuberLoss>(options_.huber_loss_a);
   landmarks_.clear();
-  states_ .clear();
+  states_.clear();
   state_2_landmark_multimap_.clear();
   landmark_2_state_multimap_.clear();
 }
@@ -182,9 +183,15 @@ void Estimator::CreateObservationFactor(const uint64_t state_id,
 
   // add observation factor between state and landmark to problem
   //TODO: Get correct measurement covariance
+  RangeFinderCovariance range_cov = RangeFinderCovariance::Identity();
+  range_cov(RangeFinderReading::kIndexBearing, RangeFinderReading::kIndexBearing) = Deg2Rad(10); // 10 degrees
+  range_cov(RangeFinderReading::kIndexRange, RangeFinderReading::kIndexRange) = 0.1; // 10cm
+  Eigen::LLT<RangeFinderCovariance> llt_of_information(range_cov.inverse());
+  RangeFinderCovariance sqrt_information = llt_of_information.matrixL().transpose();
+
   auto observation_cost_function = new ::ceres::AutoDiffCostFunction<ceres::RangeFinderObservationCostFunction,
       RangeFinderReading::kMeasurementDim, Sophus::SE2d::num_parameters, Landmark::kLandmarkDim>(
-        new ceres::RangeFinderObservationCostFunction (obs, RangeFinderCovariance::Identity()));
+        new ceres::RangeFinderObservationCostFunction (obs, sqrt_information));
 
   ceres_problem_->AddResidualBlock(observation_cost_function, ceres_loss_function_.get(),
                                    states_.at(state_id)->data(), landmarks_.at(landmark_id)->data());
@@ -205,7 +212,11 @@ void Estimator::CreateOdometryFactor(const uint64_t prev_state_id, const uint64_
   }
   // add observation factor between state and landmark to problem
   //TODO: Get correct odometry covariance
-  OdometryCovariance inv_cov = OdometryCovariance::Identity();
+  OdometryCovariance odometry_cov = OdometryCovariance::Identity();
+  odometry_cov(0,0) = 5e-2;
+  odometry_cov(1,1) = 1e-3;
+  odometry_cov(2,2) = 5e-2;
+  OdometryCovariance inv_cov = odometry_cov.inverse();
   Eigen::LLT<OdometryCovariance> llt_of_information(inv_cov);
   OdometryCovariance sqrt_information = llt_of_information.matrixL().transpose();
 

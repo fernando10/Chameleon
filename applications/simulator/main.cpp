@@ -12,7 +12,8 @@
 
 /*-----------COMMAND LINE FLAGS-----------------------------------------------*/
 DEFINE_bool(display, true, "use viewer (pangolin)");
-DEFINE_bool(start_running, false, " start running immediately");
+DEFINE_bool(start_running, false, "start running immediately");
+DEFINE_bool(do_slam, true, "do state estimation");
 /*----------------------------------------------------------------------------*/
 
 using namespace chameleon;
@@ -38,10 +39,10 @@ int main(int argc, char **argv) {
   RobotData simulator_data;  // data corresponding to a single timestep
 
   // Setup estimator
- chameleon::ceres::Estimator::EstimatorOptions estimator_options;
- estimator_options.print_full_summary = true;
- estimator_options.data_association_strategy = DataAssociation::DataAssociationType::Known;
- std::unique_ptr<chameleon::ceres::Estimator> SLAM = util::make_unique<chameleon::ceres::Estimator>(estimator_options);
+  chameleon::ceres::Estimator::EstimatorOptions estimator_options;
+  estimator_options.print_full_summary = true;
+  estimator_options.data_association_strategy = DataAssociation::DataAssociationType::Known;
+  std::unique_ptr<chameleon::ceres::Estimator> SLAM = util::make_unique<chameleon::ceres::Estimator>(estimator_options);
 
   if (FLAGS_display) {
     Visualizer::ViewerOptions viewer_options;
@@ -77,15 +78,20 @@ int main(int argc, char **argv) {
       if (go) {
         // Get some data
         if (data_generator->GetRobotData(&simulator_data)) {
-          SLAM->AddData(simulator_data);
-          // solve is currently synchronous....TBD if needs to be threaded
-          SLAM->Solve();
-          SLAM->GetEstimationResult(&estimator_results);
 
-          // display debug and estimated data
+          // display debug data
           viewer_data->AddData(simulator_data);
-          viewer_data->AddData(estimator_results);
+
+          if (FLAGS_do_slam) {
+            SLAM->AddData(simulator_data);
+            // solve is currently synchronous....TBD if needs to be threaded
+            SLAM->Solve();
+            SLAM->GetEstimationResult(&estimator_results);
+            viewer_data->AddData(estimator_results);
+          }
+
           viewer.AddTimesteps({size_t(simulator_data.timestamp)});  // add the current timestep to the display
+
         }else {
           LOG(ERROR) << "Unable to get data.";
           std::this_thread::sleep_for(std::chrono::seconds(1));

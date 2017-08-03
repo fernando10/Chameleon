@@ -38,7 +38,7 @@ RangeFinderObservationVector ObservationGenerator::GenerateObservations(size_t p
   // serach for the n landmarks that are within the field of view of this robot (and within range)
   for (const auto& lm_w : *map_) {
     // transfer landmark over to pose frame
-    Eigen::Vector2d lm_r= util::DeHomogenizeLandmark<double>(robot.pose.matrix().inverse()
+    Eigen::Vector2d lm_r = util::DeHomogenizeLandmark<double>(robot.pose.matrix().inverse()
                                                              * util::HomogenizeLandmark<double>(lm_w.vec()));
 
     if(lm_r.x() < 1e-2) {
@@ -56,7 +56,6 @@ RangeFinderObservationVector ObservationGenerator::GenerateObservations(size_t p
       }
     }
   }
-  VLOG(3) << fmt::format("Generated observations for ts: {}, generated {} observations.", pose_idx, observations.size());
   return observations;
 }
 
@@ -65,6 +64,7 @@ RangeFinderObservationVector ObservationGenerator::GenerateNoisyObservations(siz
 
   // now add noise to the observation
   MultivariateNormalVariable observation_noise(measurement_covariance_); // zero mean observation noise
+
   RangeFinderObservationVector noisy_observations;
   for (const auto& obs : noise_free_observations) {
     noisy_observations.push_back(RangeFinderObservation(obs.timestamp, obs.observation + observation_noise()));

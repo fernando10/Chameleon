@@ -55,7 +55,7 @@ LandmarkVectorPtr WorldGenerator::GenerateWorld(const RobotPoseVectorPtr& robot_
     return map;
   }
 
-  Eigen::Vector2d max_translation;
+  Eigen::Vector2d max_translation = Eigen::Vector2d::Zero();
   for (const auto& p : *robot_poses) {
     if( std::abs(p.pose.translation().y()) > max_translation.y()) {
       max_translation.y() = std::abs(p.pose.translation().y());
@@ -86,7 +86,6 @@ double WorldGenerator::GetTotalDistanceTraveled(const RobotPoseVectorPtr& poses)
       distance_traveled += (poses->at(ii-1).pose.inverse() * poses->at(ii).pose).translation().norm();
     }
   }
-  //VLOG(1) << fmt::format("Path of {} poses, total distance traveled: {}m", poses->size(), distance_traveled);
   return distance_traveled;
 }
 
