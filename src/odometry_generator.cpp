@@ -37,15 +37,20 @@ OdometryMeasurement OdometryGenerator::GenerateNoiseFreeOdometryMeasurement(size
   double theta_2 = 0;
   double translation;
 
-  theta_1 = std::atan2(current_pose.y() - prev_pose.y(), current_pose.x() - prev_pose.x()) - prev_pose.theta();
+  double y_diff = current_pose.y() - prev_pose.y();
+  double x_diff = current_pose.x() - prev_pose.x();
+
+  theta_1 = AngleWraparound<double>(std::atan2(y_diff, x_diff) - prev_pose.theta());
   translation = (current_pose.translation() - prev_pose.translation()).norm();
-  theta_2 = current_pose.theta() - prev_pose.theta() - theta_1;
+  theta_2 = AngleWraparound<double>(current_pose.theta() - prev_pose.theta() - theta_1);
 
   return OdometryMeasurement(theta_1, translation, theta_2);
 }
 
 OdometryMeasurement OdometryGenerator::GenerateNoisyOdometryMeasurement(size_t step) const {
   OdometryMeasurement noise_free_odometry = GenerateNoiseFreeOdometryMeasurement(step);
+  VLOG(3) << fmt::format("Noise Free Odometry: theta1: {:5.3}, trans: {:5.3}, theta2: {:5.3}", noise_free_odometry.theta_1, noise_free_odometry.translation,
+                         noise_free_odometry.theta_2);
   const double theta_1 = noise_free_odometry.theta_1;
   const double theta_2 = noise_free_odometry.theta_2;
   const double trans = noise_free_odometry.translation;
@@ -69,7 +74,10 @@ OdometryMeasurement OdometryGenerator::GenerateNoisyOdometryMeasurement(size_t s
   double noisy_trans = translation_sample()[0];
   double noisy_theta_2 = theta_2_sample()[0];
 
+  VLOG(3) << fmt::format("Noisy Odometry: theta1: {:5.3}, trans: {:5.3}, theta2: {:5.3}", noisy_theta_1, noisy_trans, noisy_theta_2);
+
   return OdometryMeasurement(noisy_theta_1, noisy_trans, noisy_theta_2);
+  //return OdometryMeasurement(theta_1, trans, theta_2);
 }
 
 OdometryMeasurementVectorPtr OdometryGenerator::GenerateOdometry(bool noisy) const {

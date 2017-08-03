@@ -21,6 +21,7 @@ public:
         (Eigen::Vector4d() << Square(kAlpha1), Square(kAlpha2), Square(kAlpha3), Square(kAlpha4)).finished();
     Eigen::Vector2d measurement_noise = (Eigen::Vector2d() << Square(kBearingStdDev), Square(kRangeStdDev)).finished();
     bool generate_landmarks = true;
+    bool add_noise_to_odometry = true;
     PathGenerator::PathGeneratorOptions path_options;
   };
 

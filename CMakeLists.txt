@@ -196,6 +196,7 @@ set(TEST_SRCS
   tests/tests-math.cpp
   tests/tests-odometry_generator.cpp
   tests/tests-observation_generator.cpp
+  tests/tests-sampling.cpp
   )
 
 # Make test executable and link to our library

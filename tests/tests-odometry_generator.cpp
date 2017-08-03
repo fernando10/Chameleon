@@ -16,6 +16,7 @@ TEST_CASE("Noise-free odometry integrates back to original path") {
 
   SECTION( "rectangular path" ) {
     options.path_options.motion_type = PathGenerator::PathTypes::Rectangle;
+    options.path_options.num_steps = 1000;
 
     // generate a ground truth path (no noise in these poses)
     RobotPoseVectorPtr ground_truth_robot_path = path_generator->GetRobotPath();

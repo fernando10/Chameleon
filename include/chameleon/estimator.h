@@ -22,6 +22,7 @@ public:
     bool print_full_summary = false;
     double huber_loss_a = 1.0;
     bool print_brief_summary = true;
+    bool add_observations = true;
     size_t min_states_for_solve = 3;  // number of states to have in optimization window before we call solve
   };
 

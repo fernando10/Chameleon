@@ -13,14 +13,14 @@ namespace chameleon
 /// \brief AngleWraparound
 /// \param angle : input angle in radians
 /// \return angle in the [-PI PI) range
-///
-inline double AngleWraparound(const double angle) {
-  double ret_angle = angle;
-  while (ret_angle < M_PI) {
-    ret_angle += 2 * M_PI;
+template<typename T>
+inline T AngleWraparound(const T angle) {
+  T ret_angle = angle;
+  while (ret_angle <T( M_PI)) {
+    ret_angle += T(2 * M_PI);
   }
-  while (ret_angle >= M_PI) {
-    ret_angle -= 2 * M_PI;
+  while (ret_angle >= T(M_PI)) {
+    ret_angle -= T(2 * M_PI);
   }
   return ret_angle;
 }
@@ -31,7 +31,7 @@ inline double AngleWraparound(const double angle) {
 /// \return angle in radians
 ///
 inline double Deg2Rad(const double deg) {
-  return AngleWraparound(((deg / 180.0) * M_PI));
+  return AngleWraparound<double>(((deg / 180.0) * M_PI));
 }
 
 ///
@@ -40,7 +40,7 @@ inline double Deg2Rad(const double deg) {
 /// \return angle in degrees
 ///
 inline double Rad2Deg(const double rad) {
-  return (AngleWraparound(rad) * 180.0) / M_PI;
+  return (AngleWraparound<double>(rad) * 180.0) / M_PI;
 }
 
 ///

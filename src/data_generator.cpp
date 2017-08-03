@@ -47,8 +47,12 @@ bool DataGenerator::GetRobotData(RobotData* const data) {
         odometry_generator_->GenerateNoiseFreeOdometryMeasurement(current_timestep_);
 
     // add noise to odometry measurement
-    OdometryMeasurement noisy_odometry =
-        odometry_generator_->GenerateNoisyOdometryMeasurement(current_timestep_);
+    OdometryMeasurement noisy_odometry;
+    if (options_.add_noise_to_odometry) {
+    noisy_odometry = odometry_generator_->GenerateNoisyOdometryMeasurement(current_timestep_);
+    } else {
+      noisy_odometry = data->debug.noise_free_odometry;
+    }
     data->debug.noisy_odometry = noisy_odometry;
 
     // odometry data which would be sensed (to be used in the optimization)

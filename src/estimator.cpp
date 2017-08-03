@@ -23,7 +23,9 @@ void Estimator::Reset() {
   local_param_ = std::unique_ptr<::ceres::LocalParameterization>(
                    new ::ceres::AutoDiffLocalParameterization<Sophus::chameleon::AutoDiffLocalParamSE2, Sophus::SE2d::num_parameters,
                    Sophus::SE2d::DoF>);
-  ceres_loss_function_ = util::make_unique<::ceres::HuberLoss>(options_.huber_loss_a);
+  if (options_.huber_loss_a > 0){
+    ceres_loss_function_ = util::make_unique<::ceres::HuberLoss>(options_.huber_loss_a);
+  }
   landmarks_.clear();
   states_.clear();
   state_2_landmark_multimap_.clear();
@@ -45,7 +47,7 @@ void Estimator::AddData(const RobotData &data) {
     VLOG(1) << "First state received.";
     // this is the very first state, use identity for now
     // TODO: Get initial pose externally so it's not arbitrarily fixed at the origin
-    new_state->robot.pose = Sophus::SE2d();
+    new_state->robot.pose = Sophus::SE2d(0, Eigen::Vector2d::Zero());
   } else {
     // use odometry to propagate previous measurement forward and get estimated state
     RobotPose guess = OdometryGenerator::PropagateMeasurement(data.odometry, last_state_rit->second->robot);
@@ -73,7 +75,7 @@ void Estimator::AddData(const RobotData &data) {
   ///////////////////////////////////
   ////// OBSERVATION FACTORS
   /// ///////////////////////////////
-  if (!data.observations.empty()) {
+  if (!data.observations.empty() && options_.add_observations) {
     DataAssociationMap association =  DataAssociation::AssociateDataToLandmarks(data.observations, landmarks_,
                                                                                 DataAssociation::DataAssociationType::Known);
     // create new landmarks, if necessary

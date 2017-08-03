@@ -23,10 +23,10 @@ struct OdometryCostFunction {
 
     Eigen::Map<Eigen::Matrix<T, OdometryMeasurement::kMeasurementDim, 1>>error(residual);
 
-    T theta1 = ::ceres::atan2(T_WS_current.translation().y() - T_WS_prev.translation().y(),
-                              T_WS_current.translation().x() - T_WS_prev.translation().x()) - T_WS_prev.so2().log();
+    T theta1 = AngleWraparound<T>(::ceres::atan2(T_WS_current.translation().y() - T_WS_prev.translation().y(),
+                              T_WS_current.translation().x() - T_WS_prev.translation().x()) - T_WS_prev.so2().log());
     T translation = (T_WS_current.translation() - T_WS_prev.translation()).norm();
-    T theta2 = T_WS_current.so2().log() - T_WS_prev.so2().log() - theta1;
+    T theta2 = AngleWraparound<T>(T_WS_current.so2().log() - T_WS_prev.so2().log() - theta1);
 
     // hardcoded for now
     // TODO: use kConsts for the component indexing

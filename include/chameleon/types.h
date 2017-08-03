@@ -212,7 +212,7 @@ struct RobotPose {
 
   // we don't store theta directly so can't easily return a reference like we do for x and y
   void SetTheta(const double theta_new) {
-    pose.so2() = Sophus::SO2d(AngleWraparound(theta_new));
+    pose.so2() = Sophus::SO2d(AngleWraparound<double>(theta_new));
   }
 
   double x() const { return pose.translation().x(); }
