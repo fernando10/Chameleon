@@ -16,7 +16,10 @@ Estimator::Estimator(const EstimatorOptions& options): options_(options) {
 
 void Estimator::Reset() {
   VLOG(1) << "Resetting estimator.";
-  ceres_problem_ = util::make_unique<::ceres::Problem>();
+  ::ceres::Problem::Options ceres_problem_options;
+  ceres_problem_options.loss_function_ownership = ::ceres::DO_NOT_TAKE_OWNERSHIP;
+  ceres_problem_options.local_parameterization_ownership = ::ceres::DO_NOT_TAKE_OWNERSHIP;
+  ceres_problem_ = util::make_unique<::ceres::Problem>(ceres_problem_options);
   local_param_ = std::unique_ptr<::ceres::LocalParameterization>(
                    new ::ceres::AutoDiffLocalParameterization<Sophus::chameleon::AutoDiffLocalParamSE2, Sophus::SE2d::num_parameters,
                    Sophus::SE2d::DoF>);
@@ -213,9 +216,9 @@ void Estimator::CreateOdometryFactor(const uint64_t prev_state_id, const uint64_
   // add observation factor between state and landmark to problem
   //TODO: Get correct odometry covariance
   OdometryCovariance odometry_cov = OdometryCovariance::Identity();
-  odometry_cov(0,0) = 5e-2;
-  odometry_cov(1,1) = 1e-3;
-  odometry_cov(2,2) = 5e-2;
+  odometry_cov(0,0) = 5e-1;
+  odometry_cov(1,1) = 1e-1;
+  odometry_cov(2,2) = 5e-1;
   OdometryCovariance inv_cov = odometry_cov.inverse();
   Eigen::LLT<OdometryCovariance> llt_of_information(inv_cov);
   OdometryCovariance sqrt_information = llt_of_information.matrixL().transpose();

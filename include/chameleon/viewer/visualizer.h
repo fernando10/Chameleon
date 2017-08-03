@@ -73,6 +73,7 @@ public:
     std::unique_ptr<pangolin::Var<bool>> show_landmarks;
     std::unique_ptr<pangolin::Var<bool>> show_odometry;
     std::unique_ptr<pangolin::Var<bool>> show_estimated;
+    std::unique_ptr<pangolin::Var<bool>> do_SLAM;
     std::unique_ptr<pangolin::Var<bool>> reset;
   };
 
@@ -131,6 +132,7 @@ private:
   void RequestReset();
   void AddObjectsToSceneGraph();
   void ResetSceneGraph();
+//  void GuiVarChangedCallback;
 
   const ViewerOptions& options_;
   bool single_step_ = false;

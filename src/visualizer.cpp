@@ -29,6 +29,12 @@ void Visualizer::SwitchProjection(ProjectionMatrixTypes type) {
   }
 }
 
+//void Visualizer::GuiVarChangedCallback(void* data, const std::string& name, VarValueGeneric& var) {
+//  if (name.compare("ui.Do_SLAM") == 0) {
+//    //TODO
+//  }
+//}
+
 void Visualizer::AddObjectsToSceneGraph() {
   // create scene graph objects
   gui_vars_.light = util::make_unique<SceneGraph::GLLight>(10, 10, -1000);
@@ -137,7 +143,7 @@ void Visualizer::InitGui() {
   gui_vars_.ui.show_landmarks = util::make_unique<pangolin::Var<bool>>("ui.Show_landmarks", true, true);
   gui_vars_.ui.show_odometry = util::make_unique<pangolin::Var<bool>>("ui.Show_odometry", false, true);
   gui_vars_.ui.show_estimated = util::make_unique<pangolin::Var<bool>>("ui.Show_estimated", true, true);
-
+  gui_vars_.ui.do_SLAM = util::make_unique<pangolin::Var<bool>>("ui.Do_SLAM", true, true);
 }
 
 void Visualizer::Run() {
@@ -251,7 +257,7 @@ bool Visualizer::AddTimesteps(std::vector<size_t> timesteps) {
       // remove all states and re-add (for now)
       gui_vars_.estimated_robot_path->Clear();
       for (const auto& state : data_->estimated_poses) {
-          poses_path_ref.push_back(state.second->robot.pose);
+        poses_path_ref.push_back(state.second->robot.pose);
       }
     }
   }
