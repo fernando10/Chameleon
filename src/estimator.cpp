@@ -101,10 +101,18 @@ void Estimator::AddData(const RobotData &data) {
   VLOG(2) << "Finished adding data.";
 }
 
+
+////////////////////////////////////////////////////////////////
+/// \brief Estimator::Solve
+////////////////////////////////////////////////////////////////
 void Estimator::Solve() {
   if (states_.size() >= options_.min_states_for_solve) {
     VLOG(1) << "Solving full SLAM problem.";
     ::ceres::Solve(options_.ceres_options , ceres_problem_.get(), &summary_);
+
+    if (options_.compute_landmark_covariance) {
+      GetMapUncertainty();
+    }
 
     if (options_.print_full_summary) {
       LOG(INFO) << summary_.FullReport();
@@ -116,6 +124,55 @@ void Estimator::Solve() {
                            states_.size(), options_.min_states_for_solve);
   }
 }
+
+
+////////////////////////////////////////////////////////////////
+/// \brief Estimator::GetMapUncertainty
+////////////////////////////////////////////////////////////////
+void Estimator::GetMapUncertainty() {
+  for (const auto& pair : landmarks_) {
+    if (!pair.second->active) {
+      continue;
+    }
+    Eigen::MatrixXd lm_cov;
+    if (GetLandmarkUncertainty(pair.first, &lm_cov)) {
+      pair.second->covariance = lm_cov;
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////
+/// \brief Estimator::GetLandmarkUncertainty
+////////////////////////////////////////////////////////////////
+bool Estimator::GetLandmarkUncertainty(uint64_t landmark_id, Eigen::MatrixXd* cov_out) {
+  if (!CheckLandmarkExists(landmark_id)) {
+    LOG(ERROR) << fmt::format("Covariance for lm id: {} requested but that id is not in the map.", landmark_id);
+    return false;
+  }
+
+  LandmarkPtr lm = landmarks_.at(landmark_id);
+
+  ::ceres::Covariance::Options options;
+  //options.algorithm_type = ::ceres::CovarianceAlgorithmType::DENSE_SVD;
+  //options.min_reciprocal_condition_number = 1e-14;
+
+  ::ceres::Covariance covariance(options);
+  std::vector<std::pair<const double*, const double*>> covariance_blocks;
+
+  covariance_blocks.push_back(std::make_pair(lm->data(), lm->data()));  // tell ceres what block of the covariance matrix we want
+
+  cov_out->resize(lm->kLandmarkDim, lm->kLandmarkDim);
+
+  bool success = covariance.Compute(covariance_blocks, ceres_problem_.get());
+
+  if (success) {
+    covariance.GetCovarianceBlock(lm->data(), lm->data(), cov_out->data());
+  }
+
+  return success;
+
+}
+
 
 
 ////////////////////////////////////////////////////////////////
@@ -180,6 +237,7 @@ void Estimator::CreateNewLandmarks(DataAssociationMap& data_association,
   }
 }
 
+
 ////////////////////////////////////////////////////////////////
 /// \brief Estimator::SetLocalizationMode
 ////////////////////////////////////////////////////////////////
@@ -191,11 +249,13 @@ void Estimator::SetLocalizationMode(bool localization_only) {
   for (const auto e : landmarks_) {
     if (localization_only) {
       ceres_problem_->SetParameterBlockConstant(e.second->data());
+      e.second->active = false;
     } else {
       ceres_problem_->SetParameterBlockVariable(e.second->data());
+      e.second->active = true;
     }
   }
-
+  localization_mode_ = localization_only;
 }
 
 ////////////////////////////////////////////////////////////////
@@ -326,20 +386,10 @@ void Estimator::CreateObservationFactor(const uint64_t state_id,
     return;
   }
 
-  //  LandmarkPtr lm = landmarks_.at(landmark_id);
-  //  lm->AddObservation();
-
-  //  if (lm->GetNumObservations() < options_.delayed_initalization_num) {
-  //    VLOG(2) << fmt::format("landmark id: {} has {} observations, but {} are needed.", landmark_id, lm->GetNumObservations(),
-  //                           options_.delayed_initalization_num);
-  //    unitialized_landmarks_[landmark_id][state_id].push_back(obs); // save observation for later.
-  //    return;
-  //  } else if (unitialized_landmarks_.find(landmark_id) != unitialized_landmarks_.end() &&
-  //             lm->GetNumObservations() == options_.delayed_initalization_num) {
-  //    VLOG(2) << fmt::format("have enough measurements to initalize landmark id: {}", landmark_id);
-  //    unitialized_landmarks_[landmark_id][state_id].push_back(obs); // save the current observation.
-  //    UpdateLandmarkMean(landmark_id);
-  //  }
+  // make sure lm is marked as active since it's part of the estimation now
+  if (!localization_mode_) {
+    landmarks_.at(landmark_id)->active = true;
+  }
 
   // add observation factor between state and landmark to problem
   //TODO: Get correct measurement covariance
@@ -412,10 +462,15 @@ void Estimator::CreateLandmark(const RangeFinderObservation &obs, uint64_t state
                 obs.observation.range * std::sin(obs.observation.theta));
   // transfer the landmark over to the world frame
   Landmark lm_w = state->robot * lm_r;
+  lm_w.active = false;
   landmarks_.insert({lm_id, std::make_shared<Landmark>(lm_w)});
   VLOG(2) << fmt::format("Created landmark observed from state id: {}, lm id: {}", state_id, lm_id);
 }
 
+
+//////////////////////////////////////////////////////////////////////////////
+/// \brief Estimator::CreateLandmark
+/////////////////////////////////////////////////////////////////////////
 uint64_t Estimator::CreateLandmark(const RangeFinderObservation &obs, uint64_t state_id) {
   VLOG(2) << fmt::format("Trying to create landmark observed from state id: {}", state_id);
 
@@ -432,6 +487,7 @@ uint64_t Estimator::CreateLandmark(const RangeFinderObservation &obs, uint64_t s
 
   // transfer the landmark over to the world frame
   Landmark lm_w = state->robot * lm_r;
+  lm_w.active = false;
 
   uint64_t lm_id = IdGenerator::Instance::NewId();
   landmarks_.insert({lm_id, std::make_shared<Landmark>(lm_w)});

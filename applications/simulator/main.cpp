@@ -13,9 +13,9 @@
 /*-----------COMMAND LINE FLAGS-----------------------------------------------*/
 DEFINE_bool(display, true, "use viewer (pangolin)");
 DEFINE_bool(start_running, false, "start running immediately");
-DEFINE_bool(do_slam, true, "do state estimation");
 DEFINE_bool(add_observations, true, "add landmark observation/estimation");
 DEFINE_int32(num_steps, 200, " number of steps to take");
+DEFINE_bool(compute_lm_covariance, true, "compute landmark covariance");
 DEFINE_bool(print_optimization_full_summary, false, "print full summary");
 DEFINE_bool(print_optimization_brief_summary, false, "print brief summary");
 DEFINE_double(huber_loss, 1.0, " huber loss");
@@ -56,6 +56,7 @@ int main(int argc, char **argv) {
   estimator_options.add_observations = FLAGS_add_observations;
   estimator_options.print_brief_summary = FLAGS_print_optimization_brief_summary;
   estimator_options.print_full_summary = FLAGS_print_optimization_full_summary;
+  estimator_options.compute_landmark_covariance = FLAGS_compute_lm_covariance;
   estimator_options.ceres_options.minimizer_progress_to_stdout = FLAGS_print_optimization_full_summary;
   estimator_options.huber_loss_a = FLAGS_huber_loss;
   estimator_options.delayed_initalization_num = FLAGS_delayed_lm_init;
@@ -89,19 +90,20 @@ int main(int argc, char **argv) {
       }
 
       go = viewer.IsStepping() || viewer.IsRunning();
+
       if (go && !viewer.IsRunning()) {
         // not running continuously, set step to false so we pause after 1 pose
         viewer.SetStepping(false);
       }
 
       if (go) {
+
         // Get some data
         if (data_generator->GetRobotData(&simulator_data)) {
 
           // display debug data
           viewer_data->AddData(simulator_data);
 
-         // FLAGS_do_slam = viewer.GetDebugVariables().do_SLAM;
           if (*(viewer.GetDebugVariables().do_SLAM)) {
             SLAM->AddData(simulator_data);
             SLAM->SetLocalizationMode(*(viewer.GetDebugVariables().do_Localization));

@@ -85,8 +85,9 @@ typedef Eigen::Matrix2d LandmarkCovariance;
 
 struct Landmark {
   static constexpr size_t kLandmarkDim = 2;
-  LandmarkCovariance covariance;
+  LandmarkCovariance covariance = LandmarkCovariance::Identity();
   uint64_t id;
+  bool active = true;
 
   Landmark(): covariance(LandmarkCovariance::Identity()), id(0) {
   }
@@ -106,6 +107,8 @@ struct Landmark {
     data_[0] = lm.x();
     data_[1] = lm.y();
     num_observations_ = lm.GetNumObservations();
+    covariance = lm.covariance;
+    active = lm.active;
   }
 
   // Assignment -- copy
@@ -113,6 +116,8 @@ struct Landmark {
     data_ = rhs.vec();
     id = rhs.id;
     num_observations_ = rhs.num_observations_;
+    covariance = rhs.covariance;
+    active = rhs.active;
     return *this;
   }
 
@@ -122,11 +127,8 @@ struct Landmark {
   }
 
   double x() const { return data_[0]; }
-
   double y() const { return data_[1]; }
-
   double& x() { return data_[0]; }
-
   double& y() { return data_[1]; }
 
   void SetPosition(const double x, const double y) {

@@ -81,6 +81,7 @@ public:
     std::unique_ptr<pangolin::Var<bool>> show_landmarks;
     std::unique_ptr<pangolin::Var<bool>> show_odometry;
     std::unique_ptr<pangolin::Var<bool>> show_estimated;
+    std::unique_ptr<pangolin::Var<bool>> show_variance;
     std::unique_ptr<pangolin::Var<bool>> do_SLAM;
     std::unique_ptr<pangolin::Var<bool>> do_Localization;
     std::unique_ptr<pangolin::Var<bool>> reset;

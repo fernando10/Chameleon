@@ -17,25 +17,31 @@ public:
   }
 
   void DrawCanonicalObject() {
-    if (pair_map_.empty()) { return; }
-    glLineWidth(1.0f);
-    glColor4f(map_color_[0], map_color_[1], map_color_[2], map_color_[3]);
+    if (landmark_map_.empty()) { return; }
 
-    for (const auto& lm : pair_map_) {
+    glLineWidth(1.0f);
+
+    for (const auto& lm : landmark_map_) {
+      if (lm.active) {
+        glColor4f(map_color_[0], map_color_[1], map_color_[2], map_color_[3]);
+      } else {
+        glColor4f(0.75f, 0.75f, 0.75f, 1.0f);  // gray for inactive landmarks
+      }
+
       glPushMatrix();
 
-      pangolin::glDrawCirclePerimeter(lm.first, lm.second, 0.1);
-      pangolin::glDrawCross(lm.first, lm.second, 0.1/2.f);
+      pangolin::glDrawCirclePerimeter(lm.x(), lm.y(), 0.1);
+      pangolin::glDrawCross(lm.x(), lm.y(), 0.1/2.f);
 
       glPopMatrix();
     }
 
     //glPushMatrix();
     //glEnable(GL_LINE_SMOOTH);
-//    for(auto& landmark : map_) {
-//      landmark.SetColor(map_color_);
-//      landmark.DrawCanonicalObject();
-//    }
+    //    for(auto& landmark : map_) {
+    //      landmark.SetColor(map_color_);
+    //      landmark.DrawCanonicalObject();
+    //    }
     //glEnd();
     //glPopMatrix();
   }
@@ -44,14 +50,19 @@ public:
   //    return map_;
   //  }
 
-  std::vector<std::pair<double, double>>& GetMapRef() {
-    return pair_map_;
+  //  std::vector<std::pair<double, double>>& GetMapRef() {
+  //    return pair_map_;
+  //  }
+
+
+  std::vector<chameleon::Landmark>& GetMapRef() {
+    return landmark_map_;
   }
 
 
   void Clear() {
     //map_.clear();
-    pair_map_.clear();
+    landmark_map_.clear();
   }
 
   void SetColor( float R, float G, float B, float A = 1.0) {
@@ -59,7 +70,8 @@ public:
   }
 
 private:
-  std::vector<GLLandmark> map_;
-  std::vector<std::pair<double, double>> pair_map_;
+//  std::vector<GLLandmark> map_;
+//  std::vector<std::pair<double, double>> pair_map_;
+  std::vector<chameleon::Landmark> landmark_map_;
   Eigen::Vector4f map_color_;
 };

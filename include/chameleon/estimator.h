@@ -24,6 +24,7 @@ public:
     double huber_loss_a = 1.0;
     bool print_brief_summary = true;
     bool add_observations = true;
+    bool compute_landmark_covariance = true;
     size_t delayed_initalization_num = 10;  // wait till we have this many observations to initialize a landmark //TODO: add landmark at first observation but with high uncertainty
     size_t min_states_for_solve = 3;  // number of states to have in optimization window before we call solve
   };
@@ -80,6 +81,8 @@ private:
   bool CheckLandmarkExists(uint64_t lm_id);
   Landmark LandmarkFromMeasurement(uint64_t state_id, RangeFinderObservation obs);
   void CheckAndAddObservationFactors(const uint64_t state_id, const DataAssociationMap& data_asssociation, const RangeFinderObservationVector& observations);
+  void GetMapUncertainty();
+  bool GetLandmarkUncertainty(uint64_t landmark_id, Eigen::MatrixXd* cov_out);
 
 
   std::unique_ptr<::ceres::Problem> ceres_problem_;
@@ -91,7 +94,6 @@ private:
   LandmarkPtrMap landmarks_;
   StatePtrMap states_;
   StatePtr last_optimized_state_;
-  uint64_t landmark_id_counter_ = 0;
   const EstimatorOptions& options_;
   bool localization_mode_ = false;
 
