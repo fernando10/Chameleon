@@ -125,7 +125,7 @@ void Estimator::Solve() {
   }
 }
 
-
+// TODO: change to get the uncertainty of all landmarks at the same time
 ////////////////////////////////////////////////////////////////
 /// \brief Estimator::GetMapUncertainty
 ////////////////////////////////////////////////////////////////
@@ -141,6 +141,7 @@ void Estimator::GetMapUncertainty() {
   }
 }
 
+// TODO: change to take as input vecor of landmark ids for multiple retreival at the same time
 ////////////////////////////////////////////////////////////////
 /// \brief Estimator::GetLandmarkUncertainty
 ////////////////////////////////////////////////////////////////
@@ -149,9 +150,7 @@ bool Estimator::GetLandmarkUncertainty(uint64_t landmark_id, Eigen::MatrixXd* co
     LOG(ERROR) << fmt::format("Covariance for lm id: {} requested but that id is not in the map.", landmark_id);
     return false;
   }
-
   LandmarkPtr lm = landmarks_.at(landmark_id);
-
   ::ceres::Covariance::Options options;
   //options.algorithm_type = ::ceres::CovarianceAlgorithmType::DENSE_SVD;
   //options.min_reciprocal_condition_number = 1e-14;
@@ -168,12 +167,8 @@ bool Estimator::GetLandmarkUncertainty(uint64_t landmark_id, Eigen::MatrixXd* co
   if (success) {
     covariance.GetCovarianceBlock(lm->data(), lm->data(), cov_out->data());
   }
-
   return success;
-
 }
-
-
 
 ////////////////////////////////////////////////////////////////
 /// \brief Estimator::GetNewStateId
@@ -182,14 +177,12 @@ uint64_t Estimator::GetNewStateId() {
   return  IdGenerator::Instance::NewId();
 }
 
-
 ////////////////////////////////////////////////////////////////
 /// \brief Estimator::GetNewLandmarkId
 ////////////////////////////////////////////////////////////////
 uint64_t Estimator::GetNewLandmarkId() {
   return IdGenerator::Instance::NewId();
 }
-
 
 ////////////////////////////////////////////////////////////////
 /// \brief Estimator::CreateNewLandmarks

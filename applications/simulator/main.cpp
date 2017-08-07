@@ -15,7 +15,7 @@ DEFINE_bool(display, true, "use viewer (pangolin)");
 DEFINE_bool(start_running, false, "start running immediately");
 DEFINE_bool(add_observations, true, "add landmark observation/estimation");
 DEFINE_int32(num_steps, 200, " number of steps to take");
-DEFINE_bool(compute_lm_covariance, true, "compute landmark covariance");
+DEFINE_bool(compute_lm_covariance, false, "compute landmark covariance");
 DEFINE_bool(print_optimization_full_summary, false, "print full summary");
 DEFINE_bool(print_optimization_brief_summary, false, "print brief summary");
 DEFINE_double(huber_loss, 1.0, " huber loss");
