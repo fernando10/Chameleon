@@ -4,8 +4,8 @@
 namespace chameleon
 {
 
-DataAssociationMap DataAssociation::AssociateDataToLandmarks(const RangeFinderObservationVector &measurements,
-                                                             const LandmarkPtrMap &/*map*/, DataAssociationType strategy) {
+DataAssociationMap DataAssociation::AssociateDataToLandmarks(const RangeFinderObservationVector& measurements,
+                                                             const LandmarkPtrMap& map, DataAssociationType strategy) {
   DataAssociationMap association;
   switch (strategy) {
   case DataAssociationType::NN:
@@ -18,21 +18,22 @@ DataAssociationMap DataAssociation::AssociateDataToLandmarks(const RangeFinderOb
     LOG(ERROR) << " JCBB Not implemented";
     break;
   case DataAssociationType::Known:
-    KnownDataAssociation(measurements, &association);
+    KnownDataAssociation(measurements, map, &association);
     break;
   }
   return association;
 }
 
-void DataAssociation::KnownDataAssociation(const RangeFinderObservationVector &measurements
+void DataAssociation::KnownDataAssociation(const RangeFinderObservationVector& measurements, const LandmarkPtrMap& /*map*/
                                            , DataAssociationMap* const  association) {
   VLOG(1) << "Getting KNOWN data associations";
+
   size_t meas_idx = 0;
   for (const RangeFinderObservation& obs : measurements) {
     association->insert({meas_idx, obs.observation.lm_id});
     meas_idx++;
   }
-  VLOG(1) << fmt::format("Get {} data associations for {} measurements" , association->size(), measurements.size());
+  VLOG(1) << fmt::format("Got {} data associations for {} measurements" , association->size(), measurements.size());
 }
 
 }  // namespace chameleon

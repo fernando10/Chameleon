@@ -86,6 +86,9 @@ public:
     std::unique_ptr<pangolin::Var<bool>> do_SLAM;
     std::unique_ptr<pangolin::Var<bool>> do_Localization;
     std::unique_ptr<pangolin::Var<bool>> reset;
+    std::unique_ptr<pangolin::Var<double>> prob_missed_detect;
+    std::unique_ptr<pangolin::Var<double>> prob_false_detect;
+
   };
 
   struct GuiVars {
@@ -97,6 +100,11 @@ public:
     std::unique_ptr<pangolin::View> world_view_ptr;
     std::unique_ptr<pangolin::View> panel_view_ptr;
     std::unique_ptr<pangolin::View> multi_view_ptr;
+
+    // plotting views
+    std::unique_ptr<pangolin::DataLog> log_ptr;
+    std::unique_ptr<pangolin::Plotter> plotter_ptr;
+
     // scene graph objects
     std::unique_ptr<SceneGraph::GLLight> light;
     std::unique_ptr<SceneGraph::GLDynamicGrid> dynamic_grid;  // Grid object to be the world plane

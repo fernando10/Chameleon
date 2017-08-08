@@ -13,7 +13,7 @@ namespace chameleon
 namespace ceres
 {
 
-double lambda_u = 1;
+double lambda_u = 10;
 double lambda_l = .01;
 std::function<double(double)> logS_T = std::bind(log_general_purpose_survival_function, std::placeholders::_1, lambda_l, lambda_u);
 
@@ -39,6 +39,7 @@ void Estimator::Reset() {
   }
   landmarks_.clear();
   states_.clear();
+  persistence_filter_map_.clear();
   state_2_landmark_multimap_.clear();
   landmark_2_state_multimap_.clear();
   localization_mode_ = false;
@@ -70,7 +71,6 @@ void Estimator::AddData(const RobotData &data) {
     VLOG(2) <<  fmt::format("Propagated pose (id:{}) at: {} and got pose at: {}",last_state_rit->first, last_state_rit->second->robot, guess);
     new_state->robot.pose = guess.pose;
   }
-
   ceres_problem_->AddParameterBlock(new_state->data(), Sophus::SE2d::num_parameters);
   ceres_problem_->SetParameterization(new_state->data(), local_param_.get());
 
@@ -91,8 +91,25 @@ void Estimator::AddData(const RobotData &data) {
   if (!data.observations.empty() && options_.add_observations) {
 
     // get  a map with obs_index -> landmark_id
-    DataAssociationMap association =  DataAssociation::AssociateDataToLandmarks(data.observations, landmarks_,
-                                                                                DataAssociation::DataAssociationType::Known);
+    LandmarkPtrMap visible_landmarks = GetLandmarksThatShouldBeVisible(new_state->robot);
+    DataAssociationMap association = DataAssociation::AssociateDataToLandmarks(data.observations
+                                                                                ,visible_landmarks
+                                                                                ,DataAssociation::DataAssociationType::Known);
+
+//    for (const auto& lm : visible_landmarks) {
+//      bool found = false;
+//      for (const auto& a : association) {
+//        if (lm.first == a.second) {
+//          found = true;
+//          break;
+//        }
+//      }
+//      if (!found) {
+//        // lm should be visible but is not...add an observation (with prob. P_F)
+//        association
+//      }
+//    }
+
     // create new landmarks, if necessary
     if (!localization_mode_) {
       CreateNewLandmarks(association, data.observations, id);
@@ -113,6 +130,36 @@ void Estimator::AddData(const RobotData &data) {
   VLOG(2) << "Finished adding data.";
 }
 
+////////////////////////////////////////////////////////////////
+/// \brief Estimator::GetLandmarksThatShouldBeVisible
+////////////////////////////////////////////////////////////////
+LandmarkPtrMap Estimator::GetLandmarksThatShouldBeVisible(const RobotPose& robot) {
+  LandmarkPtrMap visible_landmarks;
+
+  for (const auto& e : landmarks_) {
+
+    // transfer landmark over to pose frame
+    Eigen::Vector2d lm_r = util::DeHomogenizeLandmark<double>(robot.pose.matrix().inverse()
+                                                             * util::HomogenizeLandmark<double>(e.second->vec()));
+
+    if(lm_r.x() < 1e-2) {
+      continue;  // landmark too close or behind
+    }
+    // get angle
+    double theta = AngleWraparound<double>(std::atan2(lm_r.y(), lm_r.x()));
+
+    if (std::abs(theta) <= robot.field_of_view/2.) {
+      // lm in the field of view, get distance
+      double distance = lm_r.norm();
+      if (distance <= robot.range) {
+        // should be visible
+        visible_landmarks.insert({e.first, e.second});
+      }
+    }
+  }
+
+  return visible_landmarks;
+}
 
 ////////////////////////////////////////////////////////////////
 /// \brief Estimator::Solve

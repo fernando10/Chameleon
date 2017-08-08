@@ -93,7 +93,7 @@ private:
   void GetMapUncertainty();
   bool GetLandmarkUncertainty(uint64_t landmark_id, Eigen::MatrixXd* cov_out);
   void UpdateMapPersistence();
-
+  LandmarkPtrMap GetLandmarksThatShouldBeVisible(const RobotPose& robot);
 
   std::unique_ptr<::ceres::Problem> ceres_problem_;
   std::unique_ptr<::ceres::LossFunction> ceres_loss_function_;

@@ -108,6 +108,8 @@ int main(int argc, char **argv) {
           viewer_data->AddData(simulator_data);
 
           if (*(viewer.GetDebugVariables().do_SLAM)) {
+            estimator_options.filter_options.P_F = *(viewer.GetDebugVariables().prob_false_detect);
+            estimator_options.filter_options.P_M = *(viewer.GetDebugVariables().prob_missed_detect);
             SLAM->AddData(simulator_data);
             SLAM->SetLocalizationMode(*(viewer.GetDebugVariables().do_Localization));
             // solve is currently batch synchronous....TBD if needs to be threaded

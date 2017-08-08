@@ -35,7 +35,7 @@ public:
 private:
 
   // Get the data association directly from the measurements, the map isnt needed for this one
-  static void KnownDataAssociation(const RangeFinderObservationVector& measurements,
+  static void KnownDataAssociation(const RangeFinderObservationVector& measurements, const LandmarkPtrMap& map,
                                    DataAssociationMap* const  association);
 };
 

@@ -27,7 +27,12 @@ public:
       if (lm.active) {
         glColor4f(map_color_[0], map_color_[1], map_color_[2], map_color_[3]);
       } else {
-        glColor4f(0.75f, 0.75f, 0.75f, 1.0f);  // gray for inactive landmarks
+        if (draw_persistence_labels_) {
+          double prob = lm.persistence_prob;
+          glColor4f(1.f - 0.25f*float(prob), float(prob), float(prob), 1.0f);
+        } else {
+          glColor4f(0.75f, 0.75f, 0.75f, 1.0f);  // gray for inactive landmark
+        }
       }
 
       glPushMatrix();

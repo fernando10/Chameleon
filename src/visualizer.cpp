@@ -109,13 +109,23 @@ void Visualizer::InitGui() {
   gui_vars_.world_view_ptr->SetDrawFunction(SceneGraph::ActivateDrawFunctor(gui_vars_.scene_graph,
                                                                             gui_vars_.camera));
 
+  gui_vars_.log_ptr.reset(new pangolin::DataLog());
+  std::vector<std::string> data_labels;
+  data_labels.push_back("P(X=1 | Z)");
+  gui_vars_.log_ptr->SetLabels(data_labels);
+
+  gui_vars_.plotter_ptr.reset(new pangolin::Plotter(gui_vars_.log_ptr.get()));
+  gui_vars_.plotter_ptr->SetBounds(0.0, 1.0, /*pangolin::Attach::Pix(options_.panel_size)*/0.0, 1.0);
+
   // create a container view in case we want to have multiple views on the rigth side (maybe add some plots, etc)
   gui_vars_.multi_view_ptr.reset(&pangolin::Display("multi")
                                  .SetBounds(0.0, 1.0, pangolin::Attach::Pix(options_.panel_size), 1.0)
-                                 .SetLayout(pangolin::LayoutEqualVertical));
+                                 .SetLayout(pangolin::LayoutVertical));
 
-  // for now just add the world view
+  // add the world view
   gui_vars_.multi_view_ptr->AddDisplay(*(gui_vars_.world_view_ptr));
+  gui_vars_.multi_view_ptr->AddDisplay(*(gui_vars_.plotter_ptr));
+
 
 
   ////////////////////////////////////////////////////
@@ -143,6 +153,11 @@ void Visualizer::InitGui() {
   gui_vars_.ui.show_variance = util::make_unique<pangolin::Var<bool>>("ui.Show_variance", false, true);
   gui_vars_.ui.do_SLAM = util::make_unique<pangolin::Var<bool>>("ui.Do_SLAM", true, true);
   gui_vars_.ui.do_Localization = util::make_unique<pangolin::Var<bool>>("ui.Localization", false, true);
+
+  gui_vars_.ui.prob_missed_detect = util::make_unique<pangolin::Var<double>>("ui.Prob. Missed Detect.", 0.0, 1.0);
+  *gui_vars_.ui.prob_missed_detect = 0.2;
+  gui_vars_.ui.prob_false_detect = util::make_unique<pangolin::Var<double>>("ui.Prob. False Detect", 0.0, 1.0);
+  *gui_vars_.ui.prob_false_detect = 0.2;
 }
 
 void Visualizer::Run() {
