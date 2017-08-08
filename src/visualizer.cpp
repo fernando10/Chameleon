@@ -95,7 +95,7 @@ void Visualizer::InitGui() {
   // create view that will contain the robot/landmarks
   gui_vars_.world_view_ptr.reset(&pangolin::CreateDisplay()
                                  .SetAspect(-(float)options_.window_width/(float)options_.window_height)
-                                 .SetBounds(0.0, 1.0, /*pangolin::Attach::Pix(options_.panel_size)*/0.0, 1.0));
+                                 .SetBounds(0.25, 1.0, /*pangolin::Attach::Pix(options_.panel_size)*/0.0, 1.0));
 
   // create view for the controls panel
   gui_vars_.panel_view_ptr.reset(&pangolin::CreatePanel("ui").
@@ -115,7 +115,10 @@ void Visualizer::InitGui() {
   gui_vars_.log_ptr->SetLabels(data_labels);
 
   gui_vars_.plotter_ptr.reset(new pangolin::Plotter(gui_vars_.log_ptr.get()));
-  gui_vars_.plotter_ptr->SetBounds(0.0, 1.0, /*pangolin::Attach::Pix(options_.panel_size)*/0.0, 1.0);
+  pangolin::XYRange<float> range(0.f, 800.f, 0.f, 1.f);
+  gui_vars_.plotter_ptr->SetDefaultView(range);
+  gui_vars_.plotter_ptr->SetViewSmooth(range);
+  gui_vars_.plotter_ptr->ToggleTracking();
 
   // create a container view in case we want to have multiple views on the rigth side (maybe add some plots, etc)
   gui_vars_.multi_view_ptr.reset(&pangolin::Display("multi")
@@ -217,13 +220,21 @@ void Visualizer::AddLandmarks() {
   for (const auto& e : data_->estimated_landmarks) {
     gui_vars_.estimated_map->GetMapRef().push_back(Landmark(*(e.second)));
   }
+}
 
+void Visualizer::UpdatePlotters() {
+  // get the first landmark for now
+  for(const auto& e : data_->estimated_landmarks) {
+    gui_vars_.log_ptr->Log(e.second->persistence_prob);
+    break;
+  }
 }
 
 bool Visualizer::AddTimesteps(std::vector<size_t> timesteps) {
   std::unique_lock<std::mutex>(data_mutex_);
 
   AddLandmarks();
+  UpdatePlotters();
 
   for (const size_t& ts : timesteps) {
     if (data_ == nullptr) {

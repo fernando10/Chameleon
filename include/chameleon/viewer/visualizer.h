@@ -151,6 +151,7 @@ private:
   void RequestReset();
   void AddObjectsToSceneGraph();
   void ResetSceneGraph();
+  void UpdatePlotters();
   //void GuiVarChanged(void * data, const::std::string& name, pangolin::VarValueGeneric& var);
 
 
