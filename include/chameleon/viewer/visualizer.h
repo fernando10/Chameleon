@@ -31,6 +31,7 @@ public:
     int window_width = 1024;
     unsigned int panel_size = 180;
     bool start_running = true;
+    bool show_lm_persistence_labels = false;
   };
 
   // Struct for passing data from the application to the viewer

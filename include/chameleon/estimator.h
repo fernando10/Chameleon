@@ -9,6 +9,8 @@
 #include "chameleon/util.h"
 #include "chameleon/data_association.h"
 #include "chameleon/auto_diff_local_param_SE2.h"
+#include "chameleon/persistence_filter.h"
+
 namespace chameleon
 {
 namespace ceres
@@ -17,12 +19,19 @@ namespace ceres
 class Estimator {
 public:
 
+  struct PersistenceFilterOptions {
+    double P_M = 0.2;
+    double P_F = 0.2;
+    bool use_persistence_filter = false;
+  };
+
   struct EstimatorOptions {
     DataAssociation::DataAssociationType data_association_strategy = DataAssociation::DataAssociationType::Known;
     ::ceres::Solver::Options ceres_options;
     bool print_full_summary = false;
     double huber_loss_a = 1.0;
     bool print_brief_summary = true;
+    PersistenceFilterOptions filter_options;
     bool add_observations = true;
     bool compute_landmark_covariance = true;
     size_t delayed_initalization_num = 10;  // wait till we have this many observations to initialize a landmark //TODO: add landmark at first observation but with high uncertainty
@@ -48,7 +57,7 @@ public:
 
   void Reset();
   void SetLocalizationMode(bool localization_only);
-  void GetEstimationResult(EstimatedData* data) const;
+  void GetEstimationResult(EstimatedData* data);
 
 
 private:
@@ -83,6 +92,7 @@ private:
   void CheckAndAddObservationFactors(const uint64_t state_id, const DataAssociationMap& data_asssociation, const RangeFinderObservationVector& observations);
   void GetMapUncertainty();
   bool GetLandmarkUncertainty(uint64_t landmark_id, Eigen::MatrixXd* cov_out);
+  void UpdateMapPersistence();
 
 
   std::unique_ptr<::ceres::Problem> ceres_problem_;
@@ -90,12 +100,14 @@ private:
   std::unique_ptr<::ceres::LocalParameterization> local_param_;
   ::ceres::Solver::Summary summary_;
 
+  std::unordered_map<uint64_t, PersistenceFilterPtr> persistence_filter_map_;
   std::unordered_map<uint64_t, std::map<uint64_t, RangeFinderObservationVector>> unitialized_landmarks_;
   LandmarkPtrMap landmarks_;
   StatePtrMap states_;
   StatePtr last_optimized_state_;
   const EstimatorOptions& options_;
   bool localization_mode_ = false;
+  double latest_timestamp_;
 
   State2Landmark_Multimap state_2_landmark_multimap_;
   Landmark2State_MultiMap landmark_2_state_multimap_;

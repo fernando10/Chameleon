@@ -6,10 +6,17 @@
 #include "chameleon/ceres_cost_terms.h"
 #include "chameleon/id_provider.h"
 #include "chameleon/odometry_generator.h"  // here just for the odometry propagation, should prob. move elsewhere
+#include "chameleon/persistence_filter_utils.h"
+
 namespace chameleon
 {
 namespace ceres
 {
+
+double lambda_u = 1;
+double lambda_l = .01;
+std::function<double(double)> logS_T = std::bind(log_general_purpose_survival_function, std::placeholders::_1, lambda_l, lambda_u);
+
 
 Estimator::Estimator(const EstimatorOptions& options): options_(options) {
   Reset();
@@ -35,6 +42,7 @@ void Estimator::Reset() {
   state_2_landmark_multimap_.clear();
   landmark_2_state_multimap_.clear();
   localization_mode_ = false;
+  latest_timestamp_ = 0;
 }
 
 ////////////////////////////////////////////////////////////////
@@ -81,6 +89,8 @@ void Estimator::AddData(const RobotData &data) {
   ///////////////////////////////////
   ////// OBSERVATION FACTORS
   if (!data.observations.empty() && options_.add_observations) {
+
+    // get  a map with obs_index -> landmark_id
     DataAssociationMap association =  DataAssociation::AssociateDataToLandmarks(data.observations, landmarks_,
                                                                                 DataAssociation::DataAssociationType::Known);
     // create new landmarks, if necessary
@@ -98,6 +108,8 @@ void Estimator::AddData(const RobotData &data) {
     // only add odometry if this is not the very first state
     CreateOdometryFactor(std::next(last_state_rit, 1)->first, last_state_rit->first, data.odometry);
   }
+
+  latest_timestamp_ = data.timestamp;
   VLOG(2) << "Finished adding data.";
 }
 
@@ -384,6 +396,19 @@ void Estimator::CreateObservationFactor(const uint64_t state_id,
     landmarks_.at(landmark_id)->active = true;
   }
 
+  // and that it has a persistence filter associated
+  if (options_.filter_options.use_persistence_filter) {
+    if (persistence_filter_map_.find(landmark_id) == persistence_filter_map_.end()) {
+      // create a new persistence filter for this landmark
+      persistence_filter_map_.insert({landmark_id, std::make_shared<PersistenceFilter>(logS_T)});
+    }
+
+    // and add this observation
+    persistence_filter_map_.at(landmark_id)->update(true, obs.timestamp+1, options_.filter_options.P_M,
+                                                    options_.filter_options.P_F);
+
+  }
+
   // add observation factor between state and landmark to problem
   //TODO: Get correct measurement covariance
   RangeFinderCovariance range_cov = RangeFinderCovariance::Identity();
@@ -492,10 +517,25 @@ uint64_t Estimator::CreateLandmark(const RangeFinderObservation &obs, uint64_t s
 ///////////////////////////////////////////////////////////////////
 /// \brief Estimator::GetEstimationResult
 /////////////////////////////////////////////////////////////////////
-void Estimator::GetEstimationResult(EstimatedData* data) const {
+void Estimator::GetEstimationResult(EstimatedData* data)  {
   if(data != nullptr) {
+    if(options_.filter_options.use_persistence_filter) {
+      UpdateMapPersistence();
+    }
     data->landmarks = landmarks_;
     data->states = states_;  //TODO: dont copy entire map of pointers over every time
+  }
+}
+
+
+///////////////////////////////////////////////////////////////////
+/// \brief Estimator::UpdateMapPersistence
+/////////////////////////////////////////////////////////////////////
+void Estimator::UpdateMapPersistence() {
+  for (auto& e : landmarks_) {
+    if (persistence_filter_map_.find(e.first) != persistence_filter_map_.end()) {
+      e.second->persistence_prob = persistence_filter_map_.at(e.first)->predict(latest_timestamp_ + 1);
+    }
   }
 }
 

@@ -5,6 +5,7 @@
 #include <Eigen/Eigen>
 #include "chameleon/types.h"
 #include "chameleon/viewer/gl_landmark.h"
+#include "SceneGraph/GLText.h"
 
 ///
 /// \brief The GLMap class
@@ -14,14 +15,15 @@ class GLMap : public SceneGraph::GLObject
 public:
   GLMap() {
     map_color_ << 0.f, 1.f, 0.f, 1.f;
+    draw_persistence_labels_ = false;
   }
 
   void DrawCanonicalObject() {
-    if (landmark_map_.empty()) { return; }
+    if (landmark_vec_.empty()) { return; }
 
     glLineWidth(1.0f);
 
-    for (const auto& lm : landmark_map_) {
+    for (const auto& lm : landmark_vec_) {
       if (lm.active) {
         glColor4f(map_color_[0], map_color_[1], map_color_[2], map_color_[3]);
       } else {
@@ -34,44 +36,40 @@ public:
       pangolin::glDrawCross(lm.x(), lm.y(), 0.1/2.f);
 
       glPopMatrix();
+
+      if (draw_persistence_labels_) {
+        SceneGraph::GLText text(std::to_string(lm.persistence_prob), lm.x(), lm.y(), -0.3);
+        text.SetPosition(lm.x(), lm.y(), -0.3);
+        text.DrawObjectAndChildren();
+      }
+
+
     }
-
-    //glPushMatrix();
-    //glEnable(GL_LINE_SMOOTH);
-    //    for(auto& landmark : map_) {
-    //      landmark.SetColor(map_color_);
-    //      landmark.DrawCanonicalObject();
-    //    }
-    //glEnd();
-    //glPopMatrix();
   }
-
-  //  std::vector<GLLandmark>& GetMapRef() {
-  //    return map_;
-  //  }
-
-  //  std::vector<std::pair<double, double>>& GetMapRef() {
-  //    return pair_map_;
-  //  }
-
 
   std::vector<chameleon::Landmark>& GetMapRef() {
-    return landmark_map_;
+    return landmark_vec_;
   }
 
+  std::vector<SceneGraph::GLText>& GetMapLabelsRef() {
+    return landmark_labels_vec_;
+  }
 
   void Clear() {
-    //map_.clear();
-    landmark_map_.clear();
+    landmark_vec_.clear();
   }
 
   void SetColor( float R, float G, float B, float A = 1.0) {
     map_color_ << R, G, B, A;
   }
 
+  void SetShowPersistenceLabels(bool show) {
+    draw_persistence_labels_ = show;
+  }
+
 private:
-//  std::vector<GLLandmark> map_;
-//  std::vector<std::pair<double, double>> pair_map_;
-  std::vector<chameleon::Landmark> landmark_map_;
+  std::vector<chameleon::Landmark> landmark_vec_;
+  std::vector<SceneGraph::GLText> landmark_labels_vec_;
   Eigen::Vector4f map_color_;
+  bool draw_persistence_labels_;
 };

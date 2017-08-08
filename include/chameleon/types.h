@@ -88,6 +88,7 @@ struct Landmark {
   LandmarkCovariance covariance = LandmarkCovariance::Identity();
   uint64_t id;
   bool active = true;
+  double persistence_prob = 0;
 
   Landmark(): covariance(LandmarkCovariance::Identity()), id(0) {
   }
@@ -109,6 +110,7 @@ struct Landmark {
     num_observations_ = lm.GetNumObservations();
     covariance = lm.covariance;
     active = lm.active;
+    persistence_prob = lm.persistence_prob;
   }
 
   // Assignment -- copy
@@ -118,6 +120,7 @@ struct Landmark {
     num_observations_ = rhs.num_observations_;
     covariance = rhs.covariance;
     active = rhs.active;
+    persistence_prob = rhs.persistence_prob;
     return *this;
   }
 

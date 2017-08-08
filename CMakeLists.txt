@@ -135,12 +135,14 @@ find_package(Pangolin REQUIRED)
 find_package(SceneGraph REQUIRED)
 find_package(Sophus REQUIRED)
 find_package(GFlags REQUIRED)
+find_package(GSL REQUIRED)
 
 set( REQUIRED_INCLUDE_DIRS
   ${Pangolin_INCLUDE_DIRS}
   ${SceneGraph_INCLUDE_DIRS}
   ${Sophus_INCLUDE_DIRS}
   ${GFlag_INCLUDE_DIRS}
+  ${GSL_INCLUDE_DIRS}
   )
 
 set( REQUIRED_LIBRARIES
@@ -150,6 +152,7 @@ set( REQUIRED_LIBRARIES
   ${Sophus_LIBRARIES}
   ${GLOG_LIBRARIES}
   ${GFLAGS_LIBRARIES}
+  ${GSL_LIBRARIES}
   fmt
   pthread
   )
@@ -164,6 +167,8 @@ set(LIB_SRCS
   ${SRC_DIR}/data_generator.cpp
   ${SRC_DIR}/data_association.cpp
   ${SRC_DIR}/estimator.cpp
+  ${SRC_DIR}/persistence_filter_utils.cpp
+  ${SRC_DIR}/persistence_filter.cpp
   ${SRC_DIR}/id_provider.cpp
   )
 
@@ -181,6 +186,8 @@ set(LIB_HEADERS
   ${INC_DIR}/viewer/visualizer.h
   ${INC_DIR}/data_association.h
   ${INC_DIR}/auto_diff_local_param_SE2.h
+  ${INC_DIR}/persistence_filter_utils.h
+  ${INC_DIR}/persistence_filter.h
   ${INC_DIR}/estimator.h
   )
 
@@ -197,7 +204,8 @@ set(TEST_SRCS
   tests/tests-math.cpp
   tests/tests-odometry_generator.cpp
   tests/tests-observation_generator.cpp
-  tests/tests-sampling.cpp
+#  tests/tests-sampling.cpp
+  tests/tests-persistence_filter.cpp
   )
 
 # Make test executable and link to our library

@@ -65,6 +65,7 @@ void Visualizer::AddObjectsToSceneGraph() {
 
   gui_vars_.estimated_map = util::make_unique<GLMap>();
   gui_vars_.estimated_map->SetColor(1, 0, 1);  // magenta
+  gui_vars_.estimated_map->SetShowPersistenceLabels(options_.show_lm_persistence_labels);
   gui_vars_.scene_graph.AddChild(gui_vars_.estimated_map.get());
 }
 
@@ -199,24 +200,10 @@ void Visualizer::AddLandmarks() {
   // and add the estimated landmarks (update every time since they can change location at every timestep)
   gui_vars_.estimated_map->Clear();
   for (const auto& e : data_->estimated_landmarks) {
-    //gui_vars_.estimated_map->GetMapRef().push_back(std::make_pair(e.second->x(), e.second->y()));
     gui_vars_.estimated_map->GetMapRef().push_back(Landmark(*(e.second)));
   }
 
 }
-
-//void Visualizer::GuiVarChanged(void * data, const::std::string& name, pangolin::VarValueGeneric& var) {
-
-//  Visualizer* this_ptr = (Visualizer*)data;
-
-//  if (name.find("Localization") != std::string::npos) {
-//    // Localization toggled
-//    pangolin::Var<bool> toggle(var);
-
-//    LOG(INFO) << " Localizatoin: "  << toggle;
-//  }
-
-//}
 
 bool Visualizer::AddTimesteps(std::vector<size_t> timesteps) {
   std::unique_lock<std::mutex>(data_mutex_);

@@ -18,6 +18,7 @@ DEFINE_int32(num_steps, 200, " number of steps to take");
 DEFINE_bool(compute_lm_covariance, false, "compute landmark covariance");
 DEFINE_bool(print_optimization_full_summary, false, "print full summary");
 DEFINE_bool(print_optimization_brief_summary, false, "print brief summary");
+DEFINE_bool(persistence_filter, false, "use persistence filter");
 DEFINE_double(huber_loss, 1.0, " huber loss");
 DEFINE_int32(delayed_lm_init, 10, " delayed lm initalization");
 /*----------------------------------------------------------------------------*/
@@ -59,6 +60,7 @@ int main(int argc, char **argv) {
   estimator_options.compute_landmark_covariance = FLAGS_compute_lm_covariance;
   estimator_options.ceres_options.minimizer_progress_to_stdout = FLAGS_print_optimization_full_summary;
   estimator_options.huber_loss_a = FLAGS_huber_loss;
+  estimator_options.filter_options.use_persistence_filter = FLAGS_persistence_filter;
   estimator_options.delayed_initalization_num = FLAGS_delayed_lm_init;
   std::unique_ptr<chameleon::ceres::Estimator> SLAM = util::make_unique<chameleon::ceres::Estimator>(estimator_options);
   EstimatedData estimator_results;  // for collecting the latest updates form the estimator
@@ -70,6 +72,7 @@ int main(int argc, char **argv) {
     Visualizer::ViewerOptions viewer_options;
     viewer_options.window_name = "Chameleon - ICRA 2018";
     viewer_options.start_running = FLAGS_start_running;
+    viewer_options.show_lm_persistence_labels = FLAGS_persistence_filter;
 
     Visualizer viewer(viewer_options);  // create viewer and run thread
 
