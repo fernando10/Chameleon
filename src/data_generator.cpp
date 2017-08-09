@@ -63,6 +63,9 @@ bool DataGenerator::GetRobotData(RobotData* const data) {
     noisy_robot = odometry_generator_->PropagateMeasurement(noisy_odometry);
   }
 
+  // see if any world features need to be removed
+  world_generator_->RemoveLandmarks(options_.remove_lm_ids);
+
   // generate some observations (with and without noise)
   RangeFinderObservationVector noise_free_obs =  observation_generator_->GenerateObservations(current_timestep_);
   RangeFinderObservationVector noisy_obs = observation_generator_->GenerateNoisyObservations(current_timestep_);
@@ -78,7 +81,7 @@ bool DataGenerator::GetRobotData(RobotData* const data) {
   }
 
   data->debug.noisy_pose = noisy_robot;
-  data->debug.ground_truth_map = world_generator_->GetWorld(); // this always points to the same data
+  data->debug.ground_truth_map = world_generator_->GetWorld();
   data->debug.noise_free_observations = noise_free_obs;
   data->debug.noisy_observations = noisy_obs;
   data->timestamp = current_timestep_;

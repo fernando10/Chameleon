@@ -116,7 +116,7 @@ void Visualizer::InitGui() {
   gui_vars_.log_ptr->SetLabels(data_labels);
 
   gui_vars_.plotter_ptr.reset(new pangolin::Plotter(gui_vars_.log_ptr.get()));
-  pangolin::XYRange range(0.f, 800.f, 0.f, 1.f);
+  pangolin::XYRange<float> range(0.f, 800.f, 0.f, 1.f);
   gui_vars_.plotter_ptr->SetDefaultView(range);
   gui_vars_.plotter_ptr->SetViewSmooth(range);
   gui_vars_.plotter_ptr->ToggleTracking();
@@ -143,8 +143,8 @@ void Visualizer::InitGui() {
   pangolin::RegisterKeyPressCallback(pangolin::PANGO_SPECIAL + pangolin::PANGO_KEY_RIGHT,
                                      [&]() { single_step_ = true; });
 
-  pangolin::RegisterKeyPressCallback('1', [&]() { VLOG(1) << "removing landmark id: 1";
-   landmarks_to_be_removed_.push_back(1); });
+  pangolin::RegisterKeyPressCallback('r', [&]() { VLOG(1) << "removing landmark id: " << data_->ground_truth_map->at(0).id;
+    landmarks_to_be_removed_.push_back(data_->ground_truth_map->at(0).id); });
 
   //pangolin::RegisterGuiVarChangedCallback(&Visualizer::GuiVarChanged, (void*)this, "ui");
 
@@ -219,14 +219,15 @@ void Visualizer::SetData(ViewerData::Ptr data) {
 
 void Visualizer::AddLandmarks() {
 
-  // update the ground truth landmarks (if they havent been added yet)
-  if(gui_vars_.ground_truth_map->GetMapRef().size() == 0) {
-    if (data_->ground_truth_map != nullptr) {
-      for (const auto& lm : *(data_->ground_truth_map)) {
-        gui_vars_.ground_truth_map->GetMapRef().push_back(Landmark(lm));
-      }
+  // update the ground truth landmarks
+  //if(gui_vars_.ground_truth_map->GetMapRef().size() == 0) {
+  if (data_->ground_truth_map != nullptr) {
+    gui_vars_.ground_truth_map->GetMapRef().clear();
+    for (const auto& lm : *(data_->ground_truth_map)) {
+      gui_vars_.ground_truth_map->GetMapRef().push_back(Landmark(lm));
     }
   }
+  //}
 
   // and add the estimated landmarks (update every time since they can change location at every timestep)
   gui_vars_.estimated_map->Clear();

@@ -88,7 +88,6 @@ public:
     std::unique_ptr<pangolin::Var<bool>> show_prob_labels;
     std::unique_ptr<pangolin::Var<double>> prob_missed_detect;
     std::unique_ptr<pangolin::Var<double>> prob_false_detect;
-
   };
 
   struct GuiVars {
@@ -160,7 +159,7 @@ private:
   bool single_step_ = false;
   bool running_ = false;
   bool reset_requested_ = false;
-  std::vector<uint_64_t> landmarks_to_be_removed_;
+  std::vector<uint64_t> landmarks_to_be_removed_;
 
   GuiVars gui_vars_;
   ViewerData::Ptr data_;
