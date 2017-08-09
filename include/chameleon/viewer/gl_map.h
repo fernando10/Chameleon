@@ -22,18 +22,21 @@ public:
     if (landmark_vec_.empty()) { return; }
 
     glLineWidth(1.0f);
+    Eigen::Vector4f color;
 
     for (const auto& lm : landmark_vec_) {
       if (lm.active) {
-        glColor4f(map_color_[0], map_color_[1], map_color_[2], map_color_[3]);
+        color << map_color_[0], map_color_[1], map_color_[2], map_color_[3];
       } else {
-        if (draw_persistence_labels_) {
-          double prob = lm.persistence_prob;
-          glColor4f(1.f - 0.25f*float(prob), float(prob), float(prob), 1.0f);
-        } else {
-          glColor4f(0.75f, 0.75f, 0.75f, 1.0f);  // gray for inactive landmark
-        }
+        //        if (draw_persistence_labels_) {
+        double prob = lm.persistence_prob;
+        color << 1.f - 0.25f*float(prob), float(prob), float(prob), 1.0f;
+        //        } else {
+        //          color << 0.75f, 0.75f, 0.75f, 1.0f; // gray for inactive landmark
+        //        }
       }
+
+      glColor4f(color[0], color[1], color[2], color[3]);
 
       glPushMatrix();
 

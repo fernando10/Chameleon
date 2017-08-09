@@ -3,6 +3,7 @@
 #include "chameleon/data_generator.h"
 #include "chameleon/util.h"
 #include "glog/logging.h"
+#include <random>
 
 namespace chameleon
 {
@@ -65,6 +66,16 @@ bool DataGenerator::GetRobotData(RobotData* const data) {
   // generate some observations (with and without noise)
   RangeFinderObservationVector noise_free_obs =  observation_generator_->GenerateObservations(current_timestep_);
   RangeFinderObservationVector noisy_obs = observation_generator_->GenerateNoisyObservations(current_timestep_);
+
+  // check if we have missed detections
+  for (RangeFinderObservationVector::iterator it = noisy_obs.begin(); it != std::end(noisy_obs); ) {
+    double r = (double)rand() / (double)RAND_MAX; // uniformly sample between 0, 1
+    if ( r < options_.prob_missed_detection) {
+      it = noisy_obs.erase(it);
+    }else {
+      ++it;
+    }
+  }
 
   data->debug.noisy_pose = noisy_robot;
   data->debug.ground_truth_map = world_generator_->GetWorld(); // this always points to the same data

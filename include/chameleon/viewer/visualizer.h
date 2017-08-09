@@ -31,7 +31,6 @@ public:
     int window_width = 1024;
     unsigned int panel_size = 180;
     bool start_running = true;
-    bool show_lm_persistence_labels = false;
   };
 
   // Struct for passing data from the application to the viewer
@@ -49,7 +48,7 @@ public:
     void AddData(const RobotData& data) {
       ground_truth_robot_poses->push_back(data.debug.ground_truth_pose);
       noisy_robot_poses->push_back(data.debug.noisy_pose);
-      ground_truth_map = data.debug.ground_truth_map; // TODO: should avoid keep setting this every time...
+      ground_truth_map = data.debug.ground_truth_map;
       ground_truth_observation_map.insert({data.timestamp, data.debug.noise_free_observations});
       noisy_observation_map.insert({data.timestamp, data.debug.noisy_observations});
     }
@@ -86,6 +85,7 @@ public:
     std::unique_ptr<pangolin::Var<bool>> do_SLAM;
     std::unique_ptr<pangolin::Var<bool>> do_Localization;
     std::unique_ptr<pangolin::Var<bool>> reset;
+    std::unique_ptr<pangolin::Var<bool>> show_prob_labels;
     std::unique_ptr<pangolin::Var<double>> prob_missed_detect;
     std::unique_ptr<pangolin::Var<double>> prob_false_detect;
 

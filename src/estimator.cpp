@@ -13,8 +13,9 @@ namespace chameleon
 namespace ceres
 {
 
-double lambda_u = 10;
-double lambda_l = .01;
+double lambda_u = 1e1;
+
+double lambda_l = 1e-3;
 std::function<double(double)> logS_T = std::bind(log_general_purpose_survival_function, std::placeholders::_1, lambda_l, lambda_u);
 
 
@@ -96,19 +97,23 @@ void Estimator::AddData(const RobotData &data) {
                                                                                 ,visible_landmarks
                                                                                 ,DataAssociation::DataAssociationType::Known);
 
-//    for (const auto& lm : visible_landmarks) {
-//      bool found = false;
-//      for (const auto& a : association) {
-//        if (lm.first == a.second) {
-//          found = true;
-//          break;
-//        }
-//      }
-//      if (!found) {
-//        // lm should be visible but is not...add an observation (with prob. P_F)
-//        association
-//      }
-//    }
+    // check if any landmarks that should have been observed were not so we can update the belief over that landmark
+    for (const auto& lm : visible_landmarks) {
+      bool found = false;
+      for (const auto& a : association) {
+        if (a.second == lm.first) {
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        VLOG(1) << fmt::format("Landmark id {} should have been observed but was not.", lm.first);
+        if (persistence_filter_map_.find(lm.first) != persistence_filter_map_.end()) {
+          persistence_filter_map_.at(lm.first)->update(false, data.timestamp+1, options_.filter_options.P_M,
+                                                       options_.filter_options.P_F);
+        }
+      }
+    }
 
     // create new landmarks, if necessary
     if (!localization_mode_) {

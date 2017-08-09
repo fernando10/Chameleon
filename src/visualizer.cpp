@@ -65,7 +65,7 @@ void Visualizer::AddObjectsToSceneGraph() {
 
   gui_vars_.estimated_map = util::make_unique<GLMap>();
   gui_vars_.estimated_map->SetColor(1, 0, 1);  // magenta
-  gui_vars_.estimated_map->SetShowPersistenceLabels(options_.show_lm_persistence_labels);
+  gui_vars_.estimated_map->SetShowPersistenceLabels(false);
   gui_vars_.scene_graph.AddChild(gui_vars_.estimated_map.get());
 }
 
@@ -76,6 +76,7 @@ void Visualizer::ResetSceneGraph() {
 
 void Visualizer::InitGui() {
   VLOG(1) << "Initializing GUI.";
+  std::unique_lock<std::mutex> lock(status_mutex_);
   // Create a window.
   pangolin::CreateWindowAndBind(options_.window_name,
                                 options_.window_width,
@@ -115,7 +116,7 @@ void Visualizer::InitGui() {
   gui_vars_.log_ptr->SetLabels(data_labels);
 
   gui_vars_.plotter_ptr.reset(new pangolin::Plotter(gui_vars_.log_ptr.get()));
-  pangolin::XYRange<float> range(0.f, 800.f, 0.f, 1.f);
+  pangolin::XYRange range(0.f, 800.f, 0.f, 1.f);
   gui_vars_.plotter_ptr->SetDefaultView(range);
   gui_vars_.plotter_ptr->SetViewSmooth(range);
   gui_vars_.plotter_ptr->ToggleTracking();
@@ -156,6 +157,7 @@ void Visualizer::InitGui() {
   gui_vars_.ui.show_variance = util::make_unique<pangolin::Var<bool>>("ui.Show_variance", false, true);
   gui_vars_.ui.do_SLAM = util::make_unique<pangolin::Var<bool>>("ui.Do_SLAM", true, true);
   gui_vars_.ui.do_Localization = util::make_unique<pangolin::Var<bool>>("ui.Localization", false, true);
+  gui_vars_.ui.show_prob_labels = util::make_unique<pangolin::Var<bool>>("ui.Show_posterior", false, true);
 
   gui_vars_.ui.prob_missed_detect = util::make_unique<pangolin::Var<double>>("ui.Prob. Missed Detect.", 0.0, 1.0);
   *gui_vars_.ui.prob_missed_detect = 0.2;
@@ -184,6 +186,7 @@ void Visualizer::Run() {
     gui_vars_.gt_robot_path->SetVisible(*gui_vars_.ui.show_gt);
     gui_vars_.estimated_robot_path->SetVisible(*gui_vars_.ui.show_estimated);
     gui_vars_.estimated_map->SetVisible(*gui_vars_.ui.show_estimated);
+    gui_vars_.estimated_map->SetShowPersistenceLabels(*gui_vars_.ui.show_prob_labels);
 
 
     if (pangolin::Pushed(*gui_vars_.ui.reset) ) {
@@ -348,6 +351,9 @@ void Visualizer::SetReset() {
   // reset set on the application, clear the scene graph;
   reset_requested_ = false;
   ResetSceneGraph();
+
+  // also reset the plots
+  gui_vars_.log_ptr->Clear();
 }
 
 

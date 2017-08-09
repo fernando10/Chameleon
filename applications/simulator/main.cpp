@@ -72,7 +72,6 @@ int main(int argc, char **argv) {
     Visualizer::ViewerOptions viewer_options;
     viewer_options.window_name = "Chameleon - ICRA 2018";
     viewer_options.start_running = FLAGS_start_running;
-    viewer_options.show_lm_persistence_labels = FLAGS_persistence_filter;
 
     Visualizer viewer(viewer_options);  // create viewer and run thread
 
@@ -100,6 +99,9 @@ int main(int argc, char **argv) {
       }
 
       if (go) {
+
+        sim_options.prob_missed_detection = *(viewer.GetDebugVariables().prob_missed_detect);
+        sim_options.prob_false_positive = *(viewer.GetDebugVariables().prob_false_detect);
 
         // Get some data
         if (data_generator->GetRobotData(&simulator_data)) {
