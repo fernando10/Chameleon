@@ -24,6 +24,7 @@ public:
     bool add_noise_to_odometry = true;
     double prob_missed_detection = 0.0; // probability of not detecting a landmark that should be seen
     double prob_false_positive = 0.0; // probability of detecting a landmarks that is not there
+    std::vector<uint64_t> remove_lm_ids;
     PathGenerator::PathGeneratorOptions path_options;
   };
 

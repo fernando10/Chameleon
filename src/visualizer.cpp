@@ -143,6 +143,9 @@ void Visualizer::InitGui() {
   pangolin::RegisterKeyPressCallback(pangolin::PANGO_SPECIAL + pangolin::PANGO_KEY_RIGHT,
                                      [&]() { single_step_ = true; });
 
+  pangolin::RegisterKeyPressCallback('1', [&]() { VLOG(1) << "removing landmark id: 1";
+   landmarks_to_be_removed_.push_back(1); });
+
   //pangolin::RegisterGuiVarChangedCallback(&Visualizer::GuiVarChanged, (void*)this, "ui");
 
   ////////////////////////////////////////////////////
@@ -164,6 +167,13 @@ void Visualizer::InitGui() {
   gui_vars_.ui.prob_false_detect = util::make_unique<pangolin::Var<double>>("ui.Prob. False Detect", 0.0, 1.0);
   *gui_vars_.ui.prob_false_detect = 0.2;
 }
+
+std::vector<uint64_t> Visualizer::GetLandmarksToBeRemoved() {
+  std::vector<uint64_t> ret = landmarks_to_be_removed_;
+  landmarks_to_be_removed_.clear();
+  return ret;
+}
+
 
 void Visualizer::Run() {
 

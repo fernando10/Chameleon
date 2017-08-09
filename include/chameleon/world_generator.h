@@ -24,6 +24,8 @@ class WorldGenerator {
 
   LandmarkVectorPtr GenerateWorld(const RobotPoseVectorPtr& robot_poses);
   LandmarkVectorPtr GetWorld() const;
+  bool RemoveLandmark(std::vector<uint64_t> lm_ids);
+
 
 private:
 

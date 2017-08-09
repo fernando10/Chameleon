@@ -100,8 +100,13 @@ int main(int argc, char **argv) {
 
       if (go) {
 
+        // update feature detection probabilities
         sim_options.prob_missed_detection = *(viewer.GetDebugVariables().prob_missed_detect);
         sim_options.prob_false_positive = *(viewer.GetDebugVariables().prob_false_detect);
+
+        // check if any landmarks need to be removed
+        sim_options.remove_lm_ids = viewer.GetLandmarksToBeRemoved();
+
 
         // Get some data
         if (data_generator->GetRobotData(&simulator_data)) {

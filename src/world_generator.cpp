@@ -97,4 +97,27 @@ double WorldGenerator::GetTotalDistanceTraveled(const RobotPoseVectorPtr& poses)
   return distance_traveled;
 }
 
+bool WorldGenerator::RemoveLandmarks(std::vector<uint64_t> lm_ids) {
+  if (map_ == nullptr) {
+    LOG(ERROR) << "Tried to remove landmark but map does not exist.";
+    return false;
+  }
+
+  bool res = false;
+
+  for (const uint64_t lm_id : lm_ids) {
+    res = false;
+    for (LandmarkVector::iterator it = map_->begin(); it != std::end(*map_);) {
+      if (it->id == lm_id) {
+        VLOG(1) << "Found landmark with id: " << lm_id << ", removing from map.";
+        map_->erase(it);
+        res = true;
+        break;
+      }
+    }
+  }
+
+  return res;
+}
+
 } // namespace chameleon

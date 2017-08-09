@@ -134,6 +134,7 @@ public:
   bool IsRunning();
   bool IsResetRequested();
   const DebugGUIVariables& GetDebugVariables();
+  std::vector<uint64_t> GetLandmarksToBeRemoved();
 
 private:
 
@@ -159,6 +160,7 @@ private:
   bool single_step_ = false;
   bool running_ = false;
   bool reset_requested_ = false;
+  std::vector<uint_64_t> landmarks_to_be_removed_;
 
   GuiVars gui_vars_;
   ViewerData::Ptr data_;
