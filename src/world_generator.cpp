@@ -81,7 +81,8 @@ LandmarkVectorPtr WorldGenerator::GenerateWorld(const RobotPoseVectorPtr& robot_
   map->push_back(Landmark(IdGenerator::Instance::NewId(),-4.5, mid_pt));
   map->push_back(Landmark(IdGenerator::Instance::NewId(), 20 - 3.5 , mid_pt));
 
-
+  // temporary, add another landmark close to the last one to show correlation between map features
+  map->push_back(Landmark(IdGenerator::Instance::NewId(), 20 - 3.5, mid_pt*1.2));
   map_ = map; // store the map locally in case it's neeeded in the future
   return map;
 }
@@ -113,6 +114,8 @@ bool WorldGenerator::RemoveLandmarks(std::vector<uint64_t> lm_ids) {
         map_->erase(it);
         res = true;
         break;
+      } else {
+        ++it;
       }
     }
   }

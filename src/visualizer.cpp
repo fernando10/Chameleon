@@ -143,8 +143,8 @@ void Visualizer::InitGui() {
   pangolin::RegisterKeyPressCallback(pangolin::PANGO_SPECIAL + pangolin::PANGO_KEY_RIGHT,
                                      [&]() { single_step_ = true; });
 
-  pangolin::RegisterKeyPressCallback('r', [&]() { VLOG(1) << "removing landmark id: " << data_->ground_truth_map->at(0).id;
-    landmarks_to_be_removed_.push_back(data_->ground_truth_map->at(0).id); });
+  pangolin::RegisterKeyPressCallback('r', [&]() { VLOG(1) << "removing landmark id: " << data_->ground_truth_map->back().id;
+    landmarks_to_be_removed_.push_back(data_->ground_truth_map->back().id); });
 
   //pangolin::RegisterGuiVarChangedCallback(&Visualizer::GuiVarChanged, (void*)this, "ui");
 
@@ -220,15 +220,12 @@ void Visualizer::SetData(ViewerData::Ptr data) {
 void Visualizer::AddLandmarks() {
 
   // update the ground truth landmarks
-  //if(gui_vars_.ground_truth_map->GetMapRef().size() == 0) {
   if (data_->ground_truth_map != nullptr) {
     gui_vars_.ground_truth_map->GetMapRef().clear();
     for (const auto& lm : *(data_->ground_truth_map)) {
       gui_vars_.ground_truth_map->GetMapRef().push_back(Landmark(lm));
     }
   }
-  //}
-
   // and add the estimated landmarks (update every time since they can change location at every timestep)
   gui_vars_.estimated_map->Clear();
   for (const auto& e : data_->estimated_landmarks) {
@@ -237,11 +234,8 @@ void Visualizer::AddLandmarks() {
 }
 
 void Visualizer::UpdatePlotters() {
-  // get the first landmark for now
-  for(const auto& e : data_->estimated_landmarks) {
-    gui_vars_.log_ptr->Log(e.second->persistence_prob);
-    break;
-  }
+  // get the last landmark for now
+ gui_vars_.log_ptr->Log(data_->estimated_landmarks.rbegin()->second->persistence_prob);
 }
 
 bool Visualizer::AddTimesteps(std::vector<size_t> timesteps) {

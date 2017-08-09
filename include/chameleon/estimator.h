@@ -91,7 +91,11 @@ private:
   Landmark LandmarkFromMeasurement(uint64_t state_id, RangeFinderObservation obs);
   void CheckAndAddObservationFactors(const uint64_t state_id, const DataAssociationMap& data_asssociation, const RangeFinderObservationVector& observations);
   void GetMapUncertainty();
-  bool GetLandmarkUncertainty(uint64_t landmark_id, Eigen::MatrixXd* cov_out);
+  bool GetLandmarkUncertainty(std::vector<uint64_t> landmark_ids, Eigen::MatrixXd* cov_out);
+
+  ///
+  /// \brief UpdateMapPersistence
+  ///Predict the persistence posterior for all the landmakrs in the map
   void UpdateMapPersistence();
   LandmarkPtrMap GetLandmarksThatShouldBeVisible(const RobotPose& robot);
 

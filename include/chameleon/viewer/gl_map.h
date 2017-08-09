@@ -6,6 +6,7 @@
 #include "chameleon/types.h"
 #include "chameleon/viewer/gl_landmark.h"
 #include "SceneGraph/GLText.h"
+#include <Eigen/Eigenvalues>
 
 ///
 /// \brief The GLMap class
@@ -16,6 +17,7 @@ public:
   GLMap() {
     map_color_ << 0.f, 1.f, 0.f, 1.f;
     draw_persistence_labels_ = false;
+    draw_variance_ = false;
   }
 
   void DrawCanonicalObject() {
@@ -28,12 +30,8 @@ public:
       if (lm.active) {
         color << map_color_[0], map_color_[1], map_color_[2], map_color_[3];
       } else {
-        //        if (draw_persistence_labels_) {
         double prob = lm.persistence_prob;
         color << 1.f - 0.25f*float(prob), float(prob), float(prob), 1.0f;
-        //        } else {
-        //          color << 0.75f, 0.75f, 0.75f, 1.0f; // gray for inactive landmark
-        //        }
       }
 
       glColor4f(color[0], color[1], color[2], color[3]);
@@ -55,6 +53,17 @@ public:
     }
   }
 
+  void Plot2dErrorElipse(double chisquare, Eigen::Vector2d mean, const Eigen::Matrix2d&cov) {
+//    Eigen::EigenSolver<Eigen::Matrix2d> solver(cov);
+//    // calc angle between the largest eigenvector and the x axis
+//    double angle  = std::atan2(solver.eigenvectors().col(0)[1], solver.eigenvectors().col(0)[0]);
+
+//    // size of major and minor axes
+//    double half_major_axis_size = chisquare * std::sqrt(solver.eigenvalues()[0]);
+//    double half_minor_axis_size = chisquare * std::sqrt(solver.eigenvalues()[1]);
+
+  }
+
   std::vector<chameleon::Landmark>& GetMapRef() {
     return landmark_vec_;
   }
@@ -71,6 +80,10 @@ public:
     map_color_ << R, G, B, A;
   }
 
+  void SetShowVariance(bool plot_variance) {
+    draw_variance_ = plot_variance;
+  }
+
   void SetShowPersistenceLabels(bool show) {
     draw_persistence_labels_ = show;
   }
@@ -80,4 +93,5 @@ private:
   std::vector<SceneGraph::GLText> landmark_labels_vec_;
   Eigen::Vector4f map_color_;
   bool draw_persistence_labels_;
+  bool draw_variance_;
 };

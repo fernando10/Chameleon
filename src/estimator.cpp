@@ -94,8 +94,8 @@ void Estimator::AddData(const RobotData &data) {
     // get  a map with obs_index -> landmark_id
     LandmarkPtrMap visible_landmarks = GetLandmarksThatShouldBeVisible(new_state->robot);
     DataAssociationMap association = DataAssociation::AssociateDataToLandmarks(data.observations
-                                                                                ,visible_landmarks
-                                                                                ,DataAssociation::DataAssociationType::Known);
+                                                                               ,visible_landmarks
+                                                                               ,DataAssociation::DataAssociationType::Known);
 
     // check if any landmarks that should have been observed were not so we can update the belief over that landmark
     for (const auto& lm : visible_landmarks) {
@@ -145,7 +145,7 @@ LandmarkPtrMap Estimator::GetLandmarksThatShouldBeVisible(const RobotPose& robot
 
     // transfer landmark over to pose frame
     Eigen::Vector2d lm_r = util::DeHomogenizeLandmark<double>(robot.pose.matrix().inverse()
-                                                             * util::HomogenizeLandmark<double>(e.second->vec()));
+                                                              * util::HomogenizeLandmark<double>(e.second->vec()));
 
     if(lm_r.x() < 1e-2) {
       continue;  // landmark too close or behind
@@ -194,14 +194,17 @@ void Estimator::Solve() {
 /// \brief Estimator::GetMapUncertainty
 ////////////////////////////////////////////////////////////////
 void Estimator::GetMapUncertainty() {
+  std::vector<uint64_t> lm_ids;
   for (const auto& pair : landmarks_) {
     if (!pair.second->active) {
       continue;
     }
-    Eigen::MatrixXd lm_cov;
-    if (GetLandmarkUncertainty(pair.first, &lm_cov)) {
-      pair.second->covariance = lm_cov;
-    }
+    lm_ids.push_back(pair.first);
+  }
+
+  Eigen::MatrixXd lm_cov;
+  if (GetLandmarkUncertainty(lm_ids, &lm_cov)) {
+    VLOG(2) << " Got uncertainty for "  << lm_ids.size() << " landmarks";
   }
 }
 
@@ -209,27 +212,40 @@ void Estimator::GetMapUncertainty() {
 ////////////////////////////////////////////////////////////////
 /// \brief Estimator::GetLandmarkUncertainty
 ////////////////////////////////////////////////////////////////
-bool Estimator::GetLandmarkUncertainty(uint64_t landmark_id, Eigen::MatrixXd* cov_out) {
-  if (!CheckLandmarkExists(landmark_id)) {
-    LOG(ERROR) << fmt::format("Covariance for lm id: {} requested but that id is not in the map.", landmark_id);
-    return false;
-  }
-  LandmarkPtr lm = landmarks_.at(landmark_id);
-  ::ceres::Covariance::Options options;
-  //options.algorithm_type = ::ceres::CovarianceAlgorithmType::DENSE_SVD;
-  //options.min_reciprocal_condition_number = 1e-14;
+bool Estimator::GetLandmarkUncertainty(std::vector<uint64_t> landmark_ids, Eigen::MatrixXd* cov_out) {
 
-  ::ceres::Covariance covariance(options);
+  // setup vector specifying which blocks of the covariance matrix we want to recover
+  // we just recover the marginal covariance here as we are not interested in the joint for now
   std::vector<std::pair<const double*, const double*>> covariance_blocks;
 
-  covariance_blocks.push_back(std::make_pair(lm->data(), lm->data()));  // tell ceres what block of the covariance matrix we want
+  for (const auto& landmark_id : landmark_ids) {
+    if (!CheckLandmarkExists(landmark_id)) {
+      LOG(ERROR) << fmt::format("Covariance for lm id: {} requested but that id is not in the map.", landmark_id);
+      return false;
+    }
+    LandmarkPtr lm = landmarks_.at(landmark_id);
+    covariance_blocks.push_back(std::make_pair(lm->data(), lm->data()));  // tell ceres what block of the covariance matrix we want
+  }
 
-  cov_out->resize(lm->kLandmarkDim, lm->kLandmarkDim);
+  ::ceres::Covariance::Options options;
+  //options.algorithm_type = ::ceres::CovarianceAlgorithmType::SUITE_SPARSE_QR;
+  //options.min_reciprocal_condition_number = 1e-14;
+  ::ceres::Covariance covariance(options);
+
+  cov_out->resize(covariance_blocks.size() * Landmark::kLandmarkDim, covariance_blocks.size() * Landmark::kLandmarkDim);
 
   bool success = covariance.Compute(covariance_blocks, ceres_problem_.get());
-
   if (success) {
-    covariance.GetCovarianceBlock(lm->data(), lm->data(), cov_out->data());
+    // get the covariance blocks for all the requested landmarks
+    for (size_t idx = 0; idx < landmark_ids.size(); ++idx) {
+      Eigen::Map<Eigen::Matrix<double,Landmark::kLandmarkDim, Landmark::kLandmarkDim, Eigen::RowMajor>> lm_cov(
+                                                                                                          cov_out->block<Landmark::kLandmarkDim, Landmark::kLandmarkDim>(
+                                                                                                            idx * Landmark::kLandmarkDim,
+                                                                                                            idx * Landmark::kLandmarkDim).data());
+      LandmarkPtr lm = landmarks_.at(landmark_ids.at(idx));
+      covariance.GetCovarianceBlock(lm->data(), lm->data(), lm_cov.data());
+      lm->covariance = lm_cov;  // update the covariance in the landmark
+    }
   }
   return success;
 }
@@ -575,7 +591,7 @@ void Estimator::GetEstimationResult(EstimatedData* data)  {
       UpdateMapPersistence();
     }
     data->landmarks = landmarks_;
-    data->states = states_;  //TODO: dont copy entire map of pointers over every time
+    data->states = states_;
   }
 }
 
