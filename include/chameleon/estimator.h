@@ -58,6 +58,7 @@ public:
   void Reset();
   void SetLocalizationMode(bool localization_only);
   void GetEstimationResult(EstimatedData* data);
+  bool GetFullJacobian();
 
 
 private:

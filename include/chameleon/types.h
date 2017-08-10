@@ -321,10 +321,12 @@ struct RobotData {
 
 //------------------------STATE ESTIMATION STUFF------------------------//
 struct State {
-  State():id(0), timestamp(0) {}
+  State():id(0), timestamp(0), fixed(false), active(true) {}
   uint64_t id;
   RobotPose robot;
   double timestamp;
+  bool fixed;
+  bool active;
   double* data() { return robot.data(); }
   int DoF() { return robot.pose.DoF; }
 };

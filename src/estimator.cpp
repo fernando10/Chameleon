@@ -3,6 +3,8 @@
 #include "chameleon/estimator.h"
 #include <memory>
 #include <numeric>
+#include <fstream>
+
 #include "chameleon/ceres_cost_terms.h"
 #include "chameleon/id_provider.h"
 #include "chameleon/odometry_generator.h"  // here just for the odometry propagation, should prob. move elsewhere
@@ -85,6 +87,7 @@ void Estimator::AddData(const RobotData &data) {
   if(states_.size() == 1) {
     VLOG(3) << fmt::format("Setting parameter block id:{} constant.", new_state->id);
     ceres_problem_->SetParameterBlockConstant(new_state->data());  // fix first pose to take care of nullspaces
+    new_state->fixed = true;
   }
 
   ///////////////////////////////////
@@ -580,6 +583,62 @@ uint64_t Estimator::CreateLandmark(const RangeFinderObservation &obs, uint64_t s
 
   VLOG(2) << fmt::format("Created landmark observed from state id: {}, lm id: {}", state_id, lm_id);
   return lm_id;
+}
+
+///////////////////////////////////////////////////////////////////
+/// \brief Estimator::GetFullJacobian
+/////////////////////////////////////////////////////////////////////
+bool Estimator::GetFullJacobian() {
+  VLOG(1) << "Getting problem jacobian.";
+  // we want the parameter blocks ordered (by increasing id) poses, then landmarks
+  std::vector<double*> parameter_blocks;
+  std::vector<::ceres::ResidualBlockId> residual_blocks; // just use the order that the residual blocks were added to the problem for now
+
+  // get all the robot poses
+  for (const auto& s : states_) {
+    if (!s.second->fixed && s.second->active) {
+      parameter_blocks.push_back(s.second->data());
+    }
+  }
+
+  // and now the landmarks
+  for (const auto& l : landmarks_) {
+    if (l.second->active) {
+      parameter_blocks.push_back(l.second->data());
+    }
+  }
+
+  double cost = 0;
+  std::vector<double> residuals;
+  std::vector<double> gradient;
+  ::ceres::CRSMatrix sparse_jacobian;
+  ::ceres::Problem::EvaluateOptions options;
+  options.apply_loss_function = false;
+  options.parameter_blocks = parameter_blocks;
+  options.residual_blocks = residual_blocks;
+
+  if (!ceres_problem_->Evaluate(options, &cost, &residuals, &gradient, &sparse_jacobian)) {
+    LOG(ERROR) << "Error calculating jacobian, problem evaluation failed.";
+    return false;
+  }
+
+  Eigen::MatrixXd jacobian(sparse_jacobian.num_rows, sparse_jacobian.num_cols);
+  jacobian.setZero();
+
+  for (size_t i = 0; i < sparse_jacobian.rows.size()-1; i++) {
+    size_t start = sparse_jacobian.rows[i];
+    size_t end = sparse_jacobian.rows[i+1] - 1;
+    for(size_t j = start; j <= end; j++){
+        jacobian(i, sparse_jacobian.cols[j]) = sparse_jacobian.values[j];
+    }
+  }
+
+  VLOG(1) << "printing jacobian to file";
+  std::ofstream("j.txt", std::ios_base::trunc) << jacobian.format(kLongCsvFmt);
+
+
+  return true;
+
 }
 
 ///////////////////////////////////////////////////////////////////
