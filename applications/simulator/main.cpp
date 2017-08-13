@@ -9,6 +9,7 @@
 #include "chameleon/data_generator.h"
 #include "chameleon/estimator.h"
 #include "fmt/printf.h"
+#include "chameleon/data_reader.h"
 
 /*-----------COMMAND LINE FLAGS-----------------------------------------------*/
 DEFINE_bool(display, true, "use viewer (pangolin)");
@@ -21,6 +22,8 @@ DEFINE_bool(print_optimization_brief_summary, false, "print brief summary");
 DEFINE_bool(persistence_filter, false, "use persistence filter");
 DEFINE_double(huber_loss, 1.0, " huber loss");
 DEFINE_int32(delayed_lm_init, 10, " delayed lm initalization");
+DEFINE_string(data_file, "", "data file for victoria park g2o dataset");
+DEFINE_string(data_type, "sim", "data type: sim or vp (victoria park)");
 /*----------------------------------------------------------------------------*/
 
 using namespace chameleon;
@@ -39,6 +42,7 @@ int main(int argc, char **argv) {
   FLAGS_colorlogtostderr = 1;
   FLAGS_logtostderr = 1;
 
+
   ///////////////////////////////////////
   // Setup Data Generator so we have some simulated data
   //////////////////////////////////////
@@ -47,6 +51,18 @@ int main(int argc, char **argv) {
   sim_options.path_options.initial_position = RobotPose(0, Eigen::Vector2d::Zero());
   std::unique_ptr<DataGenerator> data_generator = util::make_unique<DataGenerator>(sim_options);
   RobotData simulator_data;  // data corresponding to a single timestep
+
+  // check if we have real data to load
+  DataReader::G2oData vic_park_data;
+  if (FLAGS_data_type.compare("vp") == 0) {
+    if (FLAGS_data_file.empty()) {
+      LOG(FATAL) << "Victoria Park data specifiec but no data file passed in.";
+    } else {
+      DataReader::LoadG2o(FLAGS_data_file, &vic_park_data);
+    }
+  }
+
+  return 0;
 
   //////////////////////////////////////
   // Setup estimator
@@ -107,9 +123,16 @@ int main(int argc, char **argv) {
         // check if any landmarks need to be removed
         sim_options.remove_lm_ids = viewer.GetLandmarksToBeRemoved();
 
-
         // Get some data
-        if (data_generator->GetRobotData(&simulator_data)) {
+        bool data_success = false;
+        if (FLAGS_data_type.compare("sim") == 0) {
+          VLOG(1) << "Getting simulated data.";
+          data_success = data_generator->GetRobotData(&simulator_data);
+        } else if (FLAGS_data_type.compare("vp") == 0) {
+          VLOG(1) << "Getting victoria park data.";
+        }
+
+        if (data_success) {
 
           // display debug data
           viewer_data->AddData(simulator_data);
