@@ -21,18 +21,8 @@ namespace chameleon
 {
 
 //------------------------OBSERVATION TYPES------------------------//
-template<class T>
-struct Observation {
-  double timestamp;
-  T observation;
 
-  Observation() : timestamp(0.0) {
-  }
-
-  Observation(const double& time, const T& obs) :
-    timestamp(time), observation(obs) {
-  }
-};
+typedef Eigen::Matrix<double, 2, 2> RangeFinderCovariance;
 
 struct RangeFinderReading {
   static constexpr size_t kMeasurementDim = 2;
@@ -54,6 +44,23 @@ struct RangeFinderReading {
   double range;  // [m]
   uint64_t lm_id = 0; // landmark id (only populated when generating simulated data
 };
+
+
+
+template<class T>
+struct Observation {
+  double timestamp;
+  T observation;
+
+  Observation() : timestamp(0.0) {
+  }
+
+  Observation(const double& time, const T& obs) :
+    timestamp(time), observation(obs) {
+  }
+};
+
+
 
 struct SE2OdometryMeasurement {
   static constexpr size_t kMeasurementDim = 3;
@@ -80,8 +87,6 @@ struct OdometryMeasurement {
   }
 };
 
-typedef Eigen::Matrix<double, RangeFinderReading::kMeasurementDim,
-RangeFinderReading::kMeasurementDim> RangeFinderCovariance;
 
 typedef Eigen::Matrix<double, OdometryMeasurement::kMeasurementDim,
 OdometryMeasurement::kMeasurementDim> OdometryCovariance;

@@ -48,11 +48,9 @@ public:
       // get all the observations from the current pose
       for (const GraphEdgePoint& edge : robot_landmark_edges) {
         if (edge.id1 == current_state) {
-          RangeFinderObservation obs;
+          RangeFinderObservation obs(0, RangeFinderReading(edge.bearing, edge.range));
           obs.observation.information = edge.information;
-          obs.observation.range = edge.range;
-          obs.observation.theta = edge.bearing;
-          data->observations.push_back(RangeFinderObservation);
+          data->observations.push_back(obs);
         }
       }
 

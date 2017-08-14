@@ -132,7 +132,7 @@ int main(int argc, char **argv) {
           data_success = data_generator->GetRobotData(&simulator_data);
         } else if (use_real_data) {
           VLOG(1) << "Getting victoria park data.";
-          data_success = vic_park_data.GetData();
+          //data_success = vic_park_data.GetData();
         }
 
         if (data_success) {

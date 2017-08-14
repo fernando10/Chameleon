@@ -219,5 +219,8 @@ if(BUILD_APPLICATIONS)
     MESSAGE(STATUS "BUILDING APPLICATIONS")
     add_executable(simulator applications/simulator/main.cpp)
     target_link_libraries(simulator ${LIBRARY_NAME})
+
+    add_executable(demo applications/demo/demo.cpp)
+    target_link_libraries(demo ${LIBRARY_NAME})
 endif()
 
