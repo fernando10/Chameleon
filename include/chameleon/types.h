@@ -49,9 +49,22 @@ struct RangeFinderReading {
   RangeFinderReading operator+(const Eigen::Vector2d& rhs) const {
     return RangeFinderReading(lm_id, theta + rhs[0], range + rhs[1]);
   }
+  RangeFinderCovariance information;
   double theta;  // [rad]
   double range;  // [m]
   uint64_t lm_id = 0; // landmark id (only populated when generating simulated data
+};
+
+struct SE2OdometryMeasurement {
+  static constexpr size_t kMeasurementDim = 3;
+  Sophus::SE2d T;
+  Eigen::Matrix3d information;
+
+  SE2OdometryMeasurement() {}
+
+  SE2OdometryMeasurement(Sophus::SE2d meas):
+    T(meas) {
+  }
 };
 
 struct OdometryMeasurement {
@@ -308,7 +321,9 @@ struct SimData {
 };
 
 struct VictoriaParkData {
-  // TODO
+  double timestamp;
+  SE2OdometryMeasurement odometry;
+  RangeFinderObservationVector observations;
 };
 
 struct RobotData {

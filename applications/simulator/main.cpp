@@ -42,6 +42,9 @@ int main(int argc, char **argv) {
   FLAGS_colorlogtostderr = 1;
   FLAGS_logtostderr = 1;
 
+  bool use_sim_data = FLAGS_data_type.compare("sim") == 0;
+  bool use_real_data = FLAGS_data_type.compare("vp") == 0;
+
 
   ///////////////////////////////////////
   // Setup Data Generator so we have some simulated data
@@ -54,15 +57,14 @@ int main(int argc, char **argv) {
 
   // check if we have real data to load
   DataReader::G2oData vic_park_data;
-  if (FLAGS_data_type.compare("vp") == 0) {
+  VictoriaParkData vc_data;
+  if (use_real_data) {
     if (FLAGS_data_file.empty()) {
       LOG(FATAL) << "Victoria Park data specifiec but no data file passed in.";
     } else {
       DataReader::LoadG2o(FLAGS_data_file, &vic_park_data);
     }
   }
-
-  return 0;
 
   //////////////////////////////////////
   // Setup estimator
@@ -125,17 +127,22 @@ int main(int argc, char **argv) {
 
         // Get some data
         bool data_success = false;
-        if (FLAGS_data_type.compare("sim") == 0) {
+        if (use_sim_data) {
           VLOG(1) << "Getting simulated data.";
           data_success = data_generator->GetRobotData(&simulator_data);
-        } else if (FLAGS_data_type.compare("vp") == 0) {
+        } else if (use_real_data) {
           VLOG(1) << "Getting victoria park data.";
+          data_success = vic_park_data.GetData();
         }
 
         if (data_success) {
 
           // display debug data
-          viewer_data->AddData(simulator_data);
+          if (use_sim_data) {
+            viewer_data->AddData(simulator_data);
+          } else if (use_real_data) {
+            viewer_data->AddData(vic_park_data);
+          }
 
           if (*(viewer.GetDebugVariables().do_SLAM)) {
             estimator_options.filter_options.P_F = *(viewer.GetDebugVariables().prob_false_detect);
@@ -148,7 +155,12 @@ int main(int argc, char **argv) {
             viewer_data->AddData(estimator_results);
           }
 
-          viewer.AddTimesteps({size_t(simulator_data.timestamp)});  // add the current timestep to the display
+          if (use_sim_data) {
+            viewer.AddTimesteps({size_t(simulator_data.timestamp)});  // add the current timestep to the display
+          } else {
+            std::vector<size_t> ts;
+            viewer.AddTimesteps(ts);
+          }
 
         } else {
           LOG(ERROR) << "Unable to get data.";

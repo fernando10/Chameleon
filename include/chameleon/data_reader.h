@@ -20,7 +20,8 @@ public:
   struct GraphEdgePoint {
     uint64_t id1;
     uint64_t id2;
-    Eigen::Vector2d measurement;
+    double range;
+    double bearing;
     Eigen::Matrix2d information;
   };
 
@@ -29,6 +30,49 @@ public:
     LandmarkPtrMap landmarks;
     std::vector<GraphEdgePoint> robot_landmark_edges;
     std::vector<GraphEdgeSE2> robot_robot_edges;
+    size_t current_state = 0;
+    size_t ts = 0;
+
+    void Reset() {
+      current_state = 0;
+      ts = 0;
+    }
+
+    bool GetData(VictoriaParkData* data) {
+      if (current_state >= states.size()) {
+        return false;
+      }
+
+      data->timestamp = ts;
+
+      // get all the observations from the current pose
+      for (const GraphEdgePoint& edge : robot_landmark_edges) {
+        if (edge.id1 == current_state) {
+          RangeFinderObservation obs;
+          obs.observation.information = edge.information;
+          obs.observation.range = edge.range;
+          obs.observation.theta = edge.bearing;
+          data->observations.push_back(RangeFinderObservation);
+        }
+      }
+
+
+      // get the odometry from the curret pose
+      for (const GraphEdgeSE2& edge : robot_robot_edges) {
+        if (edge.id1 == current_state) {
+          SE2OdometryMeasurement odometry;
+          odometry.T = edge.measurement;
+          odometry.information = edge.information;
+          data->odometry = odometry;
+          current_state = edge.id2;
+          break;
+        }
+      }
+      ts++;
+
+      return true;
+
+    }
   };
 
   static void LoadG2o(const std::string& filename, G2oData* data);

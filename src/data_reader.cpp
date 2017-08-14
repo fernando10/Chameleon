@@ -120,7 +120,8 @@ void DataReader::LoadG2o(const std::string &filename, G2oData* data) {
       GraphEdgePoint edge;
       edge.id1 = id1;
       edge.id2 = id2;
-      edge.measurement = Eigen::Vector2d(x, y);
+      edge.range = range;
+      edge.bearing = bearing;
       edge.information = inf;
 
       data->robot_landmark_edges.push_back(edge);

@@ -10,6 +10,7 @@
 #include "chameleon/viewer/gl_path_abs.h"
 #include "chameleon/viewer/gl_map.h"
 #include "chameleon/viewer/gl_observations.h"
+#include "chameleon/data_reader.h"
 
 #include "fmt/format.h"
 
@@ -51,6 +52,13 @@ public:
       ground_truth_map = data.debug.ground_truth_map;
       ground_truth_observation_map.insert({data.timestamp, data.debug.noise_free_observations});
       noisy_observation_map.insert({data.timestamp, data.debug.noisy_observations});
+    }
+
+    void AddData(const DataReader::G2oData& data) {
+
+      for (const auto& e : data.landmarks) {
+        ground_truth_map->push_back(*(e.second));
+      }
     }
 
     ///
