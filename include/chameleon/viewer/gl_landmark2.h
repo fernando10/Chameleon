@@ -3,11 +3,10 @@
 #pragma once
 
 #include <Eigen/Eigen>
+#include <unsupported/Eigen/MatrixFunctions>
 #include "chameleon/types.h"
 
 #include <SceneGraph/GLObject.h>
-#define MAT4_COL_MAJOR_DATA(m) (Eigen::Matrix<float,4,4,Eigen::ColMajor>(m).data())
-
 ///
 /// \brief The GLLandmark class
 /// Code to render a landmark
@@ -17,6 +16,7 @@ public:
   GLLandmark2() {
     lm_color_ << 0.0, 1.0, 0.0, 1.0;
     draw_covariance_ = false;
+    confidence_ = 7.0131157;
     covariance_.setIdentity();
   }
   ~GLLandmark2() {}
@@ -28,34 +28,35 @@ public:
     pangolin::glDrawCross(0, 0, lm_radius_/2.f);
 
     if (draw_covariance_) {
-      Eigen::SelfAdjointEigenSolver<Eigen::Matrix2d> es(0.5 * (covariance_  + covariance_.transpose()));
-      Eigen::Vector2d eigenvalues = es.eigenvalues();
-      Eigen::Matrix2d eigenvectors = es.eigenvectors();
+      glColor4f(1.f, 0.f, 1.f, 1.f);  // magenta
 
-      // compute angle between largest eigenvector and the x-axis
-      double angle = std::atan2(eigenvectors(1, 1), eigenvectors(1, 0));
-
-      // compute size of major and minor axes
-      double half_major_axis = chi_squared_threshold_ * std::sqrt(eigenvalues(1));  // largest eigenvalue
-      double half_minor_axis = chi_squared_threshold_ * std::sqrt(eigenvalues(0));  // smallest eigenvalue
-
-      glDrawEllipsePerimeter(half_major_axis, half_minor_axis);
+      glDraw2dCovariance(covariance_);
     }
 
   }
 
-  inline void glDrawEllipsePerimeter( float rx, float ry )
+  inline void glDraw2dCovariance( Eigen::Matrix2d C )
   {
-      const int N = 50;
-      GLfloat verts[N*2];
 
-      const float TAU_DIV_N = 2*(float)M_PI/N;
-      for(int i = 0; i < N*2; i+=2) {
-          verts[i] =   rx * cos(i*TAU_DIV_N);
-          verts[i+1] = ry * sin(i*TAU_DIV_N);
+    Eigen::SelfAdjointEigenSolver<Eigen::Matrix2d> es(0.5 * (C + C.transpose()));
+    Eigen::Matrix2d eigenvalues = es.eigenvalues().asDiagonal();
+    Eigen::Matrix2d eigenvectors = es.eigenvectors();
+    Eigen::Matrix2d A = eigenvectors * (eigenvalues * confidence_).sqrt();
+
+      const int N = 100;  // number of vertices
+      Eigen::MatrixXd pts(N, 2);
+      double inc = 2 * M_PI / N;
+      for(size_t i = 0; i < N; ++i) {
+        pts.row(i) = Eigen::Vector2d(std::cos(i * inc), std::sin(i * inc));
       }
+      pts = pts * A;
 
-      pangolin::glDrawVertices<float>(N, verts, GL_LINES, 2);
+      GLfloat verts[N*2];
+      for(size_t i = 0; i < N; ++i ){
+        verts[i*2] = (float)pts.row(i)[0];
+        verts[i*2+1] = (float)pts.row(i)[1];
+      }
+      pangolin::glDrawVertices<float>(N, verts, GL_LINE_LOOP, 2);
   }
 
   void SetColor( float R, float G, float B, float A = 1.0) {
@@ -74,8 +75,8 @@ public:
     draw_covariance_ = draw_cov;
   }
 
-  void SetChiSquaredThreshold(double thresh) {
-    chi_squared_threshold_ = thresh;
+  void SetCovariancePercentile(double conf) {
+    confidence_ = conf;
   }
 
 
@@ -83,7 +84,7 @@ public:
 private:
   Eigen::Vector4f lm_color_ = Eigen::Vector4f::Zero();
   Eigen::Matrix2d covariance_;
-  double chi_squared_threshold_ = 0.0506;
+  double confidence_;
   bool draw_covariance_;
   float lm_radius_ = 0.1f;
 };

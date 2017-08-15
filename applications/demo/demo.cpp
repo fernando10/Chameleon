@@ -9,12 +9,15 @@
 #include "chameleon/util.h"
 #include "chameleon/math_utils.h"
 #include "chameleon/viewer/gl_landmark2.h"
-
+#include "chameleon/viewer/gl_line.h"
+#include "chameleon/viewer/gl_robot2.h"
 /*-----GUI Includes-----------*/
 #include <pangolin/pangolin.h>
 #include <SceneGraph/SceneGraph.h>
 #include <SceneGraph/GLDynamicGrid.h>
 /*----------------------------*/
+
+DEFINE_bool(display, false, "use GUI");
 
 using chameleon::Distribution;
 using chameleon::MultivariateNormalVariable;
@@ -42,7 +45,7 @@ struct GuiVars {
 
 GuiVars gui_vars_;
 
-static constexpr double D_max = 0.0506;  // 0.975 confidence level for a 2-DoF Chi^2 distribution
+static constexpr double D_max = 9.210;  // 0.975 confidence level for a 2-DoF Chi^2 distribution
 
 // tracks our full sate (robot position, landmark 1 and landmark 2)
 struct State {
@@ -52,9 +55,9 @@ struct State {
 
   State(Distribution d) : dist(d) {}
 
-   Distribution Marginal(size_t index) {
-     return Distribution(dist.mean.segment<2>(index), dist.cov.block<2, 2>(index, index));
-   }
+  Distribution Marginal(size_t index) {
+    return Distribution(dist.mean.segment<2>(index), dist.cov.block<2, 2>(index, index));
+  }
 
   Distribution dist;
 };
@@ -66,15 +69,22 @@ double mahalanobis_distance(Eigen::VectorXd val, Distribution dist) {
 }
 
 
-double ComputeAssociationCost(size_t& lm_index, Measurement& meas, Covariance& meas_cov, State& state) {
+double ComputeAssociationCost(size_t lm_index, Measurement meas, Covariance meas_cov, State state) {
   Eigen::Matrix<double, 2, 6> H;
   H.setZero();
   H.block<2, 2>(0, State::kIndexRobot) = -Covariance::Identity();
 
   if (lm_index == 1) {
     Measurement predict = state.Marginal(State::kIndexLM1).mean - state.Marginal(State::kIndexRobot).mean;
+    VLOG(1) << " predict: "  << predict.transpose();
     H.block<2, 2>(0, State::kIndexLM1) = Covariance::Identity();
+    VLOG(1) << " H:\n "  << H;
     Covariance C = H * state.dist.cov * H.transpose() + meas_cov;
+    VLOG(1) << " state.dist.cov:\n "  << state.dist.cov;
+    VLOG(1) << " H * state.dist.cov * H.transpose():\n "  << H * state.dist.cov * H.transpose();
+
+    VLOG(1) << " C:\n "  << C;
+
     return mahalanobis_distance(meas, Distribution(predict, C));
   }
   else if (lm_index == 2) {
@@ -134,7 +144,6 @@ void InitGui() {
 
 }
 
-
 int main(int argc, char **argv) {
   srand(0);  // make things deterministic
 
@@ -146,16 +155,20 @@ int main(int argc, char **argv) {
   FLAGS_stderrthreshold = 0;
 
   // create our current estimate on the state
-  Eigen::Matrix<double, 6, 1> mean;
+  Eigen::Matrix<double, 6, 1> mean = Eigen::Matrix<double, 6, 1>::Zero();
   mean.segment<2>(State::kIndexRobot) = RobotPose(1., 1.);
   mean.segment<2>(State::kIndexLM1) = Landmark(1., 5.);
   mean.segment<2>(State::kIndexLM2) = Landmark(2.5, 5.);
+  VLOG(1) << "Estimated robot pose: "  << mean.segment<2>(State::kIndexRobot).transpose();
+  VLOG(1) << "Estimated LM1 pose: "  << mean.segment<2>(State::kIndexLM1).transpose();
+  VLOG(1) << "Estimated LM2 pose: "  << mean.segment<2>(State::kIndexLM2).transpose();
 
   // crate state covariance
-  Eigen::Matrix<double, 6, 6> S;
+  Eigen::Matrix<double, 6, 6> S = Eigen::Matrix<double, 6, 6>::Zero();
   S.block<2, 2>(State::kIndexRobot, State::kIndexRobot) = chameleon::Covariance2d(0.1, 0.05, 0);  // pose variance
   S.block<2, 2>(State::kIndexLM1, State::kIndexLM1) = chameleon::Covariance2d(0.2, 0.2, -0.4);  // landmark covariance
   S.block<2, 2>(State::kIndexLM2, State::kIndexLM2) = chameleon::Covariance2d(0.1, 0.3, -0.4);  // landmark covariance
+  VLOG(1) << "Full state covariance matrix: \n"  << S;
 
   // create the distribution we will draw our true state from
   State state(Distribution(mean, S));
@@ -166,6 +179,9 @@ int main(int argc, char **argv) {
   RobotPose robot_true = sample_state.segment<2>(State::kIndexRobot);
   Landmark lm1_true = sample_state.segment<2>(State::kIndexLM1);
   Landmark lm2_true = sample_state.segment<2>(State::kIndexLM2);
+  VLOG(1) << "True robot pose: "  << robot_true.transpose();
+  VLOG(1) << "True LM1 pose: "  << lm1_true.transpose();
+  VLOG(1) << "True LM2 pose: "  << lm2_true.transpose();
 
   // and generate noisy observations from our ground truth state (enforcing independent measurements here)
   Eigen::Matrix2d R = chameleon::Covariance2d(0.1, 0.1, 0);
@@ -176,9 +192,7 @@ int main(int argc, char **argv) {
   Measurement meas_1 = z1();
   Measurement meas_2 = z2();
 
-//  std::vector<size_t> persistence = {0, 1};
-//  std::vector<std::tuple<size_t, size_t>> persistence_cross;
-//  chameleon::cartesian_product(persistence, std::back_inserter(persistence_cross));
+  VLOG(1) << "got measurements:" << meas_1.transpose() << " and: "  << meas_2.transpose();
 
   // compute the cost of all the leaves of the interpretation tree
   std::vector<size_t> association = {0, 1, 2};
@@ -197,39 +211,81 @@ int main(int argc, char **argv) {
     LOG(INFO) << "Association: (" <<std::get<0>(e) <<", " << std::get<1>(e)<< ") : "  << log_likelihood_total_cost;
   }
 
-  // plot stuff
-  InitGui();
 
-  // add robot pose
-  RobotPose current_pose_estimate = state.Marginal(State::kIndexRobot).mean;
-  SceneGraph::GLAxis robot;
-  robot.SetPosition(current_pose_estimate[0], current_pose_estimate[1], 0);
-  gui_vars_.scene_graph.AddChild(&robot);
+  if(FLAGS_display) {
 
-  // add landmarks
-  double lm_scale = 1;
-  GLLandmark2 landmark1;
-  landmark1.SetPosition(state.Marginal(State::kIndexLM1).mean[0], state.Marginal(State::kIndexLM1).mean[1], 0);
-  landmark1.SetScale(lm_scale);
-  landmark1.SetCovariance(state.Marginal(State::kIndexLM1).cov);
-  landmark1.DrawCovariance(true);
-  GLLandmark2 landmark2;
-  landmark2.SetPosition(state.Marginal(State::kIndexLM2).mean[0], state.Marginal(State::kIndexLM2).mean[1], 0);
-  landmark2.SetScale(lm_scale);
-  gui_vars_.scene_graph.AddChild(&landmark1);
-  gui_vars_.scene_graph.AddChild(&landmark2);
+    LOG(INFO) << "Plotting...";
 
-  // add the robot to the scene graph
-  while (!pangolin::ShouldQuit()) {
+    // plot stuff
+    InitGui();
 
-    // clear whole screen
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    // add robot pose
+    RobotPose current_pose_estimate = state.Marginal(State::kIndexRobot).mean;
 
-    pangolin::FinishFrame();
+    GLRobot2 robot;
+    robot.SetPosition(current_pose_estimate[0], current_pose_estimate[1]);
+    robot.SetCovaraince(state.Marginal(State::kIndexRobot).cov);
+    robot.SetDrawCovariance(true);
+    gui_vars_.scene_graph.AddChild(&robot);
+    GLRobot2 r_true;
+    r_true.SetColor(0, 1, 0, 1);
+    r_true.SetPosition(robot_true[0], robot_true[1]);
+    gui_vars_.scene_graph.AddChild(&r_true);
 
+    std::vector<GLLandmark2> estimated_landmarks;
+    std::vector<GLLandmark2> true_landmarks;
+    std::vector<GLLine> observations;
 
-    // Pause for 1/60th of a second
-    std::this_thread::sleep_for(std::chrono::microseconds(1000 / 60));
+    // add landmarks
+    GLLandmark2 landmark1;
+    landmark1.SetPosition(state.Marginal(State::kIndexLM1).mean[0], state.Marginal(State::kIndexLM1).mean[1], 0);
+    landmark1.SetColor(204.f/255, 51/255.f, 1.f);
+    landmark1.SetCovariance(state.Marginal(State::kIndexLM1).cov);
+    landmark1.DrawCovariance(true);
+    estimated_landmarks.push_back(landmark1);
+
+    GLLandmark2 landmark2;
+    landmark2.SetPosition(state.Marginal(State::kIndexLM2).mean[0], state.Marginal(State::kIndexLM2).mean[1], 0);
+    landmark2.SetColor(204.f/255, 51/255.f, 1.f);
+    landmark2.SetCovariance(state.Marginal(State::kIndexLM2).cov);
+    landmark2.DrawCovariance(true);
+    estimated_landmarks.push_back(landmark2);
+    gui_vars_.scene_graph.AddChild(&estimated_landmarks.at(0));
+    gui_vars_.scene_graph.AddChild(&estimated_landmarks.at(1));
+
+    landmark1.SetPosition(lm1_true[0], lm1_true[1], 0);
+    landmark1.SetColor(0.f, 1.f, 0.f);
+    landmark1.DrawCovariance(false);
+    landmark2.SetPosition(lm2_true[0], lm2_true[1], 0);
+    landmark2.SetColor(0.f, 1.f, 0.f);
+    landmark2.DrawCovariance(false);
+    true_landmarks.push_back(landmark1);
+    true_landmarks.push_back(landmark2);
+    gui_vars_.scene_graph.AddChild(&true_landmarks.at(0));
+    gui_vars_.scene_graph.AddChild(&true_landmarks.at(1));
+
+    GLLine observation;
+    RobotPose estimated_robot_pose = state.Marginal(State::kIndexRobot).mean;
+    observation.SetPoints(estimated_robot_pose, estimated_robot_pose+meas_1);
+    observations.push_back(observation);
+
+    observation.SetPoints(estimated_robot_pose, estimated_robot_pose+meas_2);
+    observations.push_back(observation);
+
+    gui_vars_.scene_graph.AddChild(&observations.at(0));
+    gui_vars_.scene_graph.AddChild(&observations.at(1));
+
+    // add the robot to the scene graph
+    while (!pangolin::ShouldQuit()) {
+
+      // clear whole screen
+      glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+      pangolin::FinishFrame();
+
+      // Pause for 1/60th of a second
+      std::this_thread::sleep_for(std::chrono::microseconds(1000 / 60));
+    }
   }
 
 
