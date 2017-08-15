@@ -12,6 +12,7 @@ class GLLine : public SceneGraph::GLObject
 public:
   GLLine() {
     color_ << 0.0, 1.0, 1.0, 1.0;
+    line_width_ = 1.0f;
   }
 
   void DrawCanonicalObject() {
@@ -19,7 +20,7 @@ public:
       return;
     }
     glColor4f(color_[0], color_[1], color_[2], color_[3]);
-    glLineWidth(1.0f);
+    glLineWidth(line_width_);
     glPushMatrix();
     pangolin::glDrawLine(pts[0], pts[1]);
     glPopMatrix();
@@ -35,8 +36,13 @@ public:
     pts.push_back(end);
   }
 
+  void SetLineWidth(double w) {
+    line_width_ = (float)w;
+  }
+
 private:
   Eigen::Vector4f color_ = Eigen::Vector4f::Zero();
   std::vector<Eigen::Vector2d> pts;
+  float line_width_;
 
 };

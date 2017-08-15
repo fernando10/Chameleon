@@ -197,6 +197,7 @@ void Visualizer::Run() {
     gui_vars_.estimated_robot_path->SetVisible(*gui_vars_.ui.show_estimated);
     gui_vars_.estimated_map->SetVisible(*gui_vars_.ui.show_estimated);
     gui_vars_.estimated_map->SetShowPersistenceLabels(*gui_vars_.ui.show_prob_labels);
+    gui_vars_.estimated_map->SetShowVariance(*gui_vars_.ui.show_variance);
 
 
     if (pangolin::Pushed(*gui_vars_.ui.reset) ) {

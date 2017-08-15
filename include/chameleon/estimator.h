@@ -34,6 +34,7 @@ public:
     PersistenceFilterOptions filter_options;
     bool add_observations = true;
     bool compute_landmark_covariance = true;
+    bool compute_latest_pose_covariance = true;
     size_t delayed_initalization_num = 10;  // wait till we have this many observations to initialize a landmark //TODO: add landmark at first observation but with high uncertainty
     size_t min_states_for_solve = 3;  // number of states to have in optimization window before we call solve
   };
@@ -93,6 +94,7 @@ private:
   void CheckAndAddObservationFactors(const uint64_t state_id, const DataAssociationMap& data_asssociation, const RangeFinderObservationVector& observations);
   void GetMapUncertainty();
   bool GetLandmarkUncertainty(std::vector<uint64_t> landmark_ids, Eigen::MatrixXd* cov_out);
+  void GetLatestPoseUncertainty();
 
   ///
   /// \brief UpdateMapPersistence

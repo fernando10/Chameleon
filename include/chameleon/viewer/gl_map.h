@@ -3,6 +3,7 @@
 #pragma once
 
 #include <Eigen/Eigen>
+#include <unsupported/Eigen/MatrixFunctions>
 #include "chameleon/types.h"
 #include "chameleon/viewer/gl_landmark.h"
 #include "SceneGraph/GLText.h"
@@ -41,6 +42,10 @@ public:
       pangolin::glDrawCirclePerimeter(lm.x(), lm.y(), 0.1);
       pangolin::glDrawCross(lm.x(), lm.y(), 0.1/2.f);
 
+      if (draw_variance_ && lm.active) {
+        glDraw2dCovariance(lm.x(), lm.y(), lm.covariance, 9);
+      }
+
       glPopMatrix();
 
       if (draw_persistence_labels_) {
@@ -53,15 +58,27 @@ public:
     }
   }
 
-  void Plot2dErrorElipse(double chisquare, Eigen::Vector2d mean, const Eigen::Matrix2d&cov) {
-//    Eigen::EigenSolver<Eigen::Matrix2d> solver(cov);
-//    // calc angle between the largest eigenvector and the x axis
-//    double angle  = std::atan2(solver.eigenvectors().col(0)[1], solver.eigenvectors().col(0)[0]);
+  inline void glDraw2dCovariance(double x, double y, Eigen::Matrix2d C, double conf )
+  {
+    Eigen::SelfAdjointEigenSolver<Eigen::Matrix2d> es(0.5 * (C + C.transpose()));
+    Eigen::Matrix2d eigenvalues = es.eigenvalues().asDiagonal();
+    Eigen::Matrix2d eigenvectors = es.eigenvectors();
+    Eigen::Matrix2d A = eigenvectors * (eigenvalues * conf).sqrt();
 
-//    // size of major and minor axes
-//    double half_major_axis_size = chisquare * std::sqrt(solver.eigenvalues()[0]);
-//    double half_minor_axis_size = chisquare * std::sqrt(solver.eigenvalues()[1]);
+      const int N = 100;  // number of vertices
+      Eigen::MatrixXd pts(N, 2);
+      double inc = 2 * M_PI / N;
+      for(size_t i = 0; i < N; ++i) {
+        pts.row(i) = Eigen::Vector2d(std::cos(i * inc), std::sin(i * inc));
+      }
+      pts = pts * A;
 
+      GLfloat verts[N*2];
+      for(size_t i = 0; i < N; ++i ){
+        verts[i*2] = x + (float)pts.row(i)[0];
+        verts[i*2+1] = y + (float)pts.row(i)[1];
+      }
+      pangolin::glDrawVertices<float>(N, verts, GL_LINE_LOOP, 2);
   }
 
   std::vector<chameleon::Landmark>& GetMapRef() {

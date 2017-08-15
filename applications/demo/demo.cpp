@@ -22,7 +22,6 @@ DEFINE_bool(display, false, "use GUI");
 using chameleon::Distribution;
 using chameleon::MultivariateNormalVariable;
 
-
 typedef Eigen::Vector2d RobotPose;
 typedef Eigen::Vector2d Landmark;
 typedef Eigen::Vector2d Measurement;
@@ -35,7 +34,18 @@ struct GuiVars {
   std::unique_ptr<SceneGraph::HandlerSceneGraph> handler;
   SceneGraph::AxisAlignedBoundingBox aa_bounding_box;
   std::unique_ptr<pangolin::View> world_view_ptr;
+  std::unique_ptr<pangolin::View> panel_view_ptr;
   std::unique_ptr<pangolin::View> multi_view_ptr;
+
+  // debug gui variables
+  std::unique_ptr<pangolin::Var<bool>> show_robot_cov;
+  std::unique_ptr<pangolin::Var<bool>> show_landmark_cov;
+  std::unique_ptr<pangolin::Var<bool>> show_data_associations;
+  std::unique_ptr<pangolin::Var<bool>> show_data_assoc_covariance;
+  std::unique_ptr<pangolin::Var<bool>> show_ground_truth;
+  std::unique_ptr<pangolin::Var<bool>> show_observations;
+
+
 
   // scene graph objects
   std::unique_ptr<SceneGraph::GLLight> light;
@@ -76,15 +86,8 @@ double ComputeAssociationCost(size_t lm_index, Measurement meas, Covariance meas
 
   if (lm_index == 1) {
     Measurement predict = state.Marginal(State::kIndexLM1).mean - state.Marginal(State::kIndexRobot).mean;
-    VLOG(1) << " predict: "  << predict.transpose();
     H.block<2, 2>(0, State::kIndexLM1) = Covariance::Identity();
-    VLOG(1) << " H:\n "  << H;
     Covariance C = H * state.dist.cov * H.transpose() + meas_cov;
-    VLOG(1) << " state.dist.cov:\n "  << state.dist.cov;
-    VLOG(1) << " H * state.dist.cov * H.transpose():\n "  << H * state.dist.cov * H.transpose();
-
-    VLOG(1) << " C:\n "  << C;
-
     return mahalanobis_distance(meas, Distribution(predict, C));
   }
   else if (lm_index == 2) {
@@ -126,6 +129,10 @@ void InitGui() {
                                  .SetAspect(-(float)width/(float)height)
                                  .SetBounds(0, 1.0, 0.0, 1.0));
 
+  // create view for the controls panel
+  gui_vars_.panel_view_ptr.reset(&pangolin::CreatePanel("ui").
+                                 SetBounds(0.0, 1.0, 0.0, pangolin::Attach::Pix(180)));
+
   // create handler to allow user input to update modelview matrix and flow through to the scene graph
   gui_vars_.handler.reset(new SceneGraph::HandlerSceneGraph(gui_vars_.scene_graph, gui_vars_.camera,
                                                             pangolin::AxisNegZ));
@@ -136,11 +143,18 @@ void InitGui() {
 
   // create a container view in case we want to have multiple views on the rigth side (maybe add some plots, etc)
   gui_vars_.multi_view_ptr.reset(&pangolin::Display("multi")
-                                 .SetBounds(0.0, 1.0, 0.0, 1.0)
+                                 .SetBounds(0.0, 1.0, pangolin::Attach::Pix(180), 1.0)
                                  .SetLayout(pangolin::LayoutVertical));
 
   // add the world view
   gui_vars_.multi_view_ptr->AddDisplay(*(gui_vars_.world_view_ptr));
+
+  gui_vars_.show_data_assoc_covariance = chameleon::util::make_unique<pangolin::Var<bool>>("ui.DataAssocCov", false, true);
+  gui_vars_.show_landmark_cov = chameleon::util::make_unique<pangolin::Var<bool>>("ui.LandmarkCov", true, true);
+  gui_vars_.show_robot_cov = chameleon::util::make_unique<pangolin::Var<bool>>("ui.RobotCov", false, true);
+  gui_vars_.show_observations = chameleon::util::make_unique<pangolin::Var<bool>>("ui.Observations", true, true);
+  gui_vars_.show_ground_truth = chameleon::util::make_unique<pangolin::Var<bool>>("ui.GroundTruth", false, true);
+  gui_vars_.show_data_associations = chameleon::util::make_unique<pangolin::Var<bool>>("ui.DataAssoc", false, true);
 
 }
 
@@ -199,6 +213,9 @@ int main(int argc, char **argv) {
   std::vector<std::tuple<size_t, size_t>> association_cross;
   chameleon::cartesian_product(association, association, std::back_inserter(association_cross));
 
+  std::tuple<size_t, size_t> best_assignment;
+  double lowest_cost = 1e3;
+
   for (auto&& e : association_cross) {
     if (std::get<0>(e) != 0 && std::get<0>(e) == std::get<1>(e)) {
       // repeated assignments to a landmark are not allowed
@@ -207,10 +224,13 @@ int main(int argc, char **argv) {
 
     double log_likelihood_total_cost = ComputeAssociationCost(std::get<0>(e), meas_1, R, state) +
                                        ComputeAssociationCost(std::get<1>(e), meas_2, R, state);
-
+    if (log_likelihood_total_cost < lowest_cost) {
+      lowest_cost = log_likelihood_total_cost;
+      best_assignment = e;
+    }
     LOG(INFO) << "Association: (" <<std::get<0>(e) <<", " << std::get<1>(e)<< ") : "  << log_likelihood_total_cost;
   }
-
+  LOG(INFO) << " Best assignment: (" <<std::get<0>(best_assignment) <<", " << std::get<1>(best_assignment)<< ") -> "  << lowest_cost;
 
   if(FLAGS_display) {
 
@@ -275,11 +295,39 @@ int main(int argc, char **argv) {
     gui_vars_.scene_graph.AddChild(&observations.at(0));
     gui_vars_.scene_graph.AddChild(&observations.at(1));
 
+    // data associations
+    GLLine da_1;
+    da_1.SetPoints(estimated_robot_pose+meas_1, std::get<0>(best_assignment) == 1 ? state.Marginal(State::kIndexLM1).mean : state.Marginal(State::kIndexLM2).mean);
+    da_1.SetColor(1, 0, 0);
+    da_1.SetLineWidth(2.0);
+    gui_vars_.scene_graph.AddChild(&da_1);
+
+    GLLine da_2;
+    da_2.SetPoints(estimated_robot_pose+meas_2, std::get<1>(best_assignment) == 1 ? state.Marginal(State::kIndexLM1).mean : state.Marginal(State::kIndexLM2).mean);
+    da_2.SetColor(1, 0, 0);
+    da_2.SetLineWidth(2.0);
+    gui_vars_.scene_graph.AddChild(&da_2);
+
     // add the robot to the scene graph
     while (!pangolin::ShouldQuit()) {
 
       // clear whole screen
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+      r_true.SetVisible(*gui_vars_.show_ground_truth);
+      for (auto&lm : true_landmarks) {
+        lm.SetVisible(*gui_vars_.show_ground_truth);
+      }
+      da_1.SetVisible(*gui_vars_.show_data_associations);
+      da_2.SetVisible(*gui_vars_.show_data_associations);
+
+      for(auto& lm: estimated_landmarks) {
+        lm.DrawCovariance(*gui_vars_.show_landmark_cov);
+      }
+      robot.SetDrawCovariance(*gui_vars_.show_robot_cov);
+
+      for(auto& obs : observations) {
+        obs.SetVisible(*gui_vars_.show_observations);
+      }
 
       pangolin::FinishFrame();
 

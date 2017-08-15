@@ -181,6 +181,10 @@ void Estimator::Solve() {
       GetMapUncertainty();
     }
 
+    if (options_.compute_latest_pose_covariance) {
+
+    }
+
     if (options_.print_full_summary) {
       LOG(INFO) << summary_.FullReport();
     }else if (options_.print_brief_summary) {
@@ -192,7 +196,13 @@ void Estimator::Solve() {
   }
 }
 
-// TODO: change to get the uncertainty of all landmarks at the same time
+////////////////////////////////////////////////////////////////
+/// \brief Estimator::GetLatestPoseUncertainty
+////////////////////////////////////////////////////////////////
+void Estimator::GetLatestPoseUncertainty() {
+
+}
+
 ////////////////////////////////////////////////////////////////
 /// \brief Estimator::GetMapUncertainty
 ////////////////////////////////////////////////////////////////
@@ -211,7 +221,6 @@ void Estimator::GetMapUncertainty() {
   }
 }
 
-// TODO: change to take as input vecor of landmark ids for multiple retreival at the same time
 ////////////////////////////////////////////////////////////////
 /// \brief Estimator::GetLandmarkUncertainty
 ////////////////////////////////////////////////////////////////
