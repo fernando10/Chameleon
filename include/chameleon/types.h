@@ -35,6 +35,13 @@ struct RangeFinderReading {
     lm_id = lm_id_;
   }
 
+  Eigen::VectorXd vec() {
+    Eigen::VectorXd vec(kMeasurementDim);
+    vec[kIndexBearing] = bearing;
+    vec[kIndexRange] = range;
+    return vec;
+  }
+
 
   RangeFinderReading operator+(const Eigen::Vector2d& rhs) const {
     return RangeFinderReading(lm_id, theta + rhs[0], range + rhs[1]);
@@ -342,6 +349,7 @@ struct RobotData {
 //------------------------STATE ESTIMATION STUFF------------------------//
 struct State {
   State():id(0), timestamp(0), fixed(false), active(true) {}
+  static constexpr size_t kStateDim = Sophus::SE2d::DoF;
   uint64_t id;
   RobotPose robot;
   double timestamp;

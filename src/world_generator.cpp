@@ -81,7 +81,7 @@ LandmarkVectorPtr WorldGenerator::GenerateWorld(const RobotPoseVectorPtr& robot_
   if (type == WorldTypes::MimicTrajctory) {
 
 
-    Eigen::Vector2d scale(0.1, 0.25);  // x and y scale
+    Eigen::Vector2d scale(0.3, 0.5);  // x and y scale
 
     Eigen::Vector2d outer_offset(- ((1+ scale[0]) * (x_range[1]) - x_range[1])/2,
         -((1 + scale[1]) * (y_range[0]) - y_range[0])/2);
