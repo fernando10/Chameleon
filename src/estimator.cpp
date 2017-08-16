@@ -332,7 +332,10 @@ void Estimator::SetLocalizationMode(bool localization_only) {
   }
   VLOG(1) << "Localization mode requested with flag: " << localization_only;
   for (const auto e : landmarks_) {
+    if (!e.second->active) { continue; }
+
     if (localization_only) {
+      VLOG(1) << " Setting landmark id: " << e.first << " constant." ;
       ceres_problem_->SetParameterBlockConstant(e.second->data());
       e.second->active = false;
     } else {
