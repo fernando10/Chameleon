@@ -116,7 +116,7 @@ void Visualizer::InitGui() {
   gui_vars_.log_ptr->SetLabels(data_labels);
 
   gui_vars_.plotter_ptr.reset(new pangolin::Plotter(gui_vars_.log_ptr.get()));
-  pangolin::XYRange<float> range(0.f, 800.f, 0.f, 1.f);
+  pangolin::XYRange/*<float>*/ range(0.f, 800.f, 0.f, 1.f);
   gui_vars_.plotter_ptr->SetDefaultView(range);
   gui_vars_.plotter_ptr->SetViewSmooth(range);
   gui_vars_.plotter_ptr->ToggleTracking();
@@ -296,6 +296,9 @@ bool Visualizer::AddTimesteps(std::vector<size_t> timesteps) {
       for (const auto& state : data_->estimated_poses) {
         poses_path_ref.push_back(state.second->robot.pose);
       }
+      gui_vars_.estimated_robot_path->SetLastPoseCovariance(
+            data_->estimated_poses.rbegin()->second->robot.covariance);
+      gui_vars_.estimated_robot_path->ShowCovariance(data_->estimated_poses.size() > 5);
     }
   }
   return true;

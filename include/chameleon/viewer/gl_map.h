@@ -78,7 +78,11 @@ public:
         verts[i*2] = x + (float)pts.row(i)[0];
         verts[i*2+1] = y + (float)pts.row(i)[1];
       }
-      pangolin::glDrawVertices<float>(N, verts, GL_LINE_LOOP, 2);
+
+      glVertexPointer(2, GL_FLOAT, 0, verts);
+      glEnableClientState(GL_VERTEX_ARRAY);
+      glDrawArrays(GL_LINE_LOOP, 0, N);
+      glDisableClientState(GL_VERTEX_ARRAY);
   }
 
   std::vector<chameleon::Landmark>& GetMapRef() {

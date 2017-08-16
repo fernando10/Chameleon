@@ -94,7 +94,7 @@ private:
   void CheckAndAddObservationFactors(const uint64_t state_id, const DataAssociationMap& data_asssociation, const RangeFinderObservationVector& observations);
   void GetMapUncertainty();
   bool GetLandmarkUncertainty(std::vector<uint64_t> landmark_ids, Eigen::MatrixXd* cov_out);
-  void GetLatestPoseUncertainty();
+  bool GetLatestPoseUncertainty();
 
   ///
   /// \brief UpdateMapPersistence
@@ -115,6 +115,7 @@ private:
   const EstimatorOptions& options_;
   bool localization_mode_ = false;
   double latest_timestamp_;
+  uint64_t last_state_id_;
 
   State2Landmark_Multimap state_2_landmark_multimap_;
   Landmark2State_MultiMap landmark_2_state_multimap_;

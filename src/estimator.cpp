@@ -47,6 +47,7 @@ void Estimator::Reset() {
   landmark_2_state_multimap_.clear();
   localization_mode_ = false;
   latest_timestamp_ = 0;
+  last_state_id_ = 0;
 }
 
 ////////////////////////////////////////////////////////////////
@@ -134,6 +135,7 @@ void Estimator::AddData(const RobotData &data) {
     CreateOdometryFactor(std::next(last_state_rit, 1)->first, last_state_rit->first, data.odometry);
   }
 
+  last_state_id_ = id;
   latest_timestamp_ = data.timestamp;
   VLOG(2) << "Finished adding data.";
 }
@@ -182,7 +184,7 @@ void Estimator::Solve() {
     }
 
     if (options_.compute_latest_pose_covariance) {
-
+      GetLatestPoseUncertainty();
     }
 
     if (options_.print_full_summary) {
@@ -199,7 +201,29 @@ void Estimator::Solve() {
 ////////////////////////////////////////////////////////////////
 /// \brief Estimator::GetLatestPoseUncertainty
 ////////////////////////////////////////////////////////////////
-void Estimator::GetLatestPoseUncertainty() {
+bool Estimator::GetLatestPoseUncertainty() {
+
+  std::vector<std::pair<const double*, const double*>> covariance_blocks;
+  if(!CheckStateExists(last_state_id_)) {
+    LOG(ERROR) << "Trying to get marginal covariance for state id: " << last_state_id_ << " but it's not in the problem";
+    return false;
+  }
+
+  StatePtr state = states_.at(last_state_id_);
+  covariance_blocks.push_back(std::make_pair(state->data(), state->data()));
+
+  ::ceres::Covariance::Options options;
+  ::ceres::Covariance covariance(options);
+
+  Eigen::MatrixXd cov_out;
+  cov_out.resize(covariance_blocks.size() * Sophus::SE2d::DoF, covariance_blocks.size() * Sophus::SE2d::DoF);
+
+  bool success = covariance.Compute(covariance_blocks, ceres_problem_.get());
+  if (success) {
+    covariance.GetCovarianceBlockInTangentSpace(state->data(), state->data(), cov_out.data());
+    state->robot.covariance = cov_out;  // update the covariance in the state
+  }
+  return success;
 
 }
 
@@ -251,9 +275,9 @@ bool Estimator::GetLandmarkUncertainty(std::vector<uint64_t> landmark_ids, Eigen
     // get the covariance blocks for all the requested landmarks
     for (size_t idx = 0; idx < landmark_ids.size(); ++idx) {
       Eigen::Map<Eigen::Matrix<double,Landmark::kLandmarkDim, Landmark::kLandmarkDim, Eigen::RowMajor>> lm_cov(
-                                                                                                          cov_out->block<Landmark::kLandmarkDim, Landmark::kLandmarkDim>(
-                                                                                                            idx * Landmark::kLandmarkDim,
-                                                                                                            idx * Landmark::kLandmarkDim).data());
+            cov_out->block<Landmark::kLandmarkDim, Landmark::kLandmarkDim>(
+              idx * Landmark::kLandmarkDim,
+              idx * Landmark::kLandmarkDim).data());
       LandmarkPtr lm = landmarks_.at(landmark_ids.at(idx));
       covariance.GetCovarianceBlock(lm->data(), lm->data(), lm_cov.data());
       lm->covariance = lm_cov;  // update the covariance in the landmark
@@ -638,7 +662,7 @@ bool Estimator::GetFullJacobian() {
     size_t start = sparse_jacobian.rows[i];
     size_t end = sparse_jacobian.rows[i+1] - 1;
     for(size_t j = start; j <= end; j++){
-        jacobian(i, sparse_jacobian.cols[j]) = sparse_jacobian.values[j];
+      jacobian(i, sparse_jacobian.cols[j]) = sparse_jacobian.values[j];
     }
   }
 

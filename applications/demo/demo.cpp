@@ -17,7 +17,7 @@
 #include <SceneGraph/GLDynamicGrid.h>
 /*----------------------------*/
 
-DEFINE_bool(display, false, "use GUI");
+DEFINE_bool(display, true, "use GUI");
 
 using chameleon::Distribution;
 using chameleon::MultivariateNormalVariable;
