@@ -35,6 +35,13 @@ struct RangeFinderReading {
     lm_id = lm_id_;
   }
 
+  Eigen::VectorXd vec() {
+    Eigen::VectorXd vec(kMeasurementDim);
+    vec[kIndexBearing] = bearing;
+    vec[kIndexRange] = range;
+    return vec;
+  }
+
 
   RangeFinderReading operator+(const Eigen::Vector2d& rhs) const {
     return RangeFinderReading(lm_id, theta + rhs[0], range + rhs[1]);
@@ -189,6 +196,8 @@ struct RobotPose {
   PoseCovariance covariance;
   double field_of_view = Deg2Rad(90);  // [rad]
   double range = 10;  // [m]
+  static constexpr size_t kIndexTheta = 0;
+  static constexpr size_t kIndexTrans = 1;
 
   // Default constructor
   RobotPose(): covariance(PoseCovariance::Identity()) {
@@ -251,6 +260,13 @@ struct RobotPose {
 
   const Sophus::SO2d& SO2() const {
     return pose.so2();
+  }
+
+  Eigen::VectorXd vec() {
+    Eigen::VectorXd ret(State::kStateDim);
+    ret[kIndexTheta] = theta();
+    ret[kIndexTrans] = x();
+    ret[kIndexTrans+1] = y();
   }
 
   double theta() const { return pose.so2().log(); }
@@ -342,6 +358,7 @@ struct RobotData {
 //------------------------STATE ESTIMATION STUFF------------------------//
 struct State {
   State():id(0), timestamp(0), fixed(false), active(true) {}
+  static constexpr size_t kStateDim = Sophus::SE2d::DoF;
   uint64_t id;
   RobotPose robot;
   double timestamp;

@@ -198,6 +198,34 @@ void Estimator::Solve() {
   }
 }
 
+
+////////////////////////////////////////////////////////////////
+/// \brief Estimator::GetMarginals
+////////////////////////////////////////////////////////////////
+bool Estimator::GetMarginals(std::vector<uint64_t> state_id, std::vector<uint64_t> lm_ids, Distribution* res) {
+
+  // get the marginal covariance for the state (only one state supported)
+  Eigen::MatrixXd pose_cov;
+  StatePtr state = states_.at(state_id);
+
+  // get the marginal covariance for all the landmarks requested
+  Eigen::MatrixXd lm_cov;
+  GetLandmarkUncertainty(lm_ids, &lm_cov);
+
+  // build the mean
+  Eigen::VectorXd mean(State::kStateDim + lm_ids.size() * Landmark::kLandmarkDim);
+  mean.segment<State::kStateDim>(0) = state->robot.vec();
+  size_t lm_idx = State::kStateDim;
+  for(const auto& lm_id : lm_ids) {
+    LandmarkPtr& lm = landmarks_.at(lm_id);
+    mean.semgent<Landmark::kLandmarkDim>(lm_idx) = lm->vec();
+    lm_idx += Landmark::kLandmarkDim;
+  }
+  res->mean = mean;
+  res->cov.resize(lm_cov.rows() + pose_cov.rows(), lm_cov.cols() + pose_cov.cols());
+}
+
+
 ////////////////////////////////////////////////////////////////
 /// \brief Estimator::GetLatestPoseUncertainty
 ////////////////////////////////////////////////////////////////
@@ -357,7 +385,10 @@ void Estimator::SetLocalizationMode(bool localization_only) {
   }
   VLOG(1) << "Localization mode requested with flag: " << localization_only;
   for (const auto e : landmarks_) {
+    if (!e.second->active) { continue; }  // check if landmark is in problem
+
     if (localization_only) {
+      VLOG(1) << " Setting landmark id: " << e.first << " constant." ;
       ceres_problem_->SetParameterBlockConstant(e.second->data());
       e.second->active = false;
     } else {

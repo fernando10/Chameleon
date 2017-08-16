@@ -146,6 +146,8 @@ void Visualizer::InitGui() {
   pangolin::RegisterKeyPressCallback('r', [&]() { VLOG(1) << "removing landmark id: " << data_->ground_truth_map->back().id;
     landmarks_to_be_removed_.push_back(data_->ground_truth_map->back().id); });
 
+  pangolin::RegisterKeyPressCallback('s', [&]() { *gui_vars_.ui.do_SLAM = !(*gui_vars_.ui.do_SLAM); });
+
   //pangolin::RegisterGuiVarChangedCallback(&Visualizer::GuiVarChanged, (void*)this, "ui");
 
   ////////////////////////////////////////////////////
@@ -181,9 +183,6 @@ void Visualizer::Run() {
 
   // Viewer loop.
   while (!pangolin::ShouldQuit() || CheckFinish()) {
-
-
-    VLOG(3) << " viewer loop...";
 
     // clear whole screen
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -237,7 +236,7 @@ void Visualizer::AddLandmarks() {
 void Visualizer::UpdatePlotters() {
   // get the last landmark for now
   if (!data_->estimated_landmarks.empty()) {
-    gui_vars_.log_ptr->Log(data_->estimated_landmarks.rbegin()->second->persistence_prob);
+  gui_vars_.log_ptr->Log(data_->estimated_landmarks.rbegin()->second->persistence_prob);
   }
 }
 

@@ -8,21 +8,19 @@
 namespace chameleon
 {
 
-enum class WorldTypes {
-  RectangularField,
-  StraightLine,
-  TwoParallelLines,
-  RandomTrees
-};
-
 class WorldGenerator {
  public:
+  enum class WorldTypes {
+    RectangularField,
+    MimicTrajctory
+  };
+
   ///
   /// \brief WorldGenerator
   /// Default Constructor
   WorldGenerator(){}
 
-  LandmarkVectorPtr GenerateWorld(const RobotPoseVectorPtr& robot_poses);
+  LandmarkVectorPtr GenerateWorld(const RobotPoseVectorPtr& robot_poses, WorldTypes type);
   LandmarkVectorPtr GetWorld() const;
   bool RemoveLandmarks(std::vector<uint64_t> lm_ids);
 

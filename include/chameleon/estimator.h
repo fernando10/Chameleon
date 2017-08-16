@@ -60,6 +60,7 @@ public:
   void SetLocalizationMode(bool localization_only);
   void GetEstimationResult(EstimatedData* data);
   bool GetFullJacobian();
+  bool GetMarginals(std::vector<uint64_t> state_id, std::vector<uint64_t> lm_ids, Distribution* res);
 
 
 private:
