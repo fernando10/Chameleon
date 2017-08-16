@@ -58,20 +58,43 @@ LandmarkVectorPtr WorldGenerator::GenerateWorld(const RobotPoseVectorPtr& robot_
 
   const size_t lm_per_m = 2;
 
+  Eigen::Vector2d x_range = Eigen::Vector2d::Zero();
+  Eigen::Vector2d y_range = Eigen::Vector2d::Zero();
+  Eigen::Vector2d start = robot_poses->at(0).translation();
+
+  for (const RobotPose& p : *robot_poses) {
+    if (p.x() < x_range[0]) {
+      x_range[0] = p.x();
+    }
+    else if (p.x() > x_range[1]) {
+      x_range[1] = p.x();
+    }
+
+    if (p.y() < y_range[0]) {
+      y_range[0] = p.y();
+    }
+    else if (p.y() > y_range[1]) {
+      y_range[1] = p.y();
+    }
+  }
+
   if (type == WorldTypes::MimicTrajctory) {
 
 
-    Eigen::Vector2d scale(0.1, 0.25);
+    Eigen::Vector2d scale(0.1, 0.25);  // x and y scale
 
-    Eigen::Vector2d outter_offset(-1.5, 1.5);
-    Eigen::Vector2d inner_offset(1.5, -1.5);
+    Eigen::Vector2d outer_offset(- ((1+ scale[0]) * (x_range[1]) - x_range[1])/2,
+        -((1 + scale[1]) * (y_range[0]) - y_range[0])/2);
+
+    Eigen::Vector2d inner_offset(- ((1- scale[0]) * (x_range[1]) - x_range[1])/2,
+        -((1 - scale[1]) * (y_range[0]) - y_range[0])/2);
 
     for(size_t i = 0; i < robot_poses->size(); ++i) {
       if (i % 7 == 0) { // add a lm every 10th pose
         Eigen::Vector2d trans = robot_poses->at(i).translation();
         trans[0] *= (scale[0] + 1);
         trans[1] *= (scale[1] + 1);
-        trans += outter_offset;
+        trans += outer_offset;
         map->push_back(Landmark(IdGenerator::Instance::NewId(), trans[0] ,
                        trans[1]));
       }
@@ -92,25 +115,6 @@ LandmarkVectorPtr WorldGenerator::GenerateWorld(const RobotPoseVectorPtr& robot_
 
   if (type == WorldTypes::RectangularField) {
     //Eigen::Vector2d max_translation = Eigen::Vector2d::Zero();
-    Eigen::Vector2d x_range = Eigen::Vector2d::Zero();
-    Eigen::Vector2d y_range = Eigen::Vector2d::Zero();
-    Eigen::Vector2d start = Eigen::Vector2d::Zero();
-
-    for (const RobotPose& p : *robot_poses) {
-      if (p.x() < x_range[0]) {
-        x_range[0] = p.x();
-      }
-      else if (p.x() > x_range[1]) {
-        x_range[1] = p.x();
-      }
-
-      if (p.y() < y_range[0]) {
-        y_range[0] = p.y();
-      }
-      else if (p.y() > y_range[1]) {
-        y_range[1] = p.y();
-      }
-    }
 
     double length = std::abs(x_range[1] - x_range[0]) * 1.2;
     double width = std::abs(y_range[1] - y_range[0]) * 1.2;

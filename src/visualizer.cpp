@@ -146,6 +146,8 @@ void Visualizer::InitGui() {
   pangolin::RegisterKeyPressCallback('r', [&]() { VLOG(1) << "removing landmark id: " << data_->ground_truth_map->back().id;
     landmarks_to_be_removed_.push_back(data_->ground_truth_map->back().id); });
 
+  pangolin::RegisterKeyPressCallback('s', [&]() { *gui_vars_.ui.do_SLAM = !(*gui_vars_.ui.do_SLAM); });
+
   //pangolin::RegisterGuiVarChangedCallback(&Visualizer::GuiVarChanged, (void*)this, "ui");
 
   ////////////////////////////////////////////////////

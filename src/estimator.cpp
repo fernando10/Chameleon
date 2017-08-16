@@ -332,7 +332,7 @@ void Estimator::SetLocalizationMode(bool localization_only) {
   }
   VLOG(1) << "Localization mode requested with flag: " << localization_only;
   for (const auto e : landmarks_) {
-    if (!e.second->active) { continue; }
+    if (!e.second->active) { continue; }  // check if landmark is in problem
 
     if (localization_only) {
       VLOG(1) << " Setting landmark id: " << e.first << " constant." ;
