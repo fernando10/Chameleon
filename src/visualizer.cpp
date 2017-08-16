@@ -236,7 +236,9 @@ void Visualizer::AddLandmarks() {
 
 void Visualizer::UpdatePlotters() {
   // get the last landmark for now
- gui_vars_.log_ptr->Log(data_->estimated_landmarks.rbegin()->second->persistence_prob);
+  if (!data_->estimated_landmarks.empty()) {
+    gui_vars_.log_ptr->Log(data_->estimated_landmarks.rbegin()->second->persistence_prob);
+  }
 }
 
 bool Visualizer::AddTimesteps(std::vector<size_t> timesteps) {

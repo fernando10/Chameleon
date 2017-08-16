@@ -222,6 +222,7 @@ bool Estimator::GetLatestPoseUncertainty() {
   if (success) {
     covariance.GetCovarianceBlockInTangentSpace(state->data(), state->data(), cov_out.data());
     state->robot.covariance = cov_out;  // update the covariance in the state
+    VLOG(1) << "Latest state covariance: \n" << cov_out;
   }
   return success;
 

@@ -69,15 +69,22 @@ LandmarkVectorPtr WorldGenerator::GenerateWorld(const RobotPoseVectorPtr& robot_
 
   for (size_t lm_idx = 0; lm_idx < 8; ++lm_idx) {
     map->push_back(Landmark(IdGenerator::Instance::NewId(), 20/7. * lm_idx - 4,
-                            max_translation.y() * 0.5 + 1 * lm_idx % 2));
+                            max_translation.y() * 0.5 /*+ 1 * lm_idx % 2*/));
   }
 
   for (size_t lm_idx = 0; lm_idx < 8; ++lm_idx) {
     map->push_back(Landmark(IdGenerator::Instance::NewId(), 20/7. * lm_idx - 4,
-                            -max_translation.y() * 1.5 - 1 * lm_idx % 2));
+                            -max_translation.y() * 1.5 /*- 1 * lm_idx % 2*/));
   }
 
   double mid_pt =  (max_translation.y() * 0.5 - max_translation.y() * 1.5 ) /2.;
+
+
+  for (size_t lm_idx = 0; lm_idx < 6; ++lm_idx) {
+    map->push_back(Landmark(IdGenerator::Instance::NewId(), 20/6. * lm_idx,
+                            mid_pt));
+  }
+
   map->push_back(Landmark(IdGenerator::Instance::NewId(),-4.5, mid_pt));
   map->push_back(Landmark(IdGenerator::Instance::NewId(), 20 - 3.5 , mid_pt));
 
