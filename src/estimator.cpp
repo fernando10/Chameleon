@@ -99,6 +99,7 @@ void Estimator::AddData(const RobotData &data) {
     Marginals marginals;
     if (states_.size() > options_.min_states_for_solve && options_.data_association_strategy !=
         DataAssociation::DataAssociationType::Known) {
+      // try to get covariances for the state variables we care about for this data association
       GetMarginals(last_state_id_, visible_landmarks, &marginals);
     }else {
       marginals.robot = new_state->robot;
@@ -236,6 +237,10 @@ bool Estimator::GetMarginals(uint64_t state_id, std::vector<uint64_t> lm_ids, Ma
       return false;
     }
     LandmarkPtr lm = landmarks_.at(landmark_id);
+    if (unitialized_landmarks_.find(landmark_id) != unitialized_landmarks_.end()) {
+      // landmark hasn't been added to the estimation yet...
+      continue;
+    }
     covariance_blocks.push_back(std::make_pair(lm->data(), lm->data())); // get the marginal covariance
     covariance_blocks.push_back(std::make_pair(state->data(), lm->data())); // and the pose-landmark covariance
   }
@@ -260,6 +265,13 @@ bool Estimator::GetMarginals(uint64_t state_id, std::vector<uint64_t> lm_ids, Ma
     // get the covariance blocks for all the requested landmarks
     for (size_t idx = 0; idx < lm_ids.size(); ++idx) {
 
+      if (unitialized_landmarks_.find(lm_ids.at(idx)) != unitialized_landmarks_.end()) {
+        // landmark hasn't been added to the estimation yet...
+        res->covariances.insert({std::make_pair(lm_ids.at(idx), lm_ids.at(idx)), LandmarkCovariance::Identity()});
+        res->covariances.insert({std::make_pair(state_id, lm_ids.at(idx)), LandmarkCovariance::Zero()});
+        continue;
+      }
+
       // first get the diagonal block
       Eigen::Map<Eigen::Matrix<double,Landmark::kLandmarkDim, Landmark::kLandmarkDim, Eigen::RowMajor>> lm_cov(
             cov_out.block<Landmark::kLandmarkDim, Landmark::kLandmarkDim>(
@@ -280,6 +292,8 @@ bool Estimator::GetMarginals(uint64_t state_id, std::vector<uint64_t> lm_ids, Ma
       cov_out.block<Landmark::kLandmarkDim, State::kStateDim>(State::kStateDim + idx * Landmark::kLandmarkDim, 0) =
           state_lm_cov.transpose();
     }
+  }else {
+    LOG(ERROR) << "Unable to compute marginal covariances.";
   }
 
   return success;
@@ -564,6 +578,9 @@ void Estimator::CheckAndAddObservationFactors(const uint64_t state_id,
           CreateObservationFactor(s_id, landmark_id, obs);
         }
       }
+
+      // remove the landmark from the uninitialized list
+      unitialized_landmarks_.erase(unitialized_landmarks_.find(landmark_id));
     }
     else {
       CreateObservationFactor(state_id, landmark_id, observations.at(meas_idx));

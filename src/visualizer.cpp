@@ -154,9 +154,10 @@ void Visualizer::InitGui() {
   /////UI VARIABLES
   /// ////////////////////////////////////////////////
   gui_vars_.ui.reset = util::make_unique<pangolin::Var<bool>>("ui.Reset", false, false);
-  gui_vars_.ui.show_gt = util::make_unique<pangolin::Var<bool>>("ui.Show_ground_truth", true, true);
+  gui_vars_.ui.show_gt = util::make_unique<pangolin::Var<bool>>("ui.Show_ground_truth", false, true);
   gui_vars_.ui.show_observations = util::make_unique<pangolin::Var<bool>>("ui.Show_observations", true, true);
-  gui_vars_.ui.show_landmarks = util::make_unique<pangolin::Var<bool>>("ui.Show_landmarks", true, true);
+  gui_vars_.ui.show_gt_observations = util::make_unique<pangolin::Var<bool>>("ui.Show_gt_observations", false, true);
+  gui_vars_.ui.show_landmarks = util::make_unique<pangolin::Var<bool>>("ui.Show_landmarks", false, true);
   gui_vars_.ui.show_odometry = util::make_unique<pangolin::Var<bool>>("ui.Show_odometry", false, true);
   gui_vars_.ui.show_estimated = util::make_unique<pangolin::Var<bool>>("ui.Show_estimated", true, true);
   gui_vars_.ui.show_variance = util::make_unique<pangolin::Var<bool>>("ui.Show_variance", false, true);
@@ -189,7 +190,7 @@ void Visualizer::Run() {
 
     // check toggles
     gui_vars_.ground_truth_map->SetVisible(*gui_vars_.ui.show_landmarks);
-    gui_vars_.ground_truth_observations->SetVisible(*gui_vars_.ui.show_observations);
+    gui_vars_.ground_truth_observations->SetVisible(*gui_vars_.ui.show_gt_observations);
     gui_vars_.noisy_observations->SetVisible(*gui_vars_.ui.show_observations);
     gui_vars_.noisy_robot_path->SetVisible(*gui_vars_.ui.show_odometry);
     gui_vars_.gt_robot_path->SetVisible(*gui_vars_.ui.show_gt);
@@ -270,7 +271,11 @@ bool Visualizer::AddTimesteps(std::vector<size_t> timesteps) {
       if (data_->noisy_observation_map.find(ts) != data_->noisy_observation_map.end()) {
         // get the observations for this timestep
         const RangeFinderObservationVector& noisy_observations = data_->noisy_observation_map.at(ts);
-        gui_vars_.noisy_observations->SetPoseAndObservations(robot, noisy_observations);
+        RobotPose obs_pose = robot;
+        if (data_->estimated_poses.size() > ts) {
+          obs_pose = data_->estimated_poses.rbegin()->second->robot;
+        }
+        gui_vars_.noisy_observations->SetPoseAndObservations(obs_pose, noisy_observations);
       }
 
     } else {

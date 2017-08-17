@@ -86,6 +86,7 @@ public:
   struct DebugGUIVariables {
     std::unique_ptr<pangolin::Var<bool>> show_gt;
     std::unique_ptr<pangolin::Var<bool>> show_observations;
+    std::unique_ptr<pangolin::Var<bool>> show_gt_observations;
     std::unique_ptr<pangolin::Var<bool>> show_landmarks;
     std::unique_ptr<pangolin::Var<bool>> show_odometry;
     std::unique_ptr<pangolin::Var<bool>> show_estimated;
