@@ -32,6 +32,10 @@ void DataGenerator::Reset() {
   InitializeSimulation();
 }
 
+LandmarkVectorPtr DataGenerator::GetNoisyMap() {
+  return world_generator_->SampleWorld();
+}
+
 bool DataGenerator::GetRobotData(RobotData* const data) {
   // since we're simulating should always return something here
   data->debug.ground_truth_pose = path_generator_->GetRobot(current_timestep_);
@@ -64,7 +68,11 @@ bool DataGenerator::GetRobotData(RobotData* const data) {
   }
 
   // see if any world features need to be removed
-  world_generator_->RemoveLandmarks(options_.remove_lm_ids);
+  if(!options_.remove_lm_ids.empty())
+     world_generator_->RemoveLandmarks(options_.remove_lm_ids);
+  // or changed
+  if (!options_.change_lm_ids.empty())
+    world_generator_->ChangeLandmarks(options_.change_lm_ids);
 
   // generate some observations (with and without noise)
   RangeFinderObservationVector noise_free_obs =  observation_generator_->GenerateObservations(current_timestep_);
@@ -82,6 +90,7 @@ bool DataGenerator::GetRobotData(RobotData* const data) {
 
   data->debug.noisy_pose = noisy_robot;
   data->debug.ground_truth_map = world_generator_->GetWorld();
+  data->debug.noisy_map = world_generator_->SampleWorld();
   data->debug.noise_free_observations = noise_free_obs;
   data->debug.noisy_observations = noisy_obs;
   data->timestamp = current_timestep_;

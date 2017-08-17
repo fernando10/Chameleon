@@ -33,6 +33,7 @@ public:
     bool print_brief_summary = true;
     PersistenceFilterOptions filter_options;
     bool add_observations = true;
+    bool provide_map = true;
     bool compute_landmark_covariance = true;
     bool compute_latest_pose_covariance = true;
     size_t delayed_initalization_num = 10;  // wait till we have this many observations to initialize a landmark //TODO: add landmark at first observation but with high uncertainty
@@ -42,7 +43,7 @@ public:
   Estimator(const EstimatorOptions& options);
 
   ///
-  /// \brief Estimator::AddData
+  /// \brief AddData
   /// - Create and initialize a new state
   /// - Associate measurements to exisiting landmarks
   /// - Create new landmarks if necessary
@@ -50,6 +51,13 @@ public:
   /// \param data RobotData containing odometry measurement and observations for the current timestep
   ///
   void AddData(const RobotData& data);
+
+  ///
+  /// \brief SetMap
+  /// - Provide a pre-built map that can be used for localization
+  /// \param prior_map
+  ///
+  void SetMap(LandmarkVectorPtr prior_map);
 
   ///
   /// \brief Solve
@@ -60,8 +68,6 @@ public:
   void SetLocalizationMode(bool localization_only);
   void GetEstimationResult(EstimatedData* data);
   bool GetFullJacobian();
-  bool GetMarginals(uint64_t state_id, std::vector<uint64_t> lm_ids, Marginals* res);
-  bool GetMarginals(uint64_t state_id, LandmarkPtrMap lms, Marginals* res);
 
 
 private:
@@ -97,6 +103,8 @@ private:
   void GetMapUncertainty();
   bool GetLandmarkUncertainty(std::vector<uint64_t> landmark_ids, Eigen::MatrixXd* cov_out);
   bool GetLatestPoseUncertainty();
+  bool GetMarginals(uint64_t state_id, std::vector<uint64_t> lm_ids, Marginals* res);
+  bool GetMarginals(uint64_t state_id, LandmarkPtrMap lms, Marginals* res);
 
   ///
   /// \brief UpdateMapPersistence

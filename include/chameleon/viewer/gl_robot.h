@@ -5,6 +5,7 @@
 #include <Eigen/Eigen>
 #include <unsupported/Eigen/MatrixFunctions>
 #include <sophus/se2.hpp>
+#include "chameleon/types.h"
 
 #include <SceneGraph/GLObject.h>
 #define MAT4_COL_MAJOR_DATA(m) (Eigen::Matrix<float,4,4,Eigen::ColMajor>(m).data())
@@ -52,7 +53,8 @@ class GLRobot : public SceneGraph::GLObject {
       pangolin::glDrawLine(0, 0, robot_radius_, 0);  // orientation
 
       if (show_covariance_) {
-        glDraw2dCovariance(covariance_.bottomRightCorner<2, 2>(), 9);  // only x, y covariance
+        glDraw2dCovariance(covariance_.block<2, 2>(chameleon::RobotPose::kIndexTransCov,
+                                                   chameleon::RobotPose::kIndexTransCov), 9);  // only x, y covariance
       }
 
       glPopMatrix();

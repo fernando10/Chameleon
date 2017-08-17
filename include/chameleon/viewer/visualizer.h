@@ -100,6 +100,9 @@ public:
     std::unique_ptr<pangolin::Var<bool>> do_Localization;
     std::unique_ptr<pangolin::Var<bool>> reset;
     std::unique_ptr<pangolin::Var<bool>> show_prob_labels;
+    std::unique_ptr<pangolin::Var<bool>> show_lm_ids;
+    std::unique_ptr<pangolin::Var<bool>> color_lms;
+    std::unique_ptr<pangolin::Var<int>> plot_idx;
     std::unique_ptr<pangolin::Var<double>> prob_missed_detect;
     std::unique_ptr<pangolin::Var<double>> prob_false_detect;
   };
@@ -149,6 +152,8 @@ public:
   bool IsResetRequested();
   const DebugGUIVariables& GetDebugVariables();
   std::vector<uint64_t> GetLandmarksToBeRemoved();
+  std::vector<uint64_t> ChangeLandmarks();
+
 
 private:
 
@@ -175,6 +180,9 @@ private:
   bool running_ = false;
   bool reset_requested_ = false;
   std::vector<uint64_t> landmarks_to_be_removed_;
+  std::vector<uint64_t> landmarks_to_be_changed_;
+  bool change_landmarks_ = false;
+
 
   GuiVars gui_vars_;
   ViewerData::Ptr data_;

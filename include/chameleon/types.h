@@ -206,6 +206,11 @@ struct RobotPose {
   static constexpr size_t kIndexTheta = 0;
   static constexpr size_t kIndexTrans = 1;
 
+  // the covariance matrix is first translation then rotation
+  // this follows the order retured by Sophus::SE2::log (x, y, theta)
+  static constexpr size_t kIndexThetaCov = 2;
+  static constexpr size_t kIndexTransCov = 0;
+
   // Default constructor
   RobotPose(): covariance(PoseCovariance::Identity()) {
   }
@@ -242,6 +247,100 @@ struct RobotPose {
   RobotPose operator*(const RobotPose& rhs) const {
     return RobotPose(pose * rhs.pose);
     // TODO: propagate covariance
+  }
+
+  RangeFinderReading Predict(const Landmark& lm, Eigen::MatrixXd* jacobian = nullptr) const {
+    return Predict(this->pose, lm, jacobian);
+  }
+  ///
+  /// \brief Predict
+  /// Predicts a measurement based on the landmark
+  /// \param lm landmark in world coordinates
+  /// \param jacobian -> optinally fill out the prediction jacobian w.r.t the current pose and the landmark
+  /// \return
+  ///
+  RangeFinderReading Predict(const Sophus::SE2d& pose, const Landmark& lm, Eigen::MatrixXd* jacobian = nullptr) const {
+    Eigen::Vector2d lm_r = util::DeHomogenizeLandmark<double>(pose.inverse().matrix() *
+                                                              util::HomogenizeLandmark<double>(lm.vec()));
+
+    double range_pred = lm_r.norm();
+    double bearing_pred = AngleWraparound<double>(std::atan2(lm_r.y(), lm_r.x()));
+
+    if (jacobian != nullptr) {
+      // jacobian requested
+      jacobian->resize(2, 5); // w.r.t current state (3) and landmark in world frame (2)
+
+      // derivative w.r.t landmark
+      (*jacobian)(0, 3) = lm_r.x() / lm_r.norm();
+      (*jacobian)(0, 4) = lm_r.y() / lm_r.norm();
+      (*jacobian)(1, 3) = -lm_r.y() / Square(lm_r.norm());
+      (*jacobian)(1, 4) = lm_r.x() / Square(lm_r.norm());
+
+      // derivative w.r.t state (x, y, theta)
+      (*jacobian)(0, 0) = -lm_r.x() / lm_r.norm();
+      (*jacobian)(0, 1) = -lm_r.y() / lm_r.norm();
+      (*jacobian)(0, 2) = 0;
+      (*jacobian)(1, 0) = lm_r.y() / Square(lm_r.norm());
+      (*jacobian)(1, 1) = -lm_r.x() / Square(lm_r.norm());
+      (*jacobian)(1, 2) = -1;
+      //FiniteDifferencesPredictionJacobian(lm, jacobian);
+    }
+    return RangeFinderReading(bearing_pred, range_pred);
+  }
+
+  bool CheckPredictionJacobian(const Landmark& lm, double tol = 1e-8) const {
+    Sophus::SE2d pose = this->pose;
+    Landmark landmark = lm;
+
+    Eigen::MatrixXd J;
+    Predict(pose, landmark, &J);
+
+    Eigen::MatrixXd J_num_diff;
+    FiniteDifferencesPredictionJacobian(lm, &J_num_diff);
+
+    //    std::cerr << " J: \n" << J << " \n J_num_diff:\n"  << J_num_diff << " \n diff: " << J - J_num_diff << std::endl;
+    //    std::cerr << "norm: " << (J - J_num_diff).norm();
+    return  (J - J_num_diff).norm() < tol;
+  }
+
+  void FiniteDifferencesPredictionJacobian(const Landmark& lm, Eigen::MatrixXd* J_out) const {
+    Sophus::SE2d pose = this->pose;
+    Landmark landmark = lm;
+
+    Eigen::Matrix<double, 2, 5> J_num_diff;
+    J_num_diff.setZero();
+    double eps = 1e-6;
+    for (size_t i = 0; i < 3; ++i) {
+      // tweak pose
+      Eigen::Matrix<double, 3, 1> delta;
+      delta[i] = eps;
+      Sophus::SE2d pose_plus = pose * Sophus::SE2d::exp(delta);
+      RangeFinderReading res_p = Predict(pose_plus, landmark);
+
+      delta[i] = -eps;
+      Sophus::SE2d pose_minus = pose * Sophus::SE2d::exp(delta);
+      RangeFinderReading res_m = Predict(pose_minus, landmark);
+
+      J_num_diff.col(i) = (res_p.vec() - res_m.vec()) / (2 * eps);
+    }
+
+    for (size_t i = 0; i <2; ++i) {
+      // tweak landmark
+      Eigen::Matrix<double, 2, 1> delta;
+      delta[i] = eps;
+      Landmark lm_plus(landmark.vec() + delta);
+      RangeFinderReading res_p = Predict(pose, lm_plus);
+
+      delta[i] = -eps;
+      Landmark lm_minus(landmark.vec() + delta);
+      RangeFinderReading res_m = Predict(pose, lm_minus);
+
+      J_num_diff.col(i+3) = (res_p.vec() - res_m.vec()) / (2 * eps);
+    }
+
+    J_out->resize(2, 5);
+    J_out->setZero();
+    *J_out = J_num_diff;
   }
 
   // Multiplication with an SE2d transform
@@ -333,6 +432,7 @@ typedef std::map<size_t, uint64_t> DataAssociationMap;
 struct DebugData {
   DebugData() {
     ground_truth_map = std::make_shared<LandmarkVector>();
+    noisy_map = std::make_shared<LandmarkVector>();
   }
 
   RobotPose ground_truth_pose;
@@ -340,6 +440,7 @@ struct DebugData {
   OdometryMeasurement noise_free_odometry;
   OdometryMeasurement noisy_odometry;
   LandmarkVectorPtr ground_truth_map;
+  LandmarkVectorPtr noisy_map;
   RangeFinderObservationVector noise_free_observations;
   RangeFinderObservationVector noisy_observations;
 };

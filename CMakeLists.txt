@@ -171,6 +171,7 @@ set(LIB_SRCS
   ${SRC_DIR}/persistence_filter.cpp
   ${SRC_DIR}/id_provider.cpp
   ${SRC_DIR}/data_reader.cpp
+  ${SRC_DIR}/lap.cpp
   )
 
 set( INC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include/${LIBRARY_NAME} )

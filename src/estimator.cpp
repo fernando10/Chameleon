@@ -52,6 +52,25 @@ void Estimator::Reset() {
 }
 
 ////////////////////////////////////////////////////////////////
+/// \brief Estimator::SetMap
+////////////////////////////////////////////////////////////////
+void Estimator::SetMap(LandmarkVectorPtr prior_map) {
+  // map provided
+  landmarks_.clear();
+  for (Landmark& lm : *prior_map) {
+    LandmarkPtr lm_ptr = std::make_shared<Landmark>();
+    *lm_ptr = lm;
+    landmarks_[lm.id] = lm_ptr;
+
+    // add the parameter blocks now so we can set them constant
+    ceres_problem_->AddParameterBlock(lm_ptr->data(), Landmark::kLandmarkDim);
+    ceres_problem_->SetParameterBlockConstant(lm_ptr->data());
+  }
+
+  localization_mode_ = true;
+}
+
+////////////////////////////////////////////////////////////////
 /// \brief Estimator::AddData
 ////////////////////////////////////////////////////////////////
 void Estimator::AddData(const RobotData &data) {
@@ -242,8 +261,9 @@ bool Estimator::GetMarginals(uint64_t state_id, std::vector<uint64_t> lm_ids, Ma
       return false;
     }
     LandmarkPtr lm = landmarks_.at(landmark_id);
-    if (unitialized_landmarks_.find(landmark_id) != unitialized_landmarks_.end()) {
-      // landmark hasn't been added to the estimation yet...
+    if (unitialized_landmarks_.find(landmark_id) != unitialized_landmarks_.end() ||
+        !lm->active) {
+      // landmark hasn't been added to the estimation yet or landmark is fixed
       continue;
     }
     covariance_blocks.push_back(std::make_pair(lm->data(), lm->data())); // get the marginal covariance
@@ -273,7 +293,13 @@ bool Estimator::GetMarginals(uint64_t state_id, std::vector<uint64_t> lm_ids, Ma
       if (unitialized_landmarks_.find(lm_ids.at(idx)) != unitialized_landmarks_.end()) {
         // landmark hasn't been added to the estimation yet...
         res->covariances.insert({std::make_pair(lm_ids.at(idx), lm_ids.at(idx)), LandmarkCovariance::Identity()});
-        res->covariances.insert({std::make_pair(state_id, lm_ids.at(idx)), LandmarkCovariance::Zero()});
+        res->covariances.insert({std::make_pair(state_id, lm_ids.at(idx)), Eigen::Matrix<double, 3, 2>::Zero()});
+        continue;
+      }
+
+      if (!landmarks_.at(lm_ids.at(idx))->active) {
+        res->covariances.insert({std::make_pair(lm_ids.at(idx), lm_ids.at(idx)), landmarks_.at(lm_ids.at(idx))->covariance });
+        res->covariances.insert({std::make_pair(state_id, lm_ids.at(idx)), Eigen::Matrix<double, 3, 2>::Zero()});  // TODO: how to compute state-marginal covariance block when map was given?
         continue;
       }
 
@@ -463,6 +489,12 @@ void Estimator::SetLocalizationMode(bool localization_only) {
   if(localization_mode_ == localization_only) {
     return;
   }
+
+  if (options_.provide_map) {
+    VLOG(1) << " Localizatio mode toggled but prior map was provided";
+    return;
+  }
+
   VLOG(1) << "Localization mode requested with flag: " << localization_only;
   for (const auto e : landmarks_) {
     if (!e.second->active) { continue; }  // check if landmark is in problem
@@ -561,7 +593,7 @@ void Estimator::CheckAndAddObservationFactors(const uint64_t state_id,
     LandmarkPtr lm = landmarks_.at(landmark_id);
     lm->AddObservation();
 
-    if (lm->GetNumObservations() < options_.delayed_initalization_num) {
+    if (lm->GetNumObservations() < options_.delayed_initalization_num && !options_.provide_map) {
       VLOG(2) << fmt::format("landmark id: {} has {} observations, but {} are needed.", landmark_id, lm->GetNumObservations(),
                              options_.delayed_initalization_num);
       unitialized_landmarks_[landmark_id][state_id].push_back(observations.at(meas_idx)); // save observation for later.

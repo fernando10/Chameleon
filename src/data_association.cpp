@@ -42,19 +42,36 @@ void DataAssociation::IndividualCompatibility(const RangeFinderObservationVector
   //  // and H is the derivative of h(x) w.r.t. x
 
   const double D_max = 9.210;  // 2 dof chi^2 thresh.
+  std::map<uint64_t, double> min_lm_cost;
+  Eigen::VectorXd landmark_ids(map.size());
+
+  const size_t num_landmarks = map.size();
+
+  Eigen::MatrixXd cost_matrix(measurements.size(), measurements.size() + num_landmarks);
+
+  // set the threshold cost for spurious measurements
+  for (size_t r = 0; r < measurements.size(); ++r) {
+    for (size_t col = 0; col < measurements.size(); ++col) {
+      cost_matrix(r, num_landmarks + col) = D_max;
+    }
+  }
 
   size_t meas_idx = 0;
   for (const RangeFinderObservation& z : measurements) {
     double min_cost = D_max*2; // uninitialized, above max threshold
 
+    VLOG(2) << " Pairing measurement idx: "<< meas_idx << " the correct pairing is with lm: "  << z.observation.lm_id;
+    size_t map_idx = 0;
     for (const auto& e : map) {
+      VLOG(2) << " Testing lm id: "  << e.first << "("  << z.observation.lm_id << ")";
       const LandmarkPtr& lm = e.second;
-      // predict the measurement
-      Eigen::Vector2d lm_r = util::DeHomogenizeLandmark<double>(current_state.robot.pose.inverse().matrix() *
-                                                                util::HomogenizeLandmark<double>(lm->vec()));
-      double range_pred = lm_r.norm();
-      double bearing_pred = AngleWraparound<double>(std::atan2(lm_r.y(), lm_r.x()));
-      RangeFinderReading prediction(bearing_pred, range_pred);
+
+      Eigen::MatrixXd H;
+      RangeFinderReading prediction = current_state.robot.Predict(*lm, &H);
+      //current_state.robot.CheckPredictionJacobian(*lm);
+
+      VLOG(2) << fmt::format(" got prediction: {} " , prediction.vec().transpose());
+      VLOG(2) << fmt::format(" measurement: {} " , z.observation.vec().transpose());
 
       // build the state covariance matrix (robot pose + 1 landmark)
       Eigen::Matrix<double, Landmark::kLandmarkDim + State::kStateDim, Landmark::kLandmarkDim + State::kStateDim> sigma;
@@ -78,25 +95,62 @@ void DataAssociation::IndividualCompatibility(const RangeFinderObservationVector
               std::make_pair(current_state.pose_id, e.first)).transpose();
       }
 
-
-      // now build the covariance matrix for the test
-      Eigen::Matrix<double, 2, State::kStateDim + Landmark::kLandmarkDim> H =
-          Eigen::Matrix<double, 2, State::kStateDim + Landmark::kLandmarkDim>::Zero();
-      H.block<2, State::kStateDim>(0, 0) = -Eigen::Matrix<double, 2, State::kStateDim>::Identity();
-      H.block<2, Landmark::kLandmarkDim>(0, State::kStateDim) = Eigen::Matrix<double, 2, Landmark::kLandmarkDim>::Identity();
-
       RangeFinderCovariance C = H * sigma * H.transpose() + RangeFinderReading::GetMeasurementCovariance();
 
       double dist = DataAssociation::MahalanobisDistance(z.observation.vec(), Distribution(prediction.vec(), C));
+      VLOG(2) << " cost: "  << dist;
 
-      if (dist < D_max && dist < min_cost) {
-        min_cost = dist;
-        (*association)[meas_idx] = e.first;
-        VLOG(1) << fmt::format("Associating meas {} to lm {}, cost: {}", meas_idx, e.first, min_cost);
-      }
+      //      if (dist < D_max && dist < min_cost) {
+      //        min_cost = dist;
+      //        // check if this landmark isn't already associated to another measurement with a lower cost
+      //        if (min_lm_cost.find(e.first) == min_lm_cost.end() || min_lm_cost.at(e.first) > dist ) {
+
+
+      //          if (min_lm_cost.find(e.first) != min_lm_cost.end()) {
+      //            // another observation was already associated to this landmark, remove that associatoin since we can only have one measurement
+      //            // per landmark
+      //            for (DataAssociationMap::iterator it = association->begin(); it != association->end(); ++it) {
+      //              if (it->second == e.first) {
+      //                VLOG(1) << fmt::format(" Removing association from obs: {} to lm {}", it->first, e.first);
+      //                association->erase(it);
+      //                break;
+      //              }
+      //            }
+      //          }
+      //          min_lm_cost[e.first] = dist;
+      //          (*association)[meas_idx] = e.first;
+      //          VLOG(1) << fmt::format("Associating meas {} to lm {}, cost: {}", meas_idx, e.first, min_cost);
+      //        } else {
+      //          VLOG(1) << fmt::format("landmark id {} is already assigned to a meas, with cost: {} which is lower than the cost {} for assigning to meas {}",
+      //                                 e.first, min_lm_cost.at(e.first), dist, meas_idx);
+      //        }
+      //      }
+      // store the cost
+      cost_matrix(meas_idx, map_idx) = dist;
+      landmark_ids[map_idx] = e.first;
+      map_idx++;
     }
     meas_idx++;
   }
+
+  for (int r = 0; r < cost_matrix.rows(); ++r) {
+    double min_cost = 100;
+    for (int c = 0; c < cost_matrix.cols(); ++ c) {
+      if(cost_matrix(r, c) < min_cost) {
+        min_cost = cost_matrix(r, c);
+        if (min_cost < D_max) {
+          VLOG(2) << " Associating obs idx " << r << " to lm id: " << landmark_ids[c];
+          (*association)[r] = landmark_ids[c];
+        }
+      }
+    }
+  }
+
+  //  // go through the columns assigned to each row (measurement) in the cost matrix
+  //  for (size_t i = 0; i < row_solution.size(); ++i) {
+  //    VLOG(2) << "assigning meas idx: "  << i << " to lm id"  << landmark_ids[row_solution[i]];
+  //    (*association)[i] = landmark_ids[row_solution[i]];
+  //  }
 
 }
 

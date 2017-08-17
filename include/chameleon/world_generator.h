@@ -22,15 +22,17 @@ class WorldGenerator {
 
   LandmarkVectorPtr GenerateWorld(const RobotPoseVectorPtr& robot_poses, WorldTypes type);
   LandmarkVectorPtr GetWorld() const;
+  LandmarkVectorPtr SampleWorld();
   bool RemoveLandmarks(std::vector<uint64_t> lm_ids);
+  void ChangeLandmarks(std::vector<uint64_t> lm_ids);
 
 
 private:
 
   LandmarkVectorPtr map_;
+  LandmarkVectorPtr noisy_map_;
   double GetTotalDistanceTraveled(const RobotPoseVectorPtr& poses);
-//  const double kLandmarkDensity = 0.5;  // landmarks / meter
-//  const double kLandmarkdDistance = 3; // [m]
+  const double kMapSigma = 0.1;
 };
 
 }  // namespace chameleon

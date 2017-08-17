@@ -8,43 +8,36 @@
 
 namespace chameleon
 {
-//LandmarkVectorPtr WorldGenerator::GenerateWorld(const RobotPoseVectorPtr& robot_poses) {
-//  LandmarkVectorPtr map = std::make_shared<LandmarkVector>();
-//  VLOG(1) << " Generating landmarks for path.";
-
-//  if(robot_poses == nullptr || robot_poses->size() == 0){
-//    LOG(ERROR) << "Map requested but no robot poses passed in.";
-//    return map;
-//  }
-
-//  double path_length = GetTotalDistanceTraveled(robot_poses);
-
-//  if(path_length > 0) {
-//    // TODO: improve algorithm for distrubuting landmarks
-//    size_t num_landmarks = std::floor(path_length * kLandmarkDensity);
-//    size_t num_landmarks_per_pose = std::ceil((double)num_landmarks / (double)robot_poses->size());
-
-//    if (num_landmarks_per_pose > 2) { num_landmarks_per_pose = 2; }
-
-//    for(size_t pose_idx = 1; pose_idx < robot_poses->size(); ++pose_idx) {
-//      for(size_t lm_idx = 0; lm_idx < num_landmarks_per_pose; ++lm_idx) {
-//        Landmark lm_r(0, lm_idx % 2 == 0 ? kLandmarkdDistance : -kLandmarkdDistance);  // landmark in robot frame
-//        map->push_back(Landmark(robot_poses->at(pose_idx).pose.so2().matrix() * lm_r.vec()));  // transfer to world frame and add to map
-//      }
-//    }
-
-//    //VLOG(1) << fmt::format("Generated {} landmarks.", map->size());
-
-
-//  } else {
-//    LOG(ERROR) << "Distance traveled <= 0, should not happen...";
-//  }
-
-//  return map;
-//}
-
 LandmarkVectorPtr WorldGenerator::GetWorld() const {
   return map_;
+}
+
+LandmarkVectorPtr WorldGenerator::SampleWorld()  {
+
+  if (noisy_map_ != nullptr) {
+    // map has already been built, just return
+    return noisy_map_;
+  }
+
+  noisy_map_ = std::make_shared<LandmarkVector>();
+  if (map_ == nullptr || map_->empty()) {
+    LOG(ERROR) << " Noisy map requested but no ground truth map built yet.";
+    return noisy_map_;
+  }
+
+  for (const Landmark& lm : (*map_)) {
+    Distribution dist(lm.vec(), Covariance2d(kMapSigma, kMapSigma, 0));
+    MultivariateNormalVariable lm_var(dist);
+
+    Landmark noisy_lm;
+    Eigen::Vector2d sample_mean = lm_var();
+    noisy_lm.SetPosition(sample_mean[0], sample_mean[1]);
+    noisy_lm.covariance = dist.cov;
+    noisy_lm.id = lm.id;
+    noisy_lm.active = false;
+    noisy_map_->push_back(noisy_lm);
+  }
+  return noisy_map_;
 }
 
 LandmarkVectorPtr WorldGenerator::GenerateWorld(const RobotPoseVectorPtr& robot_poses, WorldTypes type) {
@@ -149,6 +142,28 @@ double WorldGenerator::GetTotalDistanceTraveled(const RobotPoseVectorPtr& poses)
   return distance_traveled;
 }
 
+void WorldGenerator::ChangeLandmarks(std::vector<uint64_t> lm_ids) {
+  if (map_ == nullptr) {
+    LOG(ERROR) << "Tried to change landmarks but map does not exist.";
+    return;
+  }
+
+  VLOG(1) << " changing landmarks (" << lm_ids.size() << " )";
+
+  // constant change for now...just add 1 to the x direction
+  //Eigen::Vector2d delta(1, 0);
+  for (const uint64_t lm_id : lm_ids) {
+    for (LandmarkVector::iterator it = map_->begin(); it != std::end(*map_); ++it) {
+      if (it->id == lm_id) {
+        VLOG(1) << "Found landmark with id: " << lm_id << ", changing.";
+        it->SetPosition(it->x() + 1, it->y());
+        break;
+      }
+    }
+  }
+}
+
+
 bool WorldGenerator::RemoveLandmarks(std::vector<uint64_t> lm_ids) {
   if (map_ == nullptr) {
     LOG(ERROR) << "Tried to remove landmark but map does not exist.";
@@ -170,7 +185,6 @@ bool WorldGenerator::RemoveLandmarks(std::vector<uint64_t> lm_ids) {
       }
     }
   }
-
   return res;
 }
 

@@ -17,6 +17,7 @@ DEFINE_bool(start_running, false, "start running immediately");
 DEFINE_bool(add_observations, true, "add landmark observation/estimation");
 DEFINE_int32(num_steps, 200, " number of steps to take");
 DEFINE_bool(compute_lm_covariance, false, "compute landmark covariance");
+DEFINE_bool(provide_map, true, "provide pre-built map to estimator");
 DEFINE_bool(print_optimization_full_summary, false, "print full summary");
 DEFINE_bool(print_optimization_brief_summary, false, "print brief summary");
 DEFINE_bool(persistence_filter, false, "use persistence filter");
@@ -78,6 +79,7 @@ int main(int argc, char **argv) {
     estimator_options.data_association_strategy = DataAssociation::DataAssociationType::IC;
   }
   estimator_options.add_observations = FLAGS_add_observations;
+  estimator_options.provide_map = FLAGS_provide_map;
   estimator_options.print_brief_summary = FLAGS_print_optimization_brief_summary;
   estimator_options.print_full_summary = FLAGS_print_optimization_full_summary;
   estimator_options.compute_landmark_covariance = FLAGS_compute_lm_covariance;
@@ -87,6 +89,10 @@ int main(int argc, char **argv) {
   estimator_options.delayed_initalization_num = FLAGS_delayed_lm_init;
   std::unique_ptr<chameleon::ceres::Estimator> SLAM = util::make_unique<chameleon::ceres::Estimator>(estimator_options);
   EstimatedData estimator_results;  // for collecting the latest updates form the estimator
+
+  if (estimator_options.provide_map) {
+    SLAM->SetMap(data_generator->GetNoisyMap());
+  }
 
   ////////////////////////////////////
   // Get Data -> Estimate -> Display
@@ -109,6 +115,9 @@ int main(int argc, char **argv) {
         LOG(INFO) << " Reseting...";
         data_generator->Reset();
         SLAM->Reset();
+        if (estimator_options.provide_map) {
+          SLAM->SetMap(data_generator->GetNoisyMap());
+        }
         viewer_data = std::make_shared<Visualizer::ViewerData>();
         viewer.SetData(viewer_data);
         viewer.SetReset();
@@ -127,8 +136,14 @@ int main(int argc, char **argv) {
         sim_options.prob_missed_detection = *(viewer.GetDebugVariables().prob_missed_detect);
         sim_options.prob_false_positive = *(viewer.GetDebugVariables().prob_false_detect);
 
-        // check if any landmarks need to be removed
+        // check if any landmarks need to be removed or changed
+        sim_options.remove_lm_ids.clear();
+        sim_options.change_lm_ids.clear();
         sim_options.remove_lm_ids = viewer.GetLandmarksToBeRemoved();
+        sim_options.change_lm_ids = viewer.ChangeLandmarks();
+        if(!sim_options.change_lm_ids.empty()) {
+          LOG(INFO) << " changing "  << sim_options.change_lm_ids.size() << " landmarks";
+        }
 
         // Get some data
         bool data_success = false;

@@ -25,12 +25,14 @@ public:
     double prob_missed_detection = 0.0; // probability of not detecting a landmark that should be seen
     double prob_false_positive = 0.0; // probability of detecting a landmarks that is not there
     std::vector<uint64_t> remove_lm_ids;
+    std::vector<uint64_t> change_lm_ids;
     PathGenerator::PathGeneratorOptions path_options;
   };
 
   DataGenerator(const DataGeneratorOptions& options);
 
   bool GetRobotData(RobotData* const data) override;
+  LandmarkVectorPtr GetNoisyMap();
   void Reset();
 
 private:
@@ -52,10 +54,11 @@ private:
   static constexpr double kAlpha3 = 5e-2;
   static constexpr double kAlpha4 = 1e-2;
 
-//  static constexpr double kBearingStdDev = 0.174533;  // [rad] ~10 degrees
-//  static constexpr double kRangeStdDev = 0.1;  // [m]
   static constexpr double kBearingStdDev = 0.087;  // [rad] ~10 degrees
   static constexpr double kRangeStdDev = 0.05;  // [m]
+
+//    static constexpr double kBearingStdDev = 0.01;  // [rad] ~10 degrees
+//    static constexpr double kRangeStdDev = 0.005;  // [m]
 
 };
 }  // namespace chameleon
