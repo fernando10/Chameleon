@@ -60,7 +60,8 @@ public:
   void SetLocalizationMode(bool localization_only);
   void GetEstimationResult(EstimatedData* data);
   bool GetFullJacobian();
-  bool GetMarginals(std::vector<uint64_t> state_id, std::vector<uint64_t> lm_ids, Distribution* res);
+  bool GetMarginals(uint64_t state_id, std::vector<uint64_t> lm_ids, Marginals* res);
+  bool GetMarginals(uint64_t state_id, LandmarkPtrMap lms, Marginals* res);
 
 
 private:
@@ -112,7 +113,6 @@ private:
   std::unordered_map<uint64_t, std::map<uint64_t, RangeFinderObservationVector>> unitialized_landmarks_;
   LandmarkPtrMap landmarks_;
   StatePtrMap states_;
-  StatePtr last_optimized_state_;
   const EstimatorOptions& options_;
   bool localization_mode_ = false;
   double latest_timestamp_;

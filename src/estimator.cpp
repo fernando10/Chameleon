@@ -82,7 +82,6 @@ void Estimator::AddData(const RobotData &data) {
   uint64_t id = GetNewStateId();
   new_state->id = id;
   states_.insert({id, new_state});
-  last_optimized_state_ = new_state;
   VLOG(3) << fmt::format("Added state with id: {} to problem.", id);
 
   if(states_.size() == 1) {
@@ -97,9 +96,14 @@ void Estimator::AddData(const RobotData &data) {
 
     // get  a map with obs_index -> landmark_id
     LandmarkPtrMap visible_landmarks = GetLandmarksThatShouldBeVisible(new_state->robot);
+    Marginals marginals;
+    if (!states_.empty()) {
+      GetMarginals(last_state_id_, visible_landmarks, &marginals);
+    }
     DataAssociationMap association = DataAssociation::AssociateDataToLandmarks(data.observations
                                                                                ,visible_landmarks
-                                                                               ,DataAssociation::DataAssociationType::Known);
+                                                                               ,marginals
+                                                                               ,DataAssociation::DataAssociationType::IC);
 
     // check if any landmarks that should have been observed were not so we can update the belief over that landmark
     for (const auto& lm : visible_landmarks) {
@@ -202,27 +206,80 @@ void Estimator::Solve() {
 ////////////////////////////////////////////////////////////////
 /// \brief Estimator::GetMarginals
 ////////////////////////////////////////////////////////////////
-bool Estimator::GetMarginals(std::vector<uint64_t> state_id, std::vector<uint64_t> lm_ids, Distribution* res) {
-
-  // get the marginal covariance for the state (only one state supported)
-  Eigen::MatrixXd pose_cov;
-  StatePtr state = states_.at(state_id);
-
-  // get the marginal covariance for all the landmarks requested
-  Eigen::MatrixXd lm_cov;
-  GetLandmarkUncertainty(lm_ids, &lm_cov);
-
-  // build the mean
-  Eigen::VectorXd mean(State::kStateDim + lm_ids.size() * Landmark::kLandmarkDim);
-  mean.segment<State::kStateDim>(0) = state->robot.vec();
-  size_t lm_idx = State::kStateDim;
-  for(const auto& lm_id : lm_ids) {
-    LandmarkPtr& lm = landmarks_.at(lm_id);
-    mean.semgent<Landmark::kLandmarkDim>(lm_idx) = lm->vec();
-    lm_idx += Landmark::kLandmarkDim;
+bool Estimator::GetMarginals(uint64_t state_id, LandmarkPtrMap lms, Marginals* res) {
+  std::vector<uint64_t> lm_ids;
+  for(const auto& e : lms) {
+    lm_ids.push_back(e.first);
   }
-  res->mean = mean;
-  res->cov.resize(lm_cov.rows() + pose_cov.rows(), lm_cov.cols() + pose_cov.cols());
+  return GetMarginals(state_id, lm_ids, res);
+}
+
+bool Estimator::GetMarginals(uint64_t state_id, std::vector<uint64_t> lm_ids, Marginals* res) {
+
+  std::vector<std::pair<const double*, const double*>> covariance_blocks;
+  if(!CheckStateExists(last_state_id_)) {
+    LOG(ERROR) << "Trying to get marginal covariance for state id: " << last_state_id_ << " but it's not in the problem";
+    return false;
+  }
+
+  StatePtr state = states_.at(state_id);
+  covariance_blocks.push_back(std::make_pair(state->data(), state->data()));
+
+
+  for (const auto& landmark_id : lm_ids) {
+    if (!CheckLandmarkExists(landmark_id)) {
+      LOG(ERROR) << fmt::format("Covariance for lm id: {} requested but that id is not in the map.", landmark_id);
+      return false;
+    }
+    LandmarkPtr lm = landmarks_.at(landmark_id);
+    covariance_blocks.push_back(std::make_pair(lm->data(), lm->data())); // get the marginal covariance
+    covariance_blocks.push_back(std::make_pair(state->data(), lm->data())); // and the pose-landmark covariance
+  }
+
+
+  ::ceres::Covariance::Options options;
+  ::ceres::Covariance covariance(options);
+  Eigen::MatrixXd cov_out(State::kStateDim + lm_ids.size() * Landmark::kLandmarkDim,
+                          State::kStateDim + lm_ids.size() * Landmark::kLandmarkDim);
+
+  bool success = covariance.Compute(covariance_blocks, ceres_problem_.get());
+
+  if (success) {
+    Eigen::Map<Eigen::Matrix<double,State::kStateDim, State::kStateDim, Eigen::RowMajor>> state_cov(
+          cov_out.block<State::kStateDim, State::kStateDim>(0, 0).data());
+
+    covariance.GetCovarianceBlockInTangentSpace(state->data(), state->data(), state_cov.data());
+    res->covariances.insert({std::make_pair(state_id, state_id), state_cov});
+    res->robot = state->robot;
+    res->pose_id = state_id;
+
+    // get the covariance blocks for all the requested landmarks
+    for (size_t idx = 0; idx < lm_ids.size(); ++idx) {
+
+      // first get the diagonal block
+      Eigen::Map<Eigen::Matrix<double,Landmark::kLandmarkDim, Landmark::kLandmarkDim, Eigen::RowMajor>> lm_cov(
+            cov_out.block<Landmark::kLandmarkDim, Landmark::kLandmarkDim>(
+              State::kStateDim + idx * Landmark::kLandmarkDim,
+              State::kStateDim + idx * Landmark::kLandmarkDim).data());
+      LandmarkPtr lm = landmarks_.at(lm_ids.at(idx));
+      covariance.GetCovarianceBlock(lm->data(), lm->data(), lm_cov.data());
+      res->covariances.insert({std::make_pair(lm_ids.at(idx), lm_ids.at(idx)), lm_cov});
+      res->landmarks[lm_ids.at(idx)] = lm;
+
+      // now get the off-diagonal pose-landmark covariance
+      Eigen::Map<Eigen::Matrix<double,State::kStateDim, Landmark::kLandmarkDim, Eigen::RowMajor>> state_lm_cov(
+            cov_out.block<State::kStateDim, Landmark::kLandmarkDim>(0, State::kStateDim + idx * Landmark::kLandmarkDim).data());
+      covariance.GetCovarianceBlock(state->data(), lm->data(), state_lm_cov.data());
+      res->covariances.insert({std::make_pair(state_id, lm_ids.at(idx)), state_lm_cov});
+
+      // also fill out the landmark-pose
+      cov_out.block<Landmark::kLandmarkDim, State::kStateDim>(State::kStateDim + idx * Landmark::kLandmarkDim, 0) =
+          state_lm_cov.transpose();
+    }
+  }
+
+  return success;
+
 }
 
 
@@ -546,10 +603,7 @@ void Estimator::CreateObservationFactor(const uint64_t state_id,
   }
 
   // add observation factor between state and landmark to problem
-  //TODO: Get correct measurement covariance
-  RangeFinderCovariance range_cov = RangeFinderCovariance::Identity();
-  range_cov(RangeFinderReading::kIndexBearing, RangeFinderReading::kIndexBearing) = Square(0.087);
-  range_cov(RangeFinderReading::kIndexRange, RangeFinderReading::kIndexRange) = Square(0.05); // 10cm
+  RangeFinderCovariance range_cov = RangeFinderReading::GetMeasurementCovariance();
   Eigen::LLT<RangeFinderCovariance> llt_of_information(range_cov.inverse());
   RangeFinderCovariance sqrt_information = llt_of_information.matrixL().transpose();
 

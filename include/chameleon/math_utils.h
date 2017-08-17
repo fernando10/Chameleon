@@ -63,7 +63,6 @@ void cartesian_product(Range1 const &r1, Range2 const &r2, OutputIterator out) {
     }
 }
 
-
 struct Distribution {
   Distribution(Eigen::VectorXd mean, Eigen::MatrixXd cov) : mean(mean), cov(cov){}
 

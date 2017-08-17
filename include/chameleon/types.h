@@ -35,11 +35,18 @@ struct RangeFinderReading {
     lm_id = lm_id_;
   }
 
-  Eigen::VectorXd vec() {
-    Eigen::VectorXd vec(kMeasurementDim);
-    vec[kIndexBearing] = bearing;
+  Eigen::Vector2d vec() const {
+    Eigen::Vector2d vec;
+    vec[kIndexBearing] = theta;
     vec[kIndexRange] = range;
     return vec;
+  }
+
+  static constexpr double kBearingStdDev = 0.087;  // [rad] ~10 degrees
+  static constexpr double kRangeStdDev = 0.05;  // [m]
+
+  static RangeFinderCovariance GetMeasurementCovariance() {
+    return Covariance2d(kRangeStdDev, kBearingStdDev, 0);
   }
 
 
@@ -263,10 +270,11 @@ struct RobotPose {
   }
 
   Eigen::VectorXd vec() {
-    Eigen::VectorXd ret(State::kStateDim);
+    Eigen::VectorXd ret(Sophus::SE2d::DoF);
     ret[kIndexTheta] = theta();
     ret[kIndexTrans] = x();
     ret[kIndexTrans+1] = y();
+    return ret;
   }
 
   double theta() const { return pose.so2().log(); }
@@ -366,6 +374,13 @@ struct State {
   bool active;
   double* data() { return robot.data(); }
   int DoF() { return robot.pose.DoF; }
+};
+
+struct Marginals {
+  RobotPose robot;
+  uint64_t pose_id;
+  LandmarkPtrMap landmarks;
+  std::map<std::pair<uint64_t, uint64_t>, Eigen::MatrixXd> covariances;
 };
 
 typedef std::shared_ptr<State> StatePtr;
