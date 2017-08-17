@@ -24,6 +24,7 @@ DEFINE_double(huber_loss, 1.0, " huber loss");
 DEFINE_int32(delayed_lm_init, 10, " delayed lm initalization");
 DEFINE_string(data_file, "", "data file for victoria park g2o dataset");
 DEFINE_string(data_type, "sim", "data type: sim or vp (victoria park)");
+DEFINE_string(data_association, "known", "data association type: known, IC or JCBB");
 /*----------------------------------------------------------------------------*/
 
 using namespace chameleon;
@@ -71,7 +72,11 @@ int main(int argc, char **argv) {
   //////////////////////////////////////
   chameleon::ceres::Estimator::EstimatorOptions estimator_options;
   estimator_options.print_full_summary = true;
-  estimator_options.data_association_strategy = DataAssociation::DataAssociationType::Known;
+  if (FLAGS_data_association.compare("known") == 0) {
+    estimator_options.data_association_strategy = DataAssociation::DataAssociationType::Known;
+  } else if (FLAGS_data_association.compare("IC") == 0) {
+    estimator_options.data_association_strategy = DataAssociation::DataAssociationType::IC;
+  }
   estimator_options.add_observations = FLAGS_add_observations;
   estimator_options.print_brief_summary = FLAGS_print_optimization_brief_summary;
   estimator_options.print_full_summary = FLAGS_print_optimization_full_summary;

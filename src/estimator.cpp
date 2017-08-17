@@ -97,13 +97,17 @@ void Estimator::AddData(const RobotData &data) {
     // get  a map with obs_index -> landmark_id
     LandmarkPtrMap visible_landmarks = GetLandmarksThatShouldBeVisible(new_state->robot);
     Marginals marginals;
-    if (!states_.empty()) {
+    if (states_.size() > options_.min_states_for_solve && options_.data_association_strategy !=
+        DataAssociation::DataAssociationType::Known) {
       GetMarginals(last_state_id_, visible_landmarks, &marginals);
+    }else {
+      marginals.robot = new_state->robot;
+      marginals.landmarks = visible_landmarks;
     }
     DataAssociationMap association = DataAssociation::AssociateDataToLandmarks(data.observations
                                                                                ,visible_landmarks
                                                                                ,marginals
-                                                                               ,DataAssociation::DataAssociationType::IC);
+                                                                               ,options_.data_association_strategy);
 
     // check if any landmarks that should have been observed were not so we can update the belief over that landmark
     for (const auto& lm : visible_landmarks) {

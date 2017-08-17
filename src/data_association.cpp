@@ -33,19 +33,19 @@ double DataAssociation::MahalanobisDistance(Eigen::VectorXd z, Distribution dist
 
 void DataAssociation::IndividualCompatibility(const RangeFinderObservationVector& measurements, const LandmarkPtrMap& map,
                                               const Marginals& current_state, DataAssociationMap* const  association){
-//  // we compute the individual compatibility by thresholding the mahalanobis distance of the innovation:
-//  //
-//  // let x be our current state (pose and landmarks): x ~ N(x_bar, \Sigma)
-//  // and z be our candidate measurement: z ~ N(h(x_bar), Q)
-//  // the log likelihood of z is then: || z - h(x_bar)||_Q
-//  // whre Q = H * Sigma * H^T + Q
-//  // and H is the derivative of h(x) w.r.t. x
+  //  // we compute the individual compatibility by thresholding the mahalanobis distance of the innovation:
+  //  //
+  //  // let x be our current state (pose and landmarks): x ~ N(x_bar, \Sigma)
+  //  // and z be our candidate measurement: z ~ N(h(x_bar), Q)
+  //  // the log likelihood of z is then: || z - h(x_bar)||_Q
+  //  // whre Q = H * Sigma * H^T + Q
+  //  // and H is the derivative of h(x) w.r.t. x
 
   const double D_max = 9.210;  // 2 dof chi^2 thresh.
 
   size_t meas_idx = 0;
   for (const RangeFinderObservation& z : measurements) {
-    double max_cost = D_max*2; // uninitialized, above max threshold
+    double min_cost = D_max*2; // uninitialized, above max threshold
 
     for (const auto& e : map) {
       const LandmarkPtr& lm = e.second;
@@ -62,17 +62,21 @@ void DataAssociation::IndividualCompatibility(const RangeFinderObservationVector
       // here we need the state-state, lm-lm and state-lm covariance blocks
       // Sigma = [ State-State State-LM
       //                    LM-State       LM-LM]
-      sigma.topLeftCorner<State::kStateDim, State::kStateDim>() = current_state.covariances.at(std::make_pair(current_state.pose_id,
-                                                                                                              current_state.pose_id));
-      sigma.block<Landmark::kLandmarkDim, Landmark::kLandmarkDim>(State::kStateDim, State::kStateDim) =
-          current_state.covariances.at(std::make_pair(e.first, e.first));
+      if (current_state.covariances.empty()) {
+        sigma.setIdentity();
+      } else {
+        sigma.topLeftCorner<State::kStateDim, State::kStateDim>() = current_state.covariances.at(std::make_pair(current_state.pose_id,
+                                                                                                                current_state.pose_id));
+        sigma.block<Landmark::kLandmarkDim, Landmark::kLandmarkDim>(State::kStateDim, State::kStateDim) =
+            current_state.covariances.at(std::make_pair(e.first, e.first));
 
-      sigma.block<State::kStateDim, Landmark::kLandmarkDim>(0, State::kStateDim) =
-          current_state.covariances.at(
-            std::make_pair(current_state.pose_id, e.first));
-      sigma.block<Landmark::kLandmarkDim, State::kStateDim>(State::kStateDim, 0) =
-          current_state.covariances.at(
-            std::make_pair(current_state.pose_id, e.first)).transpose();
+        sigma.block<State::kStateDim, Landmark::kLandmarkDim>(0, State::kStateDim) =
+            current_state.covariances.at(
+              std::make_pair(current_state.pose_id, e.first));
+        sigma.block<Landmark::kLandmarkDim, State::kStateDim>(State::kStateDim, 0) =
+            current_state.covariances.at(
+              std::make_pair(current_state.pose_id, e.first)).transpose();
+      }
 
 
       // now build the covariance matrix for the test
@@ -84,12 +88,11 @@ void DataAssociation::IndividualCompatibility(const RangeFinderObservationVector
       RangeFinderCovariance C = H * sigma * H.transpose() + RangeFinderReading::GetMeasurementCovariance();
 
       double dist = DataAssociation::MahalanobisDistance(z.observation.vec(), Distribution(prediction.vec(), C));
-      VLOG(1) << fmt::format("Pairing meas idx: {} to lm id: {}, dist: {}", meas_idx, e.first, dist);
 
-      if (dist < D_max && dist < max_cost) {
-        max_cost = dist;
+      if (dist < D_max && dist < min_cost) {
+        min_cost = dist;
         (*association)[meas_idx] = e.first;
-        VLOG(1) << fmt::format("Associating meas {} to lm {}", meas_idx, e.first);
+        VLOG(1) << fmt::format("Associating meas {} to lm {}, cost: {}", meas_idx, e.first, min_cost);
       }
     }
     meas_idx++;
