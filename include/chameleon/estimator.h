@@ -117,6 +117,7 @@ private:
   bool localization_mode_ = false;
   double latest_timestamp_;
   uint64_t last_state_id_;
+  DataAssociationResults data_assoc_results_;
 
   State2Landmark_Multimap state_2_landmark_multimap_;
   Landmark2State_MultiMap landmark_2_state_multimap_;

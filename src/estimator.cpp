@@ -48,6 +48,7 @@ void Estimator::Reset() {
   localization_mode_ = false;
   latest_timestamp_ = 0;
   last_state_id_ = 0;
+  data_assoc_results_.Clear();
 }
 
 ////////////////////////////////////////////////////////////////
@@ -109,6 +110,10 @@ void Estimator::AddData(const RobotData &data) {
                                                                                ,visible_landmarks
                                                                                ,marginals
                                                                                ,options_.data_association_strategy);
+
+    // save association results for visualizing
+    data_assoc_results_.observations = data.observations;
+    data_assoc_results_.associations = association;
 
     // check if any landmarks that should have been observed were not so we can update the belief over that landmark
     for (const auto& lm : visible_landmarks) {
@@ -791,6 +796,7 @@ void Estimator::GetEstimationResult(EstimatedData* data)  {
     }
     data->landmarks = landmarks_;
     data->states = states_;
+    data->data_association = data_assoc_results_;
   }
 }
 

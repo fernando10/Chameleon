@@ -56,7 +56,11 @@ void Visualizer::AddObjectsToSceneGraph() {
   gui_vars_.noisy_observations = util::make_unique<GLObservations>();
   gui_vars_.scene_graph.AddChild(gui_vars_.noisy_observations.get());
   gui_vars_.noisy_observations->SetColor(0.6, 0.1, 0.1);  // dark red
-  gui_vars_.noisy_observations->SetLineWidth(1.5);
+  gui_vars_.noisy_observations->SetLineWidth(1.7);
+
+  // data associations
+  gui_vars_.data_associations = util::make_unique<GLDataAssociations>();
+  gui_vars_.scene_graph.AddChild(gui_vars_.data_associations.get());
 
   // add estimated quantities
   gui_vars_.estimated_robot_path = util::make_unique<GLPathAbs>();
@@ -148,13 +152,12 @@ void Visualizer::InitGui() {
 
   pangolin::RegisterKeyPressCallback('s', [&]() { *gui_vars_.ui.do_SLAM = !(*gui_vars_.ui.do_SLAM); });
 
-  //pangolin::RegisterGuiVarChangedCallback(&Visualizer::GuiVarChanged, (void*)this, "ui");
-
   ////////////////////////////////////////////////////
   /////UI VARIABLES
   /// ////////////////////////////////////////////////
   gui_vars_.ui.reset = util::make_unique<pangolin::Var<bool>>("ui.Reset", false, false);
   gui_vars_.ui.show_gt = util::make_unique<pangolin::Var<bool>>("ui.Show_ground_truth", false, true);
+  gui_vars_.ui.show_data_assoc = util::make_unique<pangolin::Var<bool>>("ui.Show_data_assoc.", false, true);
   gui_vars_.ui.show_observations = util::make_unique<pangolin::Var<bool>>("ui.Show_observations", true, true);
   gui_vars_.ui.show_gt_observations = util::make_unique<pangolin::Var<bool>>("ui.Show_gt_observations", false, true);
   gui_vars_.ui.show_landmarks = util::make_unique<pangolin::Var<bool>>("ui.Show_landmarks", false, true);
@@ -191,6 +194,7 @@ void Visualizer::Run() {
     // check toggles
     gui_vars_.ground_truth_map->SetVisible(*gui_vars_.ui.show_landmarks);
     gui_vars_.ground_truth_observations->SetVisible(*gui_vars_.ui.show_gt_observations);
+    gui_vars_.data_associations->SetVisible(*gui_vars_.ui.show_data_assoc);
     gui_vars_.noisy_observations->SetVisible(*gui_vars_.ui.show_observations);
     gui_vars_.noisy_robot_path->SetVisible(*gui_vars_.ui.show_odometry);
     gui_vars_.gt_robot_path->SetVisible(*gui_vars_.ui.show_gt);
@@ -305,6 +309,27 @@ bool Visualizer::AddTimesteps(std::vector<size_t> timesteps) {
       gui_vars_.estimated_robot_path->SetLastPoseCovariance(
             data_->estimated_poses.rbegin()->second->robot.covariance);
       gui_vars_.estimated_robot_path->ShowCovariance(data_->estimated_poses.size() > 5);
+    }
+
+    if (!data_->data_associations->associations.empty()) {
+        // update the data associations
+        gui_vars_.data_associations->Clear();
+
+        for (auto e : data_->data_associations->associations) {
+          RangeFinderObservation& obs = data_->data_associations->observations[e.first];
+          LandmarkPtr lm_w = data_->estimated_landmarks.at(e.second);  // should always be present
+
+          // transfer the observation over to the world frame
+          Landmark obs_r(obs.observation.range * std::cos(obs.observation.theta),
+                        obs.observation.range * std::sin(obs.observation.theta));
+          // transfer the observation over to the world frame
+          Landmark obs_w = data_->estimated_poses.rbegin()->second->robot * obs_r;
+
+          // finally add to the scene graph
+          gui_vars_.data_associations->AddDataAssociation(std::make_pair(obs_w.vec(), lm_w->vec()));
+
+        }
+
     }
   }
   return true;

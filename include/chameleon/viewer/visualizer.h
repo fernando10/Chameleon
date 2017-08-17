@@ -9,6 +9,7 @@
 #include "chameleon/viewer/gl_robot.h"
 #include "chameleon/viewer/gl_path_abs.h"
 #include "chameleon/viewer/gl_map.h"
+#include "chameleon/viewer/gl_data_associations.h"
 #include "chameleon/viewer/gl_observations.h"
 #include "chameleon/data_reader.h"
 
@@ -40,6 +41,7 @@ public:
       ground_truth_robot_poses = std::make_shared<RobotPoseVector>();
       noisy_robot_poses = std::make_shared<RobotPoseVector>();
       ground_truth_map = std::make_shared<LandmarkVector>();
+      data_associations = std::make_shared<DataAssociationResults>();
     }
 
     ///
@@ -68,6 +70,7 @@ public:
     void AddData(const EstimatedData& data) {
        estimated_landmarks = data.landmarks;
        estimated_poses = data.states;
+       *data_associations = data.data_association;
     }
 
     typedef std::shared_ptr<ViewerData> Ptr;
@@ -80,11 +83,13 @@ public:
     // estimated quantities
     LandmarkPtrMap estimated_landmarks;
     StatePtrMap estimated_poses;
+    DataAssociationResults::Ptr data_associations;
   };
 
   // variables that will be displayed in the GUI
   struct DebugGUIVariables {
     std::unique_ptr<pangolin::Var<bool>> show_gt;
+    std::unique_ptr<pangolin::Var<bool>> show_data_assoc;
     std::unique_ptr<pangolin::Var<bool>> show_observations;
     std::unique_ptr<pangolin::Var<bool>> show_gt_observations;
     std::unique_ptr<pangolin::Var<bool>> show_landmarks;
@@ -121,6 +126,7 @@ public:
     std::unique_ptr<GLMap> ground_truth_map;
     std::unique_ptr<GLObservations> ground_truth_observations;
     std::unique_ptr<GLObservations> noisy_observations;
+    std::unique_ptr<GLDataAssociations> data_associations;
     // estimated quantities
     std::unique_ptr<GLMap> estimated_map;
     std::unique_ptr<GLPathAbs> estimated_robot_path;

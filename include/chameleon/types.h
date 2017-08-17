@@ -389,10 +389,22 @@ typedef std::vector<StatePtr> StatePtrVector;
 typedef std::multimap<uint64_t, uint64_t> State2Landmark_Multimap;
 typedef std::multimap<uint64_t, uint64_t> Landmark2State_MultiMap;
 
+struct DataAssociationResults {
+  typedef std::shared_ptr<DataAssociationResults> Ptr;
+  void Clear() {
+    associations.clear();
+    observations.clear();
+  }
+
+  DataAssociationMap associations;
+  RangeFinderObservationVector observations;
+};
+
 struct EstimatedData {
   //const StatePtr state;
   StatePtrMap states;
   LandmarkPtrMap landmarks;
+  DataAssociationResults data_association;
 };
 
 } // namespace chameleon
