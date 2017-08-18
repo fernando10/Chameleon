@@ -32,7 +32,7 @@ private:
   LandmarkVectorPtr map_;
   LandmarkVectorPtr noisy_map_;
   double GetTotalDistanceTraveled(const RobotPoseVectorPtr& poses);
-  const double kMapSigma = 0.1;
+  const double kMapSigma = 0.05;
 };
 
 }  // namespace chameleon

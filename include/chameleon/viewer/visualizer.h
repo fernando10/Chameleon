@@ -191,6 +191,7 @@ private:
   std::mutex data_mutex_;
   bool finished_ = false;
   bool finish_requested_ = false;
+  size_t remove_lm_idx_ = 18;
 };
 
 }  // namespace chameleon

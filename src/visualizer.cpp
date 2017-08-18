@@ -71,6 +71,8 @@ void Visualizer::AddObjectsToSceneGraph() {
   gui_vars_.estimated_map->SetColor(1, 0, 1);  // magenta
   gui_vars_.estimated_map->SetShowPersistenceLabels(false);
   gui_vars_.scene_graph.AddChild(gui_vars_.estimated_map.get());
+
+  remove_lm_idx_ = 18;  // TEMP, remove this
 }
 
 void Visualizer::ResetSceneGraph() {
@@ -120,7 +122,7 @@ void Visualizer::InitGui() {
   gui_vars_.log_ptr->SetLabels(data_labels);
 
   gui_vars_.plotter_ptr.reset(new pangolin::Plotter(gui_vars_.log_ptr.get()));
-  pangolin::XYRange<float> range(0.f, 800.f, 0.f, 1.f);
+  pangolin::XYRange/*<float>*/ range(0.f, 800.f, 0.f, 1.f);
   gui_vars_.plotter_ptr->SetDefaultView(range);
   gui_vars_.plotter_ptr->SetViewSmooth(range);
   gui_vars_.plotter_ptr->ToggleTracking();
@@ -147,8 +149,8 @@ void Visualizer::InitGui() {
   pangolin::RegisterKeyPressCallback(pangolin::PANGO_SPECIAL + pangolin::PANGO_KEY_RIGHT,
                                      [&]() { single_step_ = true; });
 
-  pangolin::RegisterKeyPressCallback('r', [&]() { VLOG(1) << "removing landmark id: " << data_->ground_truth_map->back().id;
-    landmarks_to_be_removed_.push_back(data_->ground_truth_map->back().id); });
+  pangolin::RegisterKeyPressCallback('r', [&]() { VLOG(1) << "removing landmark id: " << remove_lm_idx_;
+    landmarks_to_be_removed_.push_back(remove_lm_idx_++); });
 
   pangolin::RegisterKeyPressCallback('s', [&]() { *gui_vars_.ui.do_SLAM = !(*gui_vars_.ui.do_SLAM); });
   pangolin::RegisterKeyPressCallback('l', [&]() { *gui_vars_.ui.do_Localization = !(*gui_vars_.ui.do_Localization); });
@@ -175,7 +177,7 @@ void Visualizer::InitGui() {
   gui_vars_.ui.color_lms = util::make_unique<pangolin::Var<bool>>("ui.Color_landmarks", false, true);
 
   gui_vars_.ui.plot_idx = util::make_unique<pangolin::Var<int>>("debug.plot_lm", 25);
-  *gui_vars_.ui.plot_idx = 1;
+  *gui_vars_.ui.plot_idx = 25;
 
 
   gui_vars_.ui.prob_missed_detect = util::make_unique<pangolin::Var<double>>("ui.Prob. Missed Detect.", 0.0, 1.0);
@@ -192,7 +194,7 @@ std::vector<uint64_t> Visualizer::GetLandmarksToBeRemoved() {
 
 std::vector<uint64_t> Visualizer::ChangeLandmarks() {
   if(change_landmarks_) {
-    std::vector<uint64_t> ret {23, 24, 25, 26, 27};
+    std::vector<uint64_t> ret {1, 2, 27, 28};
     change_landmarks_ = false;
     return ret;
   }else{

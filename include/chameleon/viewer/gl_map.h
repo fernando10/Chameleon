@@ -20,6 +20,7 @@ public:
     draw_persistence_labels_ = false;
     color_based_on_persistence_ = false;
     draw_variance_ = false;
+    draw_landmark_id_ = false;
   }
 
   void DrawCanonicalObject() {
