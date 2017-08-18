@@ -67,6 +67,13 @@ void Estimator::SetMap(LandmarkVectorPtr prior_map) {
     ceres_problem_->SetParameterBlockConstant(lm_ptr->data());
   }
 
+  // TEMP FOR DEMO
+  persistence_filter_graph_[16][17] = 2;
+  persistence_filter_graph_[17][18] = 3.5;
+  persistence_filter_graph_[19][18] = 3.5;
+  persistence_filter_graph_[20][19] = 2;
+
+
   localization_mode_ = true;
 }
 
@@ -655,13 +662,36 @@ void Estimator::CreateObservationFactor(const uint64_t state_id,
     }
 
     // and add this observation
-    persistence_filter_map_.at(landmark_id)->update(true, obs.timestamp+1, options_.filter_options.P_M,
+    double P_M = options_.filter_options.P_M;
+    if (persistence_filter_graph_.find(landmark_id) != persistence_filter_graph_.end()){
+      for (const auto& e : persistence_filter_graph_[landmark_id]) {
+        if (persistence_filter_map_.find(e.first) != persistence_filter_map_.end()) {
+          P_M *= (e.second - (e.second-1) * landmarks_.at(e.first)->persistence_prob);
+        }
+      }
+    }
+
+    if ((landmark_id == 27 || landmark_id == 28 || landmark_id == 1 || landmark_id == 2) &&
+        persistence_filter_map_.find(26) != persistence_filter_map_.end() &&
+        landmarks_.at(26)->persistence_prob < 0.3){
+      P_M = 0.8;
+
+    }
+    persistence_filter_map_.at(landmark_id)->update(true, obs.timestamp+1, P_M,
                                                     options_.filter_options.P_F);
 
   }
 
   // add observation factor between state and landmark to problem
   RangeFinderCovariance range_cov = RangeFinderReading::GetMeasurementCovariance();
+  if (options_.weigh_landmarks_by_persistence && options_.filter_options.use_persistence_filter &&
+      persistence_filter_map_.find(landmark_id) != persistence_filter_map_.end()) {
+    double persistence_prob = landmarks_.at(landmark_id)->persistence_prob;
+    if(persistence_prob < 1e-10){
+      persistence_prob = 1e-10;
+    }
+    range_cov *= 1.0 / persistence_prob;
+  }
   Eigen::LLT<RangeFinderCovariance> llt_of_information(range_cov.inverse());
   RangeFinderCovariance sqrt_information = llt_of_information.matrixL().transpose();
 

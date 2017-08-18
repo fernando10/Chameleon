@@ -21,6 +21,7 @@ DEFINE_bool(provide_map, true, "provide pre-built map to estimator");
 DEFINE_bool(print_optimization_full_summary, false, "print full summary");
 DEFINE_bool(print_optimization_brief_summary, false, "print brief summary");
 DEFINE_bool(persistence_filter, false, "use persistence filter");
+DEFINE_bool(weigh_lm_by_persistence, false, "weigh lm uncertainty by persistence");
 DEFINE_double(huber_loss, 1.0, " huber loss");
 DEFINE_int32(delayed_lm_init, 10, " delayed lm initalization");
 DEFINE_string(data_file, "", "data file for victoria park g2o dataset");
@@ -80,6 +81,7 @@ int main(int argc, char **argv) {
   }
   estimator_options.add_observations = FLAGS_add_observations;
   estimator_options.provide_map = FLAGS_provide_map;
+  estimator_options.weigh_landmarks_by_persistence = FLAGS_weigh_lm_by_persistence;
   estimator_options.print_brief_summary = FLAGS_print_optimization_brief_summary;
   estimator_options.print_full_summary = FLAGS_print_optimization_full_summary;
   estimator_options.compute_landmark_covariance = FLAGS_compute_lm_covariance;

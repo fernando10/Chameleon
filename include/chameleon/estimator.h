@@ -34,6 +34,7 @@ public:
     PersistenceFilterOptions filter_options;
     bool add_observations = true;
     bool provide_map = true;
+    bool weigh_landmarks_by_persistence = false;
     bool compute_landmark_covariance = true;
     bool compute_latest_pose_covariance = true;
     size_t delayed_initalization_num = 10;  // wait till we have this many observations to initialize a landmark //TODO: add landmark at first observation but with high uncertainty
@@ -117,6 +118,7 @@ private:
   std::unique_ptr<::ceres::LocalParameterization> local_param_;
   ::ceres::Solver::Summary summary_;
 
+  std::unordered_map<uint64_t, std::map<uint64_t, double>> persistence_filter_graph_;
   std::unordered_map<uint64_t, PersistenceFilterPtr> persistence_filter_map_;
   std::unordered_map<uint64_t, std::map<uint64_t, RangeFinderObservationVector>> unitialized_landmarks_;
   LandmarkPtrMap landmarks_;

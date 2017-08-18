@@ -21,6 +21,7 @@ public:
     color_based_on_persistence_ = false;
     draw_variance_ = false;
     draw_landmark_id_ = false;
+    draw_groups_ = false;
   }
 
   void DrawCanonicalObject() {
@@ -44,7 +45,7 @@ public:
       glColor4f(color[0], color[1], color[2], color[3]);
 
       glPushMatrix();
-
+//1-7; 21-15
       pangolin::glDrawCirclePerimeter(lm.x(), lm.y(), 0.1);
       pangolin::glDrawCross(lm.x(), lm.y(), 0.1/2.f);
 
@@ -63,7 +64,31 @@ public:
         text.SetPosition(lm.x(), lm.y(), -0.3);
         text.DrawObjectAndChildren();
       }
+    }
 
+    if(draw_groups_) {
+      Eigen::Matrix<float, 4, 2> pts;
+      float border = 0.5f;
+      pts.setZero();
+      for (const auto& lm : landmark_vec_) {
+        if(lm.id == 1){
+          pts(0, 0) = (float)lm.x()-border; pts(0, 1) = (float)lm.y()+border;
+        }
+        if(lm.id == 7) {
+          pts(1, 0) = (float)lm.x()+border; pts(1, 1) = (float)lm.y()-border;
+        }
+
+        if(lm.id == 21){
+          pts(2, 0) = (float)lm.x()-border; pts(2, 1) = (float)lm.y()+border;
+        }
+        if(lm.id == 15) {
+          pts(3, 0) = (float)lm.x()+border; pts(3, 1) = (float)lm.y()-border;
+        }
+      }
+      glColor4f(1.0, 1.0, 0.0, 1.0);
+      glLineWidth(2.0);
+      pangolin::glDrawRectPerimeter(pts(0, 0), pts(0, 1), pts(1, 0), pts(1, 1));
+      pangolin::glDrawRectPerimeter(pts(2, 0), pts(2, 1), pts(3, 0), pts(3, 1));
 
     }
   }
@@ -115,6 +140,10 @@ public:
     draw_variance_ = plot_variance;
   }
 
+  void SetDrawGroups(bool draw) {
+    draw_groups_ = draw;
+  }
+
   void SetColorBasedOnPersistence(bool set) {
     color_based_on_persistence_  = set;
   }
@@ -134,5 +163,6 @@ private:
   bool color_based_on_persistence_;
   bool draw_persistence_labels_;
   bool draw_landmark_id_;
+  bool draw_groups_;
   bool draw_variance_;
 };

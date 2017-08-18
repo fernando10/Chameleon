@@ -175,9 +175,10 @@ void Visualizer::InitGui() {
   gui_vars_.ui.show_prob_labels = util::make_unique<pangolin::Var<bool>>("ui.Show_posterior", false, true);
   gui_vars_.ui.show_lm_ids = util::make_unique<pangolin::Var<bool>>("ui.Show_lm_ids", false, true);
   gui_vars_.ui.color_lms = util::make_unique<pangolin::Var<bool>>("ui.Color_landmarks", false, true);
+  gui_vars_.ui.draw_groups = util::make_unique<pangolin::Var<bool>>("ui.Draw_Groups", false, true);
 
-  gui_vars_.ui.plot_idx = util::make_unique<pangolin::Var<int>>("debug.plot_lm", 25);
-  *gui_vars_.ui.plot_idx = 25;
+  gui_vars_.ui.plot_idx = util::make_unique<pangolin::Var<int>>("debug.plot_lm", 17);
+  *gui_vars_.ui.plot_idx = 17;
 
 
   gui_vars_.ui.prob_missed_detect = util::make_unique<pangolin::Var<double>>("ui.Prob. Missed Detect.", 0.0, 1.0);
@@ -225,6 +226,7 @@ void Visualizer::Run() {
     gui_vars_.estimated_map->SetShowPersistenceLabels(*gui_vars_.ui.show_prob_labels);
     gui_vars_.estimated_map->SetShowLandmarkId(*gui_vars_.ui.show_lm_ids);
     gui_vars_.estimated_map->SetColorBasedOnPersistence(*gui_vars_.ui.color_lms);
+    gui_vars_.estimated_map->SetDrawGroups(*gui_vars_.ui.draw_groups);
     gui_vars_.estimated_map->SetShowVariance(*gui_vars_.ui.show_variance);
 
 

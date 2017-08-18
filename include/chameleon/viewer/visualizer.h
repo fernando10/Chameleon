@@ -102,6 +102,7 @@ public:
     std::unique_ptr<pangolin::Var<bool>> show_prob_labels;
     std::unique_ptr<pangolin::Var<bool>> show_lm_ids;
     std::unique_ptr<pangolin::Var<bool>> color_lms;
+    std::unique_ptr<pangolin::Var<bool>> draw_groups;
     std::unique_ptr<pangolin::Var<int>> plot_idx;
     std::unique_ptr<pangolin::Var<double>> prob_missed_detect;
     std::unique_ptr<pangolin::Var<double>> prob_false_detect;
@@ -172,8 +173,6 @@ private:
   void AddObjectsToSceneGraph();
   void ResetSceneGraph();
   void UpdatePlotters();
-  //void GuiVarChanged(void * data, const::std::string& name, pangolin::VarValueGeneric& var);
-
 
   const ViewerOptions& options_;
   bool single_step_ = false;
