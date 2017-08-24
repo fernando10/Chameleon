@@ -31,7 +31,7 @@ public:
 
   DataGenerator(const DataGeneratorOptions& options);
 
-  bool GetRobotData(RobotData* const data) override;
+  bool GetData(RobotData* const data) override;
   LandmarkVectorPtr GetNoisyMap();
   void Reset();
 

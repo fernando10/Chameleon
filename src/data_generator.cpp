@@ -36,7 +36,7 @@ LandmarkVectorPtr DataGenerator::GetNoisyMap() {
   return world_generator_->SampleWorld();
 }
 
-bool DataGenerator::GetRobotData(RobotData* const data) {
+bool DataGenerator::GetData(RobotData* const data) {
   // since we're simulating should always return something here
   data->debug.ground_truth_pose = path_generator_->GetRobot(current_timestep_);
 

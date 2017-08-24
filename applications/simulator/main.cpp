@@ -7,6 +7,7 @@
 
 #include "chameleon/viewer/visualizer.h"
 #include "chameleon/data_generator.h"
+#include "chameleon/data_provider.h"
 #include "chameleon/estimator.h"
 #include "fmt/printf.h"
 #include "chameleon/data_reader.h"
@@ -24,8 +25,8 @@ DEFINE_bool(persistence_filter, false, "use persistence filter");
 DEFINE_bool(weigh_lm_by_persistence, false, "weigh lm uncertainty by persistence");
 DEFINE_double(huber_loss, 1.0, " huber loss");
 DEFINE_int32(delayed_lm_init, 10, " delayed lm initalization");
-DEFINE_string(data_file, "", "data file for victoria park g2o dataset");
-DEFINE_string(data_type, "sim", "data type: sim or vp (victoria park)");
+DEFINE_string(data_file, "", "data file for dataset");
+DEFINE_string(data_type, "sim", "data type: sim, vp (victoria park) or utias");
 DEFINE_string(data_association, "known", "data association type: known, IC or JCBB");
 /*----------------------------------------------------------------------------*/
 
@@ -45,29 +46,13 @@ int main(int argc, char **argv) {
   FLAGS_colorlogtostderr = 1;
   FLAGS_logtostderr = 1;
 
-  bool use_sim_data = FLAGS_data_type.compare("sim") == 0;
-  bool use_real_data = FLAGS_data_type.compare("vp") == 0;
-
-
   ///////////////////////////////////////
-  // Setup Data Generator so we have some simulated data
+  // Setup Data Provider so we have some data
   //////////////////////////////////////
-  DataGenerator::DataGeneratorOptions sim_options;  // use default options
+  DataProvider data_provider(FLAGS_data_type, FLAGS_data_file);
+  DataGenerator::DataGeneratorOptions& sim_options = data_provider.SimulationOptions();
   sim_options.path_options.num_steps = FLAGS_num_steps;
   sim_options.path_options.initial_position = RobotPose(0, Eigen::Vector2d::Zero());
-  std::unique_ptr<DataGenerator> data_generator = util::make_unique<DataGenerator>(sim_options);
-  RobotData simulator_data;  // data corresponding to a single timestep
-
-  // check if we have real data to load
-  DataReader::G2oData vic_park_data;
-  VictoriaParkData vc_data;
-  if (use_real_data) {
-    if (FLAGS_data_file.empty()) {
-      LOG(FATAL) << "Victoria Park data specifiec but no data file passed in.";
-    } else {
-      DataReader::LoadG2o(FLAGS_data_file, &vic_park_data);
-    }
-  }
 
   //////////////////////////////////////
   // Setup estimator
@@ -92,16 +77,16 @@ int main(int argc, char **argv) {
   std::unique_ptr<chameleon::ceres::Estimator> SLAM = util::make_unique<chameleon::ceres::Estimator>(estimator_options);
   EstimatedData estimator_results;  // for collecting the latest updates form the estimator
 
-  if (estimator_options.provide_map) {
-    SLAM->SetMap(data_generator->GetNoisyMap());
-  }
+  //  if (FLAGS_provide_map) {
+  //    SLAM->SetMap(data_generator->GetNoisyMap());
+  //  }
 
   ////////////////////////////////////
   // Get Data -> Estimate -> Display
   ////////////////////////////////////
   if (FLAGS_display) {
     Visualizer::ViewerOptions viewer_options;
-    viewer_options.window_name = "Chameleon - ICRA 2018";
+    viewer_options.window_name = "Chameleon - TRI Summer 2017";
     viewer_options.start_running = FLAGS_start_running;
 
     Visualizer viewer(viewer_options);  // create viewer and run thread
@@ -115,11 +100,13 @@ int main(int argc, char **argv) {
 
       if (viewer.IsResetRequested()) {
         LOG(INFO) << " Reseting...";
-        data_generator->Reset();
-        SLAM->Reset();
-        if (estimator_options.provide_map) {
-          SLAM->SetMap(data_generator->GetNoisyMap());
-        }
+        data_provider.Reset();  // reset data provider
+        SLAM->Reset();  // reset slam system
+        //        if (estimator_options.provide_map) {
+        //          SLAM->SetMap(data_generator->GetNoisyMap());
+        //        }
+
+        // reset viewer
         viewer_data = std::make_shared<Visualizer::ViewerData>();
         viewer.SetData(viewer_data);
         viewer.SetReset();
@@ -134,42 +121,23 @@ int main(int argc, char **argv) {
 
       if (go) {
 
-        // update feature detection probabilities
-        sim_options.prob_missed_detection = *(viewer.GetDebugVariables().prob_missed_detect);
-        sim_options.prob_false_positive = *(viewer.GetDebugVariables().prob_false_detect);
-
-        // check if any landmarks need to be removed or changed
-        sim_options.remove_lm_ids.clear();
-        sim_options.change_lm_ids.clear();
-        sim_options.remove_lm_ids = viewer.GetLandmarksToBeRemoved();
-        sim_options.change_lm_ids = viewer.ChangeLandmarks();
-        if(!sim_options.change_lm_ids.empty()) {
-          LOG(INFO) << " changing "  << sim_options.change_lm_ids.size() << " landmarks";
-        }
+        // pass along any user input to the data provider
+        data_provider.UpdateOptions(viewer);
 
         // Get some data
         bool data_success = false;
-        if (use_sim_data) {
-          VLOG(1) << "Getting simulated data.";
-          data_success = data_generator->GetRobotData(&simulator_data);
-        } else if (use_real_data) {
-          VLOG(1) << "Getting victoria park data.";
-          //data_success = vic_park_data.GetData();
-        }
+        RobotData data;
+        data_success = data_provider.GetData(&data);
 
         if (data_success) {
 
-          // display debug data
-          if (use_sim_data) {
-            viewer_data->AddData(simulator_data);
-          } else if (use_real_data) {
-            viewer_data->AddData(vic_park_data);
-          }
+          // display data
+          viewer_data->AddData(data);
 
           if (*(viewer.GetDebugVariables().do_SLAM)) {
             estimator_options.filter_options.P_F = *(viewer.GetDebugVariables().prob_false_detect);
             estimator_options.filter_options.P_M = *(viewer.GetDebugVariables().prob_missed_detect);
-            SLAM->AddData(simulator_data);
+            SLAM->AddData(data);
             SLAM->SetLocalizationMode(*(viewer.GetDebugVariables().do_Localization));
             // solve is currently batch synchronous....TBD if needs to be threaded
             SLAM->Solve();
@@ -177,12 +145,7 @@ int main(int argc, char **argv) {
             viewer_data->AddData(estimator_results);
           }
 
-          if (use_sim_data) {
-            viewer.AddTimesteps({size_t(simulator_data.timestamp)});  // add the current timestep to the display
-          } else {
-            std::vector<size_t> ts;
-            viewer.AddTimesteps(ts);
-          }
+          viewer.AddTimesteps({size_t(data.timestamp)});  // add the current timestep to the display
 
         } else {
           LOG(ERROR) << "Unable to get data.";

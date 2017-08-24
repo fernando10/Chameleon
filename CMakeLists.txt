@@ -172,6 +172,7 @@ set(LIB_SRCS
   ${SRC_DIR}/id_provider.cpp
   ${SRC_DIR}/data_reader.cpp
   ${SRC_DIR}/lap.cpp
+  ${SRC_DIR}/data_provider.cpp
   )
 
 set( INC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include/${LIBRARY_NAME} )
@@ -192,6 +193,7 @@ set(LIB_HEADERS
   ${INC_DIR}/persistence_filter.h
   ${INC_DIR}/estimator.h
   ${INC_DIR}/data_reader.h
+  ${INC_DIR}/data_provider.h
   )
 
 include_directories( ${REQUIRED_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/include )

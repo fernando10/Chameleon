@@ -17,7 +17,7 @@ public:
   /// \param data data structure to be filled out by implementing classes
   /// \return true if data was filled out, false if no data was available
   ///
-  virtual bool GetRobotData(RobotData* const data) = 0;
+  virtual bool GetData(RobotData* const data) = 0;
 };
 
 }  // namespace chameleon

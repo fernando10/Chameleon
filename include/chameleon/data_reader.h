@@ -53,8 +53,6 @@ public:
           data->observations.push_back(obs);
         }
       }
-
-
       // get the odometry from the curret pose
       for (const GraphEdgeSE2& edge : robot_robot_edges) {
         if (edge.id1 == current_state) {
@@ -73,7 +71,12 @@ public:
     }
   };
 
+  struct UITASData {
+
+  };
+
   static void LoadG2o(const std::string& filename, G2oData* data);
+  static void LoadUITAS(const std::string& filename, G2oData* data );
 
 private:
 
