@@ -74,6 +74,8 @@ public:
 
   // represents a keyframe and the measurements taken at that point in time
   struct KeyframeMeasurements {
+    typedef std::shared_ptr<KeyframeMeasurements> Ptr;
+    KeyframeMeasurements(): time(0){}
     KeyframeMeasurements(double t): time(t){}
     double time;
     RangeFinderObservationVector meas;
@@ -85,11 +87,9 @@ public:
     UTIASData(){}
     LandmarkPtrMap gt_landmarks; // all the landmarks in the world frame
     LandmarkVectorPtr gt_landmarks_vec; // redundant storage for now due to backwards compatibility
-    std::map<size_t, StatePtrVector> ground_truth_states; // ground truth robot poses for each robot
-    std::map<size_t, std::vector<KeyframeMeasurements>> observations; // observations for each robot, binned by observation time
     std::map<size_t, OdometryObservationBufferPtr> odometry_buffers;  // odometry buffers for each robot
 
-    std::map<size_t, std::vector<KeyframeMeasurements>> keyframes;
+    std::map<size_t, std::vector<KeyframeMeasurements::Ptr>> keyframes;
   };
 
   static void LoadG2o(const std::string& filename, G2oData* data);

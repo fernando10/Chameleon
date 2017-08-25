@@ -225,79 +225,81 @@ void DataReader::LoadUTIAS(const std::string &data_dir, UTIASData* data, double 
   }
   VLOG(1) << fmt::format("Read {} barcodes", barcode2subject.size());
 
-  // first lets compute the start and end time for all the robots so we can sample the data evenly
-  double min_time = -1;
-  double max_time = -1;
+  //  // first lets compute the start and end time for all the robots so we can sample the data evenly
+  //  double min_time = -1;
+  //  double max_time = -1;
 
-  for (size_t robot_idx = 1; robot_idx <= num_robots; ++robot_idx) {
-    std::string poses_file = fmt::format("{}/Robot{}_Groundtruth.dat", data_dir, robot_idx);
-    input_stream.close();
-    input_stream.clear();
-    input_stream.open(poses_file.c_str());
-    if (!input_stream) {
-      LOG(FATAL) << "Cannot load robot poses in file: " << poses_file;
-    }
-    std::string first;
-    double ts = 0;
+  //  for (size_t robot_idx = 1; robot_idx <= num_robots; ++robot_idx) {
+  //    std::string poses_file = fmt::format("{}/Robot{}_Groundtruth.dat", data_dir, robot_idx);
+  //    input_stream.close();
+  //    input_stream.clear();
+  //    input_stream.open(poses_file.c_str());
+  //    if (!input_stream) {
+  //      LOG(FATAL) << "Cannot load robot poses in file: " << poses_file;
+  //    }
+  //    std::string first;
+  //    double ts = 0;
 
-    // first look at the first timestamp to get the earliest time
-    while (!input_stream.eof()) {
-      if (!(input_stream >> first)) {
-        break;
-      }
-      if (first == "#") {  // this line is a comment, ignore
-        input_stream.ignore(LINESIZE, '\n');  // discard anything else on that line
-        continue;
-      } else {
-        ts = std::atof(first.c_str());
-        if (min_time < 0 || ts < min_time) {
-          min_time = ts;
-          VLOG(1) << fmt::format("got min time: {:f}", min_time);
-        }
-      }
-      break;
-    }
+  //    // first look at the first timestamp to get the earliest time
+  //    while (!input_stream.eof()) {
+  //      if (!(input_stream >> first)) {
+  //        break;
+  //      }
+  //      if (first == "#") {  // this line is a comment, ignore
+  //        input_stream.ignore(LINESIZE, '\n');  // discard anything else on that line
+  //        continue;
+  //      } else {
+  //        ts = std::atof(first.c_str());
+  //        if (min_time < 0 || ts < min_time) {
+  //          min_time = ts;
+  //          VLOG(1) << fmt::format("got min time: {:f}", min_time);
+  //        }
+  //      }
+  //      break;
+  //    }
 
-    // now look at the last time to get the lastest time
-    input_stream.seekg(-1, std::ios_base::end); // jump to end of file (one spot before)
-    bool keep_going = true;
-    size_t num_newlines = 0;
-    while (keep_going) {
-      char ch;
-      input_stream.get(ch); // get current byte of data
-      if ((int)input_stream.tellg() <= 1) {
-        input_stream.seekg(0);
-        keep_going = false; // empty file?
-      } else if (ch == '\n') {
-        num_newlines++;
-        if (num_newlines == 2) {
-          keep_going = false;
-        }else {
-          input_stream.seekg(-2, std::ios_base::cur);
-        }
-      }else {
-        input_stream.seekg(-2, std::ios_base::cur);
-      }
-    }
-    std::string last_line;
-    std::getline(input_stream, last_line);
-    ts = std::atof(last_line.substr(0, last_line.find(' ')).c_str());
+  //    // now look at the last time to get the lastest time
+  //    input_stream.seekg(-1, std::ios_base::end); // jump to end of file (one spot before)
+  //    bool keep_going = true;
+  //    size_t num_newlines = 0;
+  //    while (keep_going) {
+  //      char ch;
+  //      input_stream.get(ch); // get current byte of data
+  //      if ((int)input_stream.tellg() <= 1) {
+  //        input_stream.seekg(0);
+  //        keep_going = false; // empty file?
+  //      } else if (ch == '\n') {
+  //        num_newlines++;
+  //        if (num_newlines == 2) {
+  //          keep_going = false;
+  //        }else {
+  //          input_stream.seekg(-2, std::ios_base::cur);
+  //        }
+  //      }else {
+  //        input_stream.seekg(-2, std::ios_base::cur);
+  //      }
+  //    }
+  //    std::string last_line;
+  //    std::getline(input_stream, last_line);
+  //    ts = std::atof(last_line.substr(0, last_line.find(' ')).c_str());
 
-    if (max_time < 0 || ts >max_time) {
-      max_time = ts;
-    }
-  }
+  //    if (max_time < 0 || ts >max_time) {
+  //      max_time = ts;
+  //    }
+  //  }
 
-  VLOG(1) << fmt::format("min time: {:f}, max time: {:f}", min_time, max_time);
-  VLOG(1) << fmt::format(" total time: {:f}", max_time - min_time);
-  max_time = max_time - min_time;
-  size_t num_timesteps = std::floor(max_time / sample_time) + 1;
-  VLOG(1) << "Num timesteps: "  << num_timesteps;
+  //  VLOG(1) << fmt::format("min time: {:f}, max time: {:f}", min_time, max_time);
+  //  VLOG(1) << fmt::format(" total time: {:f}", max_time - min_time);
+  //  max_time = max_time - min_time;
+  //  size_t num_timesteps = std::floor(max_time / sample_time) + 1;
+  //  VLOG(1) << "Num timesteps: "  << num_timesteps;
 
   // now load the robot positions/odometry and measurements
   for (size_t robot_idx = 1; robot_idx <= num_robots; ++robot_idx) {
     VLOG(1) << "=================================";
     VLOG(1) << "Loading data for robot #" << robot_idx;
+
+    std::map<double, size_t> timestep2keyframeIdx;
 
     ////////////////
     /// LOAD POSES
@@ -321,21 +323,21 @@ void DataReader::LoadUTIAS(const std::string &data_dir, UTIASData* data, double 
         input_stream.ignore(LINESIZE, '\n');  // discard anything else on that line
         continue;
       } else {
-        ts = std::atof(first.c_str()) - min_time;
+        ts = std::atof(first.c_str());
       }
 
       double x, y, theta;
       input_stream >> x >> y >> theta;
-      StatePtr state = std::make_shared<State>();
-      state->id = IdGenerator::Instance::NewId();
-      state->robot_idx = robot_idx;
-      state->timestamp = ts;
-      state->robot.pose = Sophus::SE2d(theta, Eigen::Vector2d(x, y));
 
-      data->ground_truth_states[robot_idx].push_back(state);
+      KeyframeMeasurements::Ptr kf = std::make_shared<KeyframeMeasurements>();
+      kf->time = ts;
+      kf->ground_truth_pose.pose = Sophus::SE2d(theta, Eigen::Vector2d(x, y));
+      data->keyframes[robot_idx].push_back(kf);
+      timestep2keyframeIdx[ts] = data->keyframes[robot_idx].size()-1;
+
       input_stream.ignore(LINESIZE, '\n');
     }
-    VLOG(1) << fmt::format("Added {} states for robot idx {}", data->ground_truth_states[robot_idx].size(), robot_idx);
+    VLOG(1) << fmt::format("Added {} keyframes for robot idx {}", data->keyframes[robot_idx].size(), robot_idx);
 
 
     ////////////////
@@ -358,7 +360,7 @@ void DataReader::LoadUTIAS(const std::string &data_dir, UTIASData* data, double 
         input_stream.ignore(LINESIZE, '\n');  // discard anything else on that line
         continue;
       } else {
-        ts = std::atof(first.c_str()) - min_time;
+        ts = std::atof(first.c_str());
       }
 
       int barcode = 0;
@@ -379,25 +381,13 @@ void DataReader::LoadUTIAS(const std::string &data_dir, UTIASData* data, double 
 
       RangeFinderObservation obs(ts, RangeFinderReading(barcode2subject.at(barcode), bearing, range));
 
-      // check if we need to create a new keyframe or if this is another measurement from the same one
-      if (data->observations[robot_idx].empty() || ts - data->observations[robot_idx].back().time > kMeasurementTimeTolerance) {
-
-//        if (!data->observations[robot_idx].empty() && robot_idx == 1) {
-//          double dt = ts - data->observations[robot_idx].back().time;
-//          if (dt > 1) {
-//            //VLOG(1) << fmt::format(" Big delta t between keyframes...could be a problem... {:f}. Prev ts: {:f}, current ts: {:f}", dt, data->observations[robot_idx].back().time, ts);
-//          }
-//        }
-
-        // create new keyframe
-        data->observations[robot_idx].push_back(KeyframeMeasurements(ts));
-
+      // check if we have a keyframe with this observations timestemp (we should)
+      if (timestep2keyframeIdx.find(ts) != timestep2keyframeIdx.end()) {
+        KeyframeMeasurements::Ptr& kf = data->keyframes.at(robot_idx)[timestep2keyframeIdx.at(ts)];
+        kf->meas.push_back(obs);
       }
-      data->observations[robot_idx].back().meas.push_back(obs);
       input_stream.ignore(LINESIZE, '\n');
     }
-    VLOG(1) << fmt::format("Added {} keyframes for robot idx {}", data->observations[robot_idx].size(), robot_idx);
-
 
     ////////////////
     /// LOAD ODOMETRY
@@ -420,14 +410,21 @@ void DataReader::LoadUTIAS(const std::string &data_dir, UTIASData* data, double 
         input_stream.ignore(LINESIZE, '\n');  // discard anything else on that line
         continue;
       } else {
-        ts = std::atof(first.c_str()) - min_time;
+        ts = std::atof(first.c_str());
       }
 
       double forward_vel = 0;
       double omega = 0;
       input_stream >> forward_vel >> omega;
 
-      data->odometry_buffers[robot_idx]->AddElement(OdometryObservation(ts, OdometryReading(forward_vel, omega)));
+      OdometryObservation odo(ts, OdometryReading(forward_vel, omega));
+
+      data->odometry_buffers[robot_idx]->AddElement(odo);
+      if (timestep2keyframeIdx.find(ts) != timestep2keyframeIdx.end()) {
+        KeyframeMeasurements::Ptr& kf = data->keyframes.at(robot_idx)[timestep2keyframeIdx.at(ts)];
+        kf->odometry_meas.push_back(odo);
+      }
+
       input_stream.ignore(LINESIZE, '\n');
     }
     VLOG(1) << fmt::format("Added {} odometry meas. for robot idx {}", data->odometry_buffers[robot_idx]->elements.size(), robot_idx);
