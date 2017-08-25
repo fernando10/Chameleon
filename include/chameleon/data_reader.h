@@ -77,6 +77,8 @@ public:
     KeyframeMeasurements(double t): time(t){}
     double time;
     RangeFinderObservationVector meas;
+    RobotPose ground_truth_pose;
+    OdometryObservationVector odometry_meas;
   };
 
   struct UTIASData {
@@ -86,10 +88,12 @@ public:
     std::map<size_t, StatePtrVector> ground_truth_states; // ground truth robot poses for each robot
     std::map<size_t, std::vector<KeyframeMeasurements>> observations; // observations for each robot, binned by observation time
     std::map<size_t, OdometryObservationBufferPtr> odometry_buffers;  // odometry buffers for each robot
+
+    std::map<size_t, std::vector<KeyframeMeasurements>> keyframes;
   };
 
   static void LoadG2o(const std::string& filename, G2oData* data);
-  static void LoadUTIAS(const std::string&data_dir, UTIASData* data, size_t num_robots = 5);
+  static void LoadUTIAS(const std::string&data_dir, UTIASData* data, double sample_time = 0.02, size_t num_robots = 5);
 
 
 };

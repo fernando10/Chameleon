@@ -3,6 +3,7 @@
 
 #include "chameleon/data_provider.h"
 #include "chameleon/util.h"
+#include "chameleon/odometry_generator.h"
 namespace chameleon
 {
 
@@ -107,29 +108,36 @@ bool DataProvider::GetUTIASData(RobotData * const data) {
     VLOG(1) << "End of measurements.";
     return false;
   }
+
   VLOG(2) << " Getting UTIAS data at index: " << current_index_;
   data->index = current_index_;
   data->timestamp = utias_data_.observations.at(robot_idx_)[current_index_].time;
   VLOG(2) << fmt::format("current ts: {:f} ", data->timestamp);
 
   data->debug.ground_truth_map = utias_data_.gt_landmarks_vec;
+
   data->debug.ground_truth_pose = utias_data_.ground_truth_states.at(robot_idx_)[current_index_]->robot;
 
   data->observations = utias_data_.observations.at(robot_idx_)[current_index_].meas;
   VLOG(2) << fmt::format("{} observations", data->observations.size());
 
-  // get odometry measurements from this state to the next
+  // get odometry measurements from the previous state to this one
   if (current_index_ > 0) {
     double current_time = data->timestamp;
     double prev_time = utias_data_.observations.at(robot_idx_)[current_index_ - 1].time;
     data->odometry_readings = utias_data_.odometry_buffers.at(robot_idx_)->GetRange(prev_time, current_time);
     VLOG(2) << fmt::format("Added {} odometry measurements between time {:f} and {:f}", data->odometry_readings.size(),
                            prev_time, current_time);
+    data->debug.noisy_pose = OdometryGenerator::PropagateMeasurement(
+                               data->odometry_readings = utias_data_.odometry_buffers.at(robot_idx_)->GetRange(
+                                                           utias_data_.observations.at(robot_idx_)[0].time, current_time),
+                               utias_data_.ground_truth_states.at(robot_idx_)[0]->robot);
+  } else {
+    data->debug.noisy_pose = data->debug.ground_truth_pose; // first pose is the same
   }
   current_index_++;
 
   return true;
-
 }
 
 void DataProvider::UpdateOptions(Visualizer& viewer) {

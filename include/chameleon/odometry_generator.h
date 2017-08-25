@@ -25,6 +25,8 @@ public:
   OdometryMeasurement GenerateNoisyOdometryMeasurement(size_t step) const;
 
   static RobotPose PropagateMeasurement(const OdometryMeasurement& meas, const RobotPose& current_pose);
+  static RobotPose PropagateMeasurement(const OdometryObservationVector& odometry_measurements,
+                                        const RobotPose& current_pose);
   RobotPose& PropagateMeasurement(const OdometryMeasurement& meas);
 
 
