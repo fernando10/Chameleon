@@ -9,7 +9,7 @@
 //
 // This persistence filter is associated to a single feature, as such it outputs
 // the posterior:
-// p(X = 1 | Y_{1:N})
+// p(X = 1 | Y_{1:N}) (probability that the feature exists given a sequence of mearurements 1:N)
 #pragma once
 #include <cstddef>
 #include <gsl/gsl_sf_exp.h>
@@ -24,7 +24,7 @@ namespace chameleon
 
 class PersistenceFilter
 {
- protected:
+protected:
 
   /** The absolute time (wall-time) at which this filter was initialized*/
   double init_time_;
@@ -51,16 +51,16 @@ class PersistenceFilter
   double shifted_logdF(double t1, double t0);
 
 
- public:
+public:
   /** One argument-constructor accepting a function that returns the logarithm of the survival function S_T() for the survival time prior p_T().*/
- PersistenceFilter(const std::function<double(double)>& log_survival_function, double initialization_time = 0.0) :
-   init_time_(initialization_time),  tN_(initialization_time), logpY_tN_(0.0), logLY_(nullptr), logpY_(0.0), logS_(log_survival_function)
+  PersistenceFilter(const std::function<double(double)>& log_survival_function, double initialization_time = 0.0) :
+    init_time_(initialization_time),  tN_(initialization_time), logpY_tN_(0.0), logLY_(nullptr), logpY_(0.0), logS_(log_survival_function)
 
-    {
-      VLOG(2) << "Initializing persistence filter at start time: " << initialization_time;
-      auto time_shifter = [](double time, double time_shift){ return time - time_shift; };
-      shifted_logS_ = std::bind(logS_, std::bind(time_shifter, std::placeholders::_1, init_time_));
-    }
+  {
+    VLOG(2) << "Initializing persistence filter at start time: " << initialization_time;
+    auto time_shifter = [](double time, double time_shift){ return time - time_shift; };
+    shifted_logS_ = std::bind(logS_, std::bind(time_shifter, std::placeholders::_1, init_time_));
+  }
 
   /** Updates the filter by incorporating a new detector output.  Here 'detector_output' is a boolean value output by the detector indicating whether the given feature was detected, 'observation_time' is the timestamp for the detection, and 'P_M' and 'P_F' give the detector's missed detection and false alarm probabilities for this observation, respectively.*/
   void update(bool detector_output, double observation_time, double P_M, double P_F);
@@ -70,15 +70,15 @@ class PersistenceFilter
 
   /** Return the function computing the logarithm of the survival function.*/
   const std::function<double(double)>& logS() const
-    {
-      return logS_;
-    }
+  {
+    return logS_;
+  }
 
   /** Return the function computing the logarithm of the shifted survival function*/
   const std::function<double(double)>& shifted_logS() const
-    {
-      return shifted_logS_;
-    }
+  {
+    return shifted_logS_;
+  }
 
   /** Return the time of the last observation*/
   double last_observation_time() const

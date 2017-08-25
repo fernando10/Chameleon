@@ -19,11 +19,9 @@ void DataGenerator::InitializeSimulation() {
   odometry_generator_ = util::make_unique<OdometryGenerator>(options_.odometry_noise);
   observation_generator_ = util::make_unique<ObservationGenerator>();
 
-  measurement_covariance_ = options_.measurement_noise.asDiagonal();
   odometry_generator_->SetPath(path_generator_->GetRobotPath());
   world_generator_->GenerateWorld(path_generator_->GetRobotPath(), WorldGenerator::WorldTypes::MimicTrajctory);
   observation_generator_->Reset(world_generator_->GetWorld(), path_generator_->GetRobotPath());
-  observation_generator_->SetCovariance(options_.measurement_noise.asDiagonal());
   current_timestep_ = 0;
 }
 

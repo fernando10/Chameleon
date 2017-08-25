@@ -77,8 +77,8 @@ struct RangeFinderReading {
 
   Eigen::Vector2d vec() const {
     Eigen::Vector2d vec;
-    vec[kIndexBearing] = theta;
     vec[kIndexRange] = range;
+    vec[kIndexBearing] = theta;
     return vec;
   }
 
@@ -90,7 +90,7 @@ struct RangeFinderReading {
     return RangeFinderReading(lm_id, theta * rhs, range * rhs);
   }
 
-  static constexpr double kBearingStdDev = 0.087;  // [rad] ~10 degrees
+  static constexpr double kBearingStdDev = 0.08;  // [rad]
   static constexpr double kRangeStdDev = 0.05;  // [m]
 
   static RangeFinderCovariance GetMeasurementCovariance() {
@@ -99,7 +99,7 @@ struct RangeFinderReading {
 
 
   RangeFinderReading operator+(const Eigen::Vector2d& rhs) const {
-    return RangeFinderReading(lm_id, theta + rhs[0], range + rhs[1]);
+    return RangeFinderReading(lm_id, theta + rhs[kIndexBearing], range + rhs[kIndexRange]);
   }
   RangeFinderCovariance information;
   double theta;  // [rad]
