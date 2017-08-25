@@ -338,9 +338,10 @@ bool Visualizer::AddIndices(std::vector<size_t> indices) {
       gui_vars_.estimated_robot_path->ShowCovariance(data_->estimated_poses.size() > 5);
     }
 
+    gui_vars_.data_associations->Clear();
+
     if (!data_->data_associations->associations.empty()) {
       // update the data associations
-      gui_vars_.data_associations->Clear();
 
       for (auto e : data_->data_associations->associations) {
         RangeFinderObservation& obs = data_->data_associations->observations[e.first];

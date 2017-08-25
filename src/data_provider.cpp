@@ -20,6 +20,30 @@ void DataProvider::Reset() {
   current_index_ = 0;
 }
 
+LandmarkVectorPtr DataProvider::GetPriorMap() {
+  LandmarkVectorPtr map;
+
+  switch (type_) {
+  case DataType::Sim:
+  {
+    map = data_generator_->GetNoisyMap();
+  }
+    break;
+  case DataType::UTIAS:
+  {
+    map = GetUTIASMap();
+  }
+    break;
+  case DataType::VicPark:
+  {
+    //TODO
+  }
+    break;
+  }
+
+  return map;
+}
+
 bool DataProvider::GetData(RobotData * const data) {
   bool result = false;
   switch (type_) {
@@ -93,6 +117,20 @@ void DataProvider::LoadData() {
 
 }
 
+LandmarkVectorPtr DataProvider::GetUTIASMap() {
+  if (type_ != DataType::UTIAS) {
+    LOG(ERROR) << " UTIAS data requested but that's not the type that has been set";
+    return nullptr;
+  }
+
+  if (utias_data_.gt_landmarks.empty()) {
+    LOG(ERROR) << " UTIAS Data not loaded, trying to load..";
+    LoadData();
+  }
+
+  return utias_data_.gt_landmarks_vec;
+}
+
 bool DataProvider::GetUTIASData(RobotData * const data) {
   if (type_ != DataType::UTIAS) {
     LOG(ERROR) << " UTIAS data requested but that's not the type that has been set";
@@ -125,21 +163,19 @@ bool DataProvider::GetUTIASData(RobotData * const data) {
   VLOG(2) << fmt::format("{} observations", data->observations.size());
 
   data->odometry_readings = kf->odometry_meas;
+  VLOG(2) << fmt::format("{} odometry readings", data->odometry_readings.size());
 
   // get odometry measurements from the previous state to this one
-//  if (current_index_ > 0) {
-//    double current_time = data->timestamp;
-//    double prev_time = utias_data_.observations.at(robot_idx_)[current_index_ - 1].time;
-//    data->odometry_readings = utias_data_.odometry_buffers.at(robot_idx_)->GetRange(prev_time, current_time);
-//    VLOG(2) << fmt::format("Added {} odometry measurements between time {:f} and {:f}", data->odometry_readings.size(),
-//                           prev_time, current_time);
-//    data->debug.noisy_pose = OdometryGenerator::PropagateMeasurement(
-//                               data->odometry_readings = utias_data_.odometry_buffers.at(robot_idx_)->GetRange(
-//                                                           utias_data_.observations.at(robot_idx_)[0].time, current_time),
-//                               utias_data_.ground_truth_states.at(robot_idx_)[0]->robot);
-//  } else {
-//    data->debug.noisy_pose = data->debug.ground_truth_pose; // first pose is the same
-//  }
+  if (current_index_ > 0) {
+    data->debug.noisy_pose = OdometryGenerator::PropagateMeasurement(
+                               utias_data_.odometry_buffers.at(robot_idx_)->GetRange(
+                                 utias_data_.keyframes.at(robot_idx_)[0]->time, data->timestamp),
+        utias_data_.keyframes.at(robot_idx_)[0]->ground_truth_pose);
+  }else {
+    data->debug.noisy_pose = kf->ground_truth_pose;
+  }
+
+  data->debug.noisy_observations = kf->meas;
   current_index_++;
 
   return true;

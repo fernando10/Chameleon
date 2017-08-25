@@ -77,9 +77,9 @@ int main(int argc, char **argv) {
   std::unique_ptr<chameleon::ceres::Estimator> SLAM = util::make_unique<chameleon::ceres::Estimator>(estimator_options);
   EstimatedData estimator_results;  // for collecting the latest updates form the estimator
 
-  //  if (FLAGS_provide_map) {
-  //    SLAM->SetMap(data_generator->GetNoisyMap());
-  //  }
+    if (FLAGS_provide_map) {
+      SLAM->SetMap(data_provider.GetPriorMap());
+    }
 
   ////////////////////////////////////
   // Get Data -> Estimate -> Display
@@ -102,9 +102,9 @@ int main(int argc, char **argv) {
         LOG(INFO) << " Reseting...";
         data_provider.Reset();  // reset data provider
         SLAM->Reset();  // reset slam system
-        //        if (estimator_options.provide_map) {
-        //          SLAM->SetMap(data_generator->GetNoisyMap());
-        //        }
+        if (estimator_options.provide_map) {
+          SLAM->SetMap(data_provider.GetPriorMap());
+        }
 
         // reset viewer
         viewer_data = std::make_shared<Visualizer::ViewerData>();
@@ -152,7 +152,7 @@ int main(int argc, char **argv) {
           std::this_thread::sleep_for(std::chrono::seconds(1));
         }
       }
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
   }
 

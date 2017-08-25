@@ -96,7 +96,7 @@ private:
   uint64_t GetNewStateId();
   uint64_t GetNewLandmarkId();
   void CreateObservationFactor(const uint64_t state_id, const uint64_t landmark_id, const RangeFinderObservation& obs);
-  void CreateOdometryFactor(const uint64_t prev_state_id, const uint64_t current_state_id, const OdometryMeasurement& odometry);
+  void CreateOdometryFactor(const uint64_t prev_state_id, const uint64_t current_state_id, const RobotData& data);
   bool CheckStateExists(uint64_t state_id);
   bool CheckLandmarkExists(uint64_t lm_id);
   Landmark LandmarkFromMeasurement(uint64_t state_id, RangeFinderObservation obs);
@@ -111,7 +111,7 @@ private:
   /// \brief UpdateMapPersistence
   ///Predict the persistence posterior for all the landmakrs in the map
   void UpdateMapPersistence();
-  LandmarkPtrMap GetLandmarksThatShouldBeVisible(const RobotPose& robot);
+  LandmarkPtrMap GetLandmarksThatShouldBeVisible(const RobotPose& robot, bool use_robot_fov = false);
 
   std::unique_ptr<::ceres::Problem> ceres_problem_;
   std::unique_ptr<::ceres::LossFunction> ceres_loss_function_;

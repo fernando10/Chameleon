@@ -26,7 +26,7 @@ public:
 
   static RobotPose PropagateMeasurement(const OdometryMeasurement& meas, const RobotPose& current_pose);
   static RobotPose PropagateMeasurement(const OdometryObservationVector& odometry_measurements,
-                                        const RobotPose& current_pose);
+                                        const RobotPose& current_pose, double dt = OdometryReading::kDt);
   RobotPose& PropagateMeasurement(const OdometryMeasurement& meas);
 
 

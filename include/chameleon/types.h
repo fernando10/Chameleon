@@ -45,6 +45,7 @@ struct OdometryReading {
   // Empirically tuned
   static constexpr double kVelocityStdDev = 0.01;  // [m/s]
   static constexpr double kOmegaStdDev = 0.008;  // [rad]
+  static constexpr double kDt = 0.02;
 
   static OdometryReadingCovariance GetMeasurementCovariance() {
     return Covariance2d(kVelocityStdDev, kOmegaStdDev, 0);

@@ -65,14 +65,15 @@ void Estimator::SetMap(LandmarkVectorPtr prior_map) {
     // add the parameter blocks now so we can set them constant
     ceres_problem_->AddParameterBlock(lm_ptr->data(), Landmark::kLandmarkDim);
     ceres_problem_->SetParameterBlockConstant(lm_ptr->data());
+    lm_ptr->active = false;
+
   }
 
   // TEMP FOR DEMO
-  persistence_filter_graph_[16][17] = 2;
-  persistence_filter_graph_[17][18] = 3.5;
-  persistence_filter_graph_[19][18] = 3.5;
-  persistence_filter_graph_[20][19] = 2;
-
+//  persistence_filter_graph_[16][17] = 2;
+//  persistence_filter_graph_[17][18] = 3.5;
+//  persistence_filter_graph_[19][18] = 3.5;
+//  persistence_filter_graph_[20][19] = 2;
 
   localization_mode_ = true;
 }
@@ -93,12 +94,20 @@ void Estimator::AddData(const RobotData &data) {
   // initialize state by propagating odometry
   if (states_.empty()) {
     VLOG(1) << "First state received.";
-    // this is the very first state, use identity for now
-    // TODO: Get initial pose externally so it's not arbitrarily fixed at the origin
-    new_state->robot.pose = Sophus::SE2d(0, Eigen::Vector2d::Zero());
+    // TODO: Don't rely on initial pose from data
+    new_state->robot.pose = data.debug.ground_truth_pose.pose;
   } else {
     // use odometry to propagate previous measurement forward and get estimated state
-    RobotPose guess = OdometryGenerator::PropagateMeasurement(data.odometry, last_state_rit->second->robot);
+    RobotPose guess;
+    if (!data.odometry_readings.empty()){
+      // use speed and angular velocity (usually from real data)
+      VLOG(2) << fmt::format("Propagating {} odometry measurements", data.odometry_readings.size());
+      guess = OdometryGenerator::PropagateMeasurement(data.odometry_readings, last_state_rit->second->robot);
+    }else {
+      // use transform between poses as odometry (usually from sim data)
+      guess = OdometryGenerator::PropagateMeasurement(data.odometry, last_state_rit->second->robot);
+    }
+
     VLOG(2) <<  fmt::format("Propagated pose (id:{}) at: {} and got pose at: {}",last_state_rit->first, last_state_rit->second->robot, guess);
     new_state->robot.pose = guess.pose;
   }
@@ -141,20 +150,23 @@ void Estimator::AddData(const RobotData &data) {
     data_assoc_results_.observations = data.observations;
     data_assoc_results_.associations = association;
 
-    // check if any landmarks that should have been observed were not so we can update the belief over that landmark
-    for (const auto& lm : visible_landmarks) {
-      bool found = false;
-      for (const auto& a : association) {
-        if (a.second == lm.first) {
-          found = true;
-          break;
+    if (options_.filter_options.use_persistence_filter) {
+      // check if any landmarks that should have been observed but were not so we can update the belief over that landmark
+      //TODO: if the hypothetically visible landmarks set is too large this will kill off landmarks that should not be killed
+      for (const auto& lm : visible_landmarks) {
+        bool found = false;
+        for (const auto& a : association) {
+          if (a.second == lm.first) {
+            found = true;
+            break;
+          }
         }
-      }
-      if (!found) {
-        VLOG(1) << fmt::format("Landmark id {} should have been observed but was not.", lm.first);
-        if (persistence_filter_map_.find(lm.first) != persistence_filter_map_.end()) {
-          persistence_filter_map_.at(lm.first)->update(false, data.timestamp+1, options_.filter_options.P_M,
-                                                       options_.filter_options.P_F);
+        if (!found) {
+          VLOG(1) << fmt::format("Landmark id {} should have been observed but was not.", lm.first);
+          if (persistence_filter_map_.find(lm.first) != persistence_filter_map_.end()) {
+            persistence_filter_map_.at(lm.first)->update(false, data.timestamp+1, options_.filter_options.P_M,
+                                                         options_.filter_options.P_F);
+          }
         }
       }
     }
@@ -166,13 +178,15 @@ void Estimator::AddData(const RobotData &data) {
 
     // add factors between this state and landmakrs that have been associated to measurements
     CheckAndAddObservationFactors(id, association, data.observations);
+  } else {
+    data_assoc_results_.Clear();
   }
 
   ////////////////////////////////
   ////// ODOMETRY FACTOR
   if (states_.size() > 1) {
     // only add odometry if this is not the very first state
-    CreateOdometryFactor(std::next(last_state_rit, 1)->first, last_state_rit->first, data.odometry);
+    CreateOdometryFactor(std::next(last_state_rit, 1)->first, last_state_rit->first, data);
   }
 
   last_state_id_ = id;
@@ -183,7 +197,7 @@ void Estimator::AddData(const RobotData &data) {
 ////////////////////////////////////////////////////////////////
 /// \brief Estimator::GetLandmarksThatShouldBeVisible
 ////////////////////////////////////////////////////////////////
-LandmarkPtrMap Estimator::GetLandmarksThatShouldBeVisible(const RobotPose& robot) {
+LandmarkPtrMap Estimator::GetLandmarksThatShouldBeVisible(const RobotPose& robot, bool use_robot_fov) {
   LandmarkPtrMap visible_landmarks;
 
   for (const auto& e : landmarks_) {
@@ -195,17 +209,25 @@ LandmarkPtrMap Estimator::GetLandmarksThatShouldBeVisible(const RobotPose& robot
     if(lm_r.x() < 1e-2) {
       continue;  // landmark too close or behind
     }
-    // get angle
-    double theta = AngleWraparound<double>(std::atan2(lm_r.y(), lm_r.x()));
 
-    if (std::abs(theta) <= robot.field_of_view/2.) {
-      // lm in the field of view, get distance
-      double distance = lm_r.norm();
-      if (distance <= robot.range) {
-        // should be visible
-        visible_landmarks.insert({e.first, e.second});
+    if (use_robot_fov) {
+      // only get landmakrs that should be visible given the robots range and fov
+      // get angle
+      double theta = AngleWraparound<double>(std::atan2(lm_r.y(), lm_r.x()));
+
+      if (std::abs(theta) <= robot.field_of_view/2.) {
+        // lm in the field of view, get distance
+        double distance = lm_r.norm();
+        if (distance <= robot.range) {
+          // should be visible
+          visible_landmarks.insert({e.first, e.second});
+        }
       }
+    } else {
+      // anything in front of the robot is fair game
+      visible_landmarks.insert({e.first, e.second});
     }
+
   }
 
   return visible_landmarks;
@@ -498,7 +520,7 @@ void Estimator::SetLocalizationMode(bool localization_only) {
   }
 
   if (options_.provide_map) {
-    VLOG(1) << " Localizatio mode toggled but prior map was provided";
+    VLOG(1) << " Localization mode toggled but prior map was provided";
     return;
   }
 
@@ -710,7 +732,7 @@ void Estimator::CreateObservationFactor(const uint64_t state_id,
 /// \brief Estimator::CreateOdometryFactor
 ///////////////////////////////////////////////////////////////////////////
 void Estimator::CreateOdometryFactor(const uint64_t prev_state_id, const uint64_t current_state_id,
-                                     const OdometryMeasurement& odometry) {
+                                     const RobotData& data) {
   VLOG(2) << fmt::format("Trying to create odometry factor between state {} and state {}", prev_state_id, current_state_id);
   if (!CheckStateExists(prev_state_id)) {
     LOG(ERROR) << fmt::format("Error adding odometry factor, state id {} requested but not in state map", prev_state_id);
@@ -720,22 +742,43 @@ void Estimator::CreateOdometryFactor(const uint64_t prev_state_id, const uint64_
     LOG(ERROR) << fmt::format("Error adding odometry factor, state id {} requested but not in state map", current_state_id);
     return;
   }
-  // add observation factor between state and landmark to problem
-  //TODO: Get correct odometry covariance
-  OdometryCovariance odometry_cov = OdometryCovariance::Identity();
-  odometry_cov(0,0) = Square(5e-2);
-  odometry_cov(1,1) = Square(1e-3);
-  odometry_cov(2,2) = Square(5e-2);
-  OdometryCovariance inv_cov = odometry_cov.inverse();
-  Eigen::LLT<OdometryCovariance> llt_of_information(inv_cov);
-  OdometryCovariance sqrt_information = llt_of_information.matrixL().transpose();
 
-  auto odometry_cost_function = new ::ceres::AutoDiffCostFunction<ceres::OdometryCostFunction,
-      OdometryMeasurement::kMeasurementDim, Sophus::SE2d::num_parameters, Sophus::SE2d::num_parameters>(
-        new ceres::OdometryCostFunction (odometry, sqrt_information));
+  if (data.odometry_readings.empty()) {
+    // no odometry readings (speed and omega), must be simulated data with a transform representing the odometry
+    // measurement
 
-  ceres_problem_->AddResidualBlock(odometry_cost_function, ceres_loss_function_.get(),
-                                   states_.at(prev_state_id)->data(),  states_.at(current_state_id)->data());
+    // add observation factor between state and landmark to problem
+    //TODO: Get correct odometry covariance
+    OdometryCovariance odometry_cov = OdometryCovariance::Identity();
+    odometry_cov(0,0) = Square(5e-2);
+    odometry_cov(1,1) = Square(1e-3);
+    odometry_cov(2,2) = Square(5e-2);
+    OdometryCovariance inv_cov = odometry_cov.inverse();
+    Eigen::LLT<OdometryCovariance> llt_of_information(inv_cov);
+    OdometryCovariance sqrt_information = llt_of_information.matrixL().transpose();
+
+    auto odometry_cost_function = new ::ceres::AutoDiffCostFunction<ceres::OdometryCostFunction,
+        OdometryMeasurement::kMeasurementDim, Sophus::SE2d::num_parameters, Sophus::SE2d::num_parameters>(
+          new ceres::OdometryCostFunction (data.odometry, sqrt_information));
+
+    ceres_problem_->AddResidualBlock(odometry_cost_function, ceres_loss_function_.get(),
+                                     states_.at(prev_state_id)->data(),  states_.at(current_state_id)->data());
+  } else {
+    // we have odometry readings, use them to create a factor (usually from real data)
+    OdometryCovariance odometry_cov = OdometryCovariance::Identity();
+    OdometryCovariance inv_cov = odometry_cov.inverse();
+    Eigen::LLT<OdometryCovariance> llt_of_information(inv_cov);
+    OdometryCovariance sqrt_information = llt_of_information.matrixL().transpose();
+
+    auto odometry_cost_function = new ::ceres::AutoDiffCostFunction<ceres::OdometryReadingCostFunction,
+        Sophus::SE2d::DoF, Sophus::SE2d::num_parameters, Sophus::SE2d::num_parameters>(
+          new ceres::OdometryReadingCostFunction (data.odometry_readings, sqrt_information,
+                                                  OdometryReading::kDt));
+
+    ceres_problem_->AddResidualBlock(odometry_cost_function, ceres_loss_function_.get(),
+                                     states_.at(prev_state_id)->data(),  states_.at(current_state_id)->data());
+
+  }
   VLOG(2) << fmt::format("Created odometry factor between state {} and state {}",
                          prev_state_id, current_state_id);
 

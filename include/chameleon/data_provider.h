@@ -21,6 +21,7 @@ public:
 
   DataProvider(std::string data_type, std::string data_file);
   bool GetData(RobotData * const data) override;
+  LandmarkVectorPtr GetPriorMap();
   void LoadData(const std::string path, DataType type);
   DataGenerator::DataGeneratorOptions& SimulationOptions() {
     return sim_options_;
@@ -35,6 +36,7 @@ public:
 private:
   void LoadData();
   bool GetUTIASData(RobotData * const data);
+  LandmarkVectorPtr GetUTIASMap();
 
   DataType type_;
   DataGenerator::DataGeneratorOptions sim_options_;

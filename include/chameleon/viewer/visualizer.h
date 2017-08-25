@@ -54,8 +54,8 @@ public:
       if (data.debug.ground_truth_map != nullptr) {
         ground_truth_map = data.debug.ground_truth_map;
       }
-      ground_truth_observation_map.insert({data.timestamp, data.debug.noise_free_observations});
-      noisy_observation_map.insert({data.timestamp, data.debug.noisy_observations});
+      ground_truth_observation_map.insert({data.index, data.debug.noise_free_observations});
+      noisy_observation_map.insert({data.index, data.debug.noisy_observations});
     }
 
     void AddData(const DataReader::G2oData& data) {
