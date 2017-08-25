@@ -93,6 +93,7 @@ bool DataGenerator::GetData(RobotData* const data) {
   data->debug.noisy_map = world_generator_->SampleWorld();
   data->debug.noise_free_observations = noise_free_obs;
   data->debug.noisy_observations = noisy_obs;
+  data->index = current_timestep_;
   data->timestamp = current_timestep_;
   data->observations = noisy_obs;
   current_timestep_++;

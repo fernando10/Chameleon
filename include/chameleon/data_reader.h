@@ -3,6 +3,7 @@
 #pragma once
 
 #include "chameleon/types.h"
+#include "chameleon/interpolation_buffer.h"
 
 namespace chameleon
 {
@@ -71,14 +72,24 @@ public:
     }
   };
 
-  struct UITASData {
+  // represents a keyframe and the measurements taken at that point in time
+  struct KeyframeMeasurements {
+    KeyframeMeasurements(double t): time(t){}
+    double time;
+    RangeFinderObservationVector meas;
+  };
 
+  struct UTIASData {
+    UTIASData(){}
+    LandmarkPtrMap gt_landmarks; // all the landmarks in the world frame
+    LandmarkVectorPtr gt_landmarks_vec; // redundant storage for now due to backwards compatibility
+    std::map<size_t, StatePtrVector> ground_truth_states; // ground truth robot poses for each robot
+    std::map<size_t, std::vector<KeyframeMeasurements>> observations; // observations for each robot, binned by observation time
+    std::map<size_t, OdometryObservationBufferPtr> odometry_buffers;  // odometry buffers for each robot
   };
 
   static void LoadG2o(const std::string& filename, G2oData* data);
-  static void LoadUITAS(const std::string& filename, G2oData* data );
-
-private:
+  static void LoadUTIAS(const std::string&data_dir, UTIASData* data, size_t num_robots = 5);
 
 
 };

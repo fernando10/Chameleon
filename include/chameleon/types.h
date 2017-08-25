@@ -12,6 +12,7 @@
 #include <Eigen/Core>
 #include "chameleon/util.h"
 #include "chameleon/math_utils.h"
+#include "chameleon/interpolation_buffer.h"
 
 static Eigen::IOFormat kCleanFmt(4, 0, ", ", ";\n", "", "");
 static Eigen::IOFormat kLongFmt(Eigen::FullPrecision, 0, ", ", ";\n", "", "");
@@ -23,6 +24,44 @@ namespace chameleon
 //------------------------OBSERVATION TYPES------------------------//
 
 typedef Eigen::Matrix<double, 2, 2> RangeFinderCovariance;
+typedef Eigen::Matrix<double, 2, 2> OdometryReadingCovariance;
+
+
+struct OdometryReading {
+  static constexpr size_t kMeasurementDim = 2;
+  static constexpr size_t kIndexVelocity = 0;
+  static constexpr size_t kIndexOmega = 1;
+  OdometryReading(): velocity(0), omega(0){}
+  OdometryReading(double velocity, double omega): velocity(velocity), omega(omega){
+  }
+
+  Eigen::Vector2d vec() const {
+    Eigen::Vector2d vec;
+    vec[kIndexVelocity] = velocity;
+    vec[kIndexOmega] = omega;
+    return vec;
+  }
+
+  // Empirically tuned
+  static constexpr double kVelocityStdDev = 0.01;  // [m/s]
+  static constexpr double kOmegaStdDev = 0.008;  // [rad]
+
+  static OdometryReadingCovariance GetMeasurementCovariance() {
+    return Covariance2d(kVelocityStdDev, kOmegaStdDev, 0);
+  }
+
+
+  OdometryReading operator+(const OdometryReading& rhs) const {
+    return OdometryReading(velocity + rhs.velocity, omega + rhs.omega);
+  }
+
+  OdometryReading operator*(const double& rhs) const {
+    return OdometryReading(velocity * rhs, omega * rhs);
+  }
+
+  double velocity;
+  double omega;
+};
 
 struct RangeFinderReading {
   static constexpr size_t kMeasurementDim = 2;
@@ -40,6 +79,14 @@ struct RangeFinderReading {
     vec[kIndexBearing] = theta;
     vec[kIndexRange] = range;
     return vec;
+  }
+
+  RangeFinderReading operator+(const RangeFinderReading& rhs) const {
+    return RangeFinderReading(lm_id, theta + rhs.theta, range + rhs.range);
+  }
+
+  RangeFinderReading operator*(const double& rhs) const {
+    return RangeFinderReading(lm_id, theta * rhs, range * rhs);
   }
 
   static constexpr double kBearingStdDev = 0.087;  // [rad] ~10 degrees
@@ -63,15 +110,26 @@ struct RangeFinderReading {
 
 template<class T>
 struct Observation {
-  double timestamp;
+  double time;
   T observation;
 
-  Observation() : timestamp(0.0) {
+  Observation() : time(0.0) {
   }
 
   Observation(const double& time, const T& obs) :
-    timestamp(time), observation(obs) {
+    time(time), observation(obs) {
   }
+
+  // Addition with another observation
+  Observation<T> operator+(const Observation<T>& rhs) const {
+    return Observation<T>(time, observation + rhs.observation);
+  }
+
+  // Multiplication with a scalar
+  Observation<T> operator*(const double& rhs) const {
+    return Observation<T>(time, observation * rhs);
+  }
+
 };
 
 
@@ -110,6 +168,13 @@ typedef std::shared_ptr<std::vector<OdometryMeasurement>> OdometryMeasurementVec
 typedef Observation<RangeFinderReading> RangeFinderObservation;
 typedef std::vector<RangeFinderObservation> RangeFinderObservationVector;
 typedef std::map<size_t, RangeFinderObservationVector> RangeFinderObservationVectorMap;
+typedef std::shared_ptr<InterpolationBufferT<RangeFinderObservation, double>> RangeFinderObservationBufferPtr;
+
+typedef Observation<OdometryReading> OdometryObservation;
+typedef std::vector<OdometryObservation>OdometryObservationVector;
+typedef std::map<size_t, OdometryObservationVector> OdometryObservationVectorMap;
+typedef InterpolationBufferT<OdometryObservation, double> OdometryObservationBuffer;
+typedef std::shared_ptr<OdometryObservationBuffer> OdometryObservationBufferPtr;
 
 //------------------------POSES AND LANDMARKS------------------------//
 
@@ -458,9 +523,11 @@ struct VictoriaParkData {
 
 struct RobotData {
   double timestamp;
+  size_t index;
   DebugData debug;
   // this is all that is available to the estimation algorithm (below)
   OdometryMeasurement odometry;
+  OdometryObservationVector odometry_readings;
   RangeFinderObservationVector observations;
 };
 
@@ -469,6 +536,7 @@ struct State {
   State():id(0), timestamp(0), fixed(false), active(true) {}
   static constexpr size_t kStateDim = Sophus::SE2d::DoF;
   uint64_t id;
+  size_t robot_idx; // robot index in a multi-robot setting;
   RobotPose robot;
   double timestamp;
   bool fixed;

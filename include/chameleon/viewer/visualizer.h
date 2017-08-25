@@ -46,12 +46,14 @@ public:
 
     ///
     /// \brief AddData > Adds simulated data to the visualizer
-    /// \param data > simulated data (with and without noise)
+    /// \param data -> data to display
     ///
     void AddData(const RobotData& data) {
       ground_truth_robot_poses->push_back(data.debug.ground_truth_pose);
       noisy_robot_poses->push_back(data.debug.noisy_pose);
-      ground_truth_map = data.debug.ground_truth_map;
+      if (data.debug.ground_truth_map != nullptr) {
+        ground_truth_map = data.debug.ground_truth_map;
+      }
       ground_truth_observation_map.insert({data.timestamp, data.debug.noise_free_observations});
       noisy_observation_map.insert({data.timestamp, data.debug.noisy_observations});
     }
@@ -68,9 +70,9 @@ public:
     /// \param data > inferred data
     ///
     void AddData(const EstimatedData& data) {
-       estimated_landmarks = data.landmarks;
-       estimated_poses = data.states;
-       *data_associations = data.data_association;
+      estimated_landmarks = data.landmarks;
+      estimated_poses = data.states;
+      *data_associations = data.data_association;
     }
 
     typedef std::shared_ptr<ViewerData> Ptr;
@@ -141,8 +143,8 @@ public:
   Visualizer(const ViewerOptions& options);
 
   void SetData(ViewerData::Ptr data);
-  // which timesteps from the data should we add to the display
-  bool AddTimesteps(std::vector<size_t> timesteps);
+  // which indeces from the data should we add to the display
+  bool AddIndices(std::vector<size_t> indices);
 
   void RequestFinish();
   bool IsFinished();

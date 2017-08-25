@@ -145,7 +145,7 @@ int main(int argc, char **argv) {
             viewer_data->AddData(estimator_results);
           }
 
-          viewer.AddTimesteps({size_t(data.timestamp)});  // add the current timestep to the display
+          viewer.AddIndices({size_t(data.index)});  // add the current index to the display
 
         } else {
           LOG(ERROR) << "Unable to get data.";

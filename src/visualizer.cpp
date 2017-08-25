@@ -272,13 +272,13 @@ void Visualizer::UpdatePlotters() {
   }
 }
 
-bool Visualizer::AddTimesteps(std::vector<size_t> timesteps) {
+bool Visualizer::AddIndices(std::vector<size_t> indices) {
   std::unique_lock<std::mutex>(data_mutex_);
 
   AddLandmarks();
   UpdatePlotters();
 
-  for (const size_t& ts : timesteps) {
+  for (const size_t& ts : indices) {
     if (data_ == nullptr) {
       LOG(ERROR) << fmt::format("Requested to add timestep: {} but viewer has no valid data pointer...", ts);
       return false;

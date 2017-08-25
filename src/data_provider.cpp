@@ -10,25 +10,32 @@ DataProvider::DataProvider(std::string data_type, std::string data_file) {
   SetDataType(data_type);
   data_file_ = data_file;
   data_generator_ = util::make_unique<DataGenerator>(sim_options_);
-
+  current_index_ = 0;
   LoadData();
 }
 
 void DataProvider::Reset() {
- data_generator_->Reset();
+  data_generator_->Reset();
+  current_index_ = 0;
 }
 
 bool DataProvider::GetData(RobotData * const data) {
   bool result = false;
   switch (type_) {
   case DataType::Sim:
+  {
     result = data_generator_->GetData(data);
+  }
     break;
   case DataType::UTIAS:
-    //TODO
+  {
+    result = GetUTIASData(data);
+  }
     break;
   case DataType::VicPark:
+  {
     //TODO
+  }
     break;
   }
 
@@ -54,29 +61,74 @@ void DataProvider::SetDataType(const std::string type) {
 void DataProvider::LoadData() {
   switch (type_) {
   case DataType::Sim:
+  {
     VLOG(1) << "Nothing to do here, simulation data selected.";
+  }
     break;
   case DataType::UTIAS:
+  {
     VLOG(1) << "Loading UTIAS dataset";
-    //TODO
+    DataReader::LoadUTIAS(data_file_, &utias_data_);
+  }
     break;
   case DataType::VicPark:
+  {
     VLOG(1) << "Loading Victoria Park dataset";
-    //TODO
     //DataReader::LoadG2o(data_file_);
+  }
     break;
   }
 
   // check if we have real data to load
-//  DataReader::G2oData vic_park_data;
-//  VictoriaParkData vc_data;
-//  if (use_real_data) {
-//    if (FLAGS_data_file.empty()) {
-//      LOG(FATAL) << "Victoria Park data specifiec but no data file passed in.";
-//    } else {
-//      DataReader::LoadG2o(FLAGS_data_file, &vic_park_data);
-//    }
-//  }
+  //  DataReader::G2oData vic_park_data;
+  //  VictoriaParkData vc_data;
+  //  if (use_real_data) {
+  //    if (FLAGS_data_file.empty()) {
+  //      LOG(FATAL) << "Victoria Park data specifiec but no data file passed in.";
+  //    } else {
+  //      DataReader::LoadG2o(FLAGS_data_file, &vic_park_data);
+  //    }
+  //  }
+
+}
+
+bool DataProvider::GetUTIASData(RobotData * const data) {
+  if (type_ != DataType::UTIAS) {
+    LOG(ERROR) << " UTIAS data requested but that's not the type that has been set";
+    return false;
+  }
+
+  if (utias_data_.gt_landmarks.empty()) {
+    LOG(ERROR) << " UTIAS Data not loaded, trying to load..";
+    LoadData();
+  }
+
+  if (utias_data_.observations.at(robot_idx_).size() <= current_index_) {
+    VLOG(1) << "End of measurements.";
+    return false;
+  }
+  VLOG(2) << " Getting UTIAS data at index: " << current_index_;
+  data->index = current_index_;
+  data->timestamp = utias_data_.observations.at(robot_idx_)[current_index_].time;
+  VLOG(2) << fmt::format("current ts: {:f} ", data->timestamp);
+
+  data->debug.ground_truth_map = utias_data_.gt_landmarks_vec;
+  data->debug.ground_truth_pose = utias_data_.ground_truth_states.at(robot_idx_)[current_index_]->robot;
+
+  data->observations = utias_data_.observations.at(robot_idx_)[current_index_].meas;
+  VLOG(2) << fmt::format("{} observations", data->observations.size());
+
+  // get odometry measurements from this state to the next
+  if (current_index_ > 0) {
+    double current_time = data->timestamp;
+    double prev_time = utias_data_.observations.at(robot_idx_)[current_index_ - 1].time;
+    data->odometry_readings = utias_data_.odometry_buffers.at(robot_idx_)->GetRange(prev_time, current_time);
+    VLOG(2) << fmt::format("Added {} odometry measurements between time {:f} and {:f}", data->odometry_readings.size(),
+                           prev_time, current_time);
+  }
+  current_index_++;
+
+  return true;
 
 }
 

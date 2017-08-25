@@ -22,7 +22,7 @@ TEST_CASE("Only visible landmarks should generate observations") {
     RangeFinderObservationVector obs = observation_generator.GenerateObservations(0);
 
     REQUIRE( obs.size() == 1 );
-    REQUIRE( obs.at(0).timestamp == 0.);
+    REQUIRE( obs.at(0).time == 0.);
     REQUIRE( obs.at(0).observation.theta == 0. );
     REQUIRE( obs.at(0).observation.range == range );
   }
@@ -68,7 +68,7 @@ TEST_CASE("Only visible landmarks should generate observations") {
     map->push_back(Landmark(4, 4));
     obs = observation_generator.GenerateObservations(1);
     REQUIRE( obs.size() == 1 );
-    REQUIRE( obs.at(0).timestamp == 1);
+    REQUIRE( obs.at(0).time == 1);
     REQUIRE( obs.at(0).observation.theta == 0 );
     REQUIRE( obs.at(0).observation.range == Approx(1/std::cos(M_PI/4)));
 
@@ -82,7 +82,7 @@ TEST_CASE("Only visible landmarks should generate observations") {
     map->push_back(lm_w);
     obs = observation_generator.GenerateObservations(1);
     REQUIRE( obs.size() == 1 );
-    REQUIRE( obs.at(0).timestamp == 1);
+    REQUIRE( obs.at(0).time == 1);
     REQUIRE( obs.at(0).observation.theta == Approx(0.) );
     REQUIRE( obs.at(0).observation.range == Approx(poses->back().range * 0.5));
 
@@ -98,7 +98,7 @@ TEST_CASE("Only visible landmarks should generate observations") {
     map->push_back(lm_w);
     obs = observation_generator.GenerateObservations(1);
     REQUIRE( obs.size() == 1 );
-    REQUIRE( obs.at(0).timestamp == 1);
+    REQUIRE( obs.at(0).time == 1);
     REQUIRE( obs.at(0).observation.theta == Approx(lm_angle) );
     REQUIRE( obs.at(0).observation.range == Approx(dist));
 
@@ -128,7 +128,7 @@ TEST_CASE("Only visible landmarks should generate observations") {
     map->push_back(lm_w);
     obs = observation_generator.GenerateObservations(1);
     REQUIRE( obs.size() == 1 );
-    REQUIRE( obs.at(0).timestamp == 1);
+    REQUIRE( obs.at(0).time == 1);
     REQUIRE( obs.at(0).observation.theta == Approx(lm_angle) );
     REQUIRE( obs.at(0).observation.range == Approx(dist));
 
@@ -174,7 +174,7 @@ TEST_CASE("Only visible landmarks should generate observations") {
     map->push_back(lm_w);
     RangeFinderObservationVector obs = observation_generator.GenerateObservations(1);
     REQUIRE( obs.size() == 1 );
-    REQUIRE( obs.at(0).timestamp == 1);
+    REQUIRE( obs.at(0).time == 1);
     REQUIRE( obs.at(0).observation.theta == Approx(lm_angle) );
     REQUIRE( obs.at(0).observation.range == Approx(dist));
   }

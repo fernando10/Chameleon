@@ -34,11 +34,16 @@ public:
 
 private:
   void LoadData();
+  bool GetUTIASData(RobotData * const data);
+
   DataType type_;
   DataGenerator::DataGeneratorOptions sim_options_;
   std::unique_ptr<DataGenerator> data_generator_;
   RobotData simulator_data_;
   std::string data_file_;
+  DataReader::UTIASData utias_data_;
+  uint64_t current_index_;
+  size_t robot_idx_ = 1;
 };
 }  //  namespace chameleon
 

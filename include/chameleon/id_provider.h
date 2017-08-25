@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <iostream>
 #include <atomic>
+#include <vector>
 
 namespace chameleon {
 
@@ -13,6 +14,7 @@ struct Instance
 {
   static uint64_t NewId();
   static uint64_t CurrentId();
+  static bool ReserveIds(std::vector<uint64_t> ids_to_reserve);
 };
 }  // namespace IdGenerator
 } // namespace chameleon

@@ -677,7 +677,7 @@ void Estimator::CreateObservationFactor(const uint64_t state_id,
       P_M = 0.8;
 
     }
-    persistence_filter_map_.at(landmark_id)->update(true, obs.timestamp+1, P_M,
+    persistence_filter_map_.at(landmark_id)->update(true, obs.time+1, P_M,
                                                     options_.filter_options.P_F);
 
   }
