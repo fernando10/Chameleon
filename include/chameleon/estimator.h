@@ -23,6 +23,7 @@ public:
     double P_M = 0.2;
     double P_F = 0.2;
     bool use_persistence_filter = false;
+    bool use_joint_persistence = false;
   };
 
   struct EstimatorOptions {
@@ -69,6 +70,9 @@ public:
   void SetLocalizationMode(bool localization_only);
   void GetEstimationResult(EstimatedData* data);
   bool GetFullJacobian();
+  void SetPersistenceWeights(FeaturePersistenceWeightsMapPtr weights) {
+    persistence_weights_ = weights;
+  }
 
 
 private:
@@ -128,7 +132,7 @@ private:
   double latest_timestamp_;
   uint64_t last_state_id_;
   DataAssociationResults data_assoc_results_;
-
+  FeaturePersistenceWeightsMapPtr persistence_weights_;
   State2Landmark_Multimap state_2_landmark_multimap_;
   Landmark2State_MultiMap landmark_2_state_multimap_;
 };

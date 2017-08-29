@@ -66,6 +66,7 @@ public:
   void update(bool detector_output, double observation_time, double P_M, double P_F);
 
   /** Compute the posterior feature persistence time p(X_t = 1 | Y_{1:N}) at time t >= tN (the time of the last observation).*/
+  double predict(double prediction_time, double pi_1, double pi_2) const;
   double predict(double prediction_time) const;
 
   /** Return the function computing the logarithm of the survival function.*/

@@ -42,6 +42,7 @@ public:
       noisy_robot_poses = std::make_shared<RobotPoseVector>();
       ground_truth_map = std::make_shared<LandmarkVector>();
       data_associations = std::make_shared<DataAssociationResults>();
+      feature_persistence_weights_map = std::make_shared<FeaturePersistenceWeightsMap>();
     }
 
     ///
@@ -53,6 +54,9 @@ public:
       noisy_robot_poses->push_back(data.debug.noisy_pose);
       if (data.debug.ground_truth_map != nullptr) {
         ground_truth_map = data.debug.ground_truth_map;
+      }
+      if(data.debug.feature_persistence_weights_map != nullptr) {
+        feature_persistence_weights_map = data.debug.feature_persistence_weights_map;
       }
       ground_truth_observation_map.insert({data.index, data.debug.noise_free_observations});
       noisy_observation_map.insert({data.index, data.debug.noisy_observations});
@@ -81,6 +85,7 @@ public:
     LandmarkVectorPtr ground_truth_map;
     RangeFinderObservationVectorMap ground_truth_observation_map;
     RangeFinderObservationVectorMap noisy_observation_map;
+    FeaturePersistenceWeightsMapPtr feature_persistence_weights_map;
 
     // estimated quantities
     LandmarkPtrMap estimated_landmarks;
@@ -104,7 +109,7 @@ public:
     std::unique_ptr<pangolin::Var<bool>> show_prob_labels;
     std::unique_ptr<pangolin::Var<bool>> show_lm_ids;
     std::unique_ptr<pangolin::Var<bool>> color_lms;
-    std::unique_ptr<pangolin::Var<bool>> draw_groups;
+    std::unique_ptr<pangolin::Var<bool>> draw_persistence_weights;
     std::unique_ptr<pangolin::Var<int>> plot_idx;
     std::unique_ptr<pangolin::Var<double>> prob_missed_detect;
     std::unique_ptr<pangolin::Var<double>> prob_false_detect;

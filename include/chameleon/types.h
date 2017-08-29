@@ -187,6 +187,7 @@ struct Landmark {
   uint64_t id;
   bool active = true;
   double persistence_prob = 0;
+  double joint_persistece_prob = 0;
 
   Landmark(): covariance(LandmarkCovariance::Identity()), id(0) {
   }
@@ -209,6 +210,7 @@ struct Landmark {
     covariance = lm.covariance;
     active = lm.active;
     persistence_prob = lm.persistence_prob;
+    joint_persistece_prob = lm.joint_persistece_prob;
   }
 
   // Assignment -- copy
@@ -219,6 +221,7 @@ struct Landmark {
     covariance = rhs.covariance;
     active = rhs.active;
     persistence_prob = rhs.persistence_prob;
+    joint_persistece_prob = rhs.joint_persistece_prob;
     return *this;
   }
 
@@ -495,6 +498,10 @@ typedef std::map<size_t, uint64_t> DataAssociationMap;
 //};
 
 // debug data for a single timestep
+
+typedef std::map<uint64_t, std::map<uint64_t, double>> FeaturePersistenceWeightsMap;
+typedef std::shared_ptr<std::map<uint64_t, std::map<uint64_t, double>>> FeaturePersistenceWeightsMapPtr;
+
 struct DebugData {
   DebugData() {
     ground_truth_map = std::make_shared<LandmarkVector>();
@@ -506,6 +513,7 @@ struct DebugData {
   OdometryMeasurement noise_free_odometry;
   OdometryMeasurement noisy_odometry;
   LandmarkVectorPtr ground_truth_map;
+  FeaturePersistenceWeightsMapPtr feature_persistence_weights_map;
   LandmarkVectorPtr noisy_map;
   RangeFinderObservationVector noise_free_observations;
   RangeFinderObservationVector noisy_observations;
@@ -558,6 +566,8 @@ typedef std::map<uint64_t, StatePtr> StatePtrMap;
 typedef std::vector<StatePtr> StatePtrVector;
 typedef std::multimap<uint64_t, uint64_t> State2Landmark_Multimap;
 typedef std::multimap<uint64_t, uint64_t> Landmark2State_MultiMap;
+
+
 
 struct DataAssociationResults {
   typedef std::shared_ptr<DataAssociationResults> Ptr;

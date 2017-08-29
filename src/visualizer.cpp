@@ -118,11 +118,12 @@ void Visualizer::InitGui() {
 
   gui_vars_.log_ptr.reset(new pangolin::DataLog());
   std::vector<std::string> data_labels;
-  data_labels.push_back("P(X=1 | Z)");
+  data_labels.push_back("P(X=1 | Z) (joint)");
+  data_labels.push_back("P(X=1 | Z) (individual)");
   gui_vars_.log_ptr->SetLabels(data_labels);
 
   gui_vars_.plotter_ptr.reset(new pangolin::Plotter(gui_vars_.log_ptr.get()));
-  pangolin::XYRange<float> range(0.f, 800.f, 0.f, 1.f);
+  pangolin::XYRange/*<float>*/ range(0.f, 800.f, 0.f, 1.f);
   gui_vars_.plotter_ptr->SetDefaultView(range);
   gui_vars_.plotter_ptr->SetViewSmooth(range);
   gui_vars_.plotter_ptr->ToggleTracking();
@@ -175,10 +176,11 @@ void Visualizer::InitGui() {
   gui_vars_.ui.show_prob_labels = util::make_unique<pangolin::Var<bool>>("ui.Show_posterior", false, true);
   gui_vars_.ui.show_lm_ids = util::make_unique<pangolin::Var<bool>>("ui.Show_lm_ids", false, true);
   gui_vars_.ui.color_lms = util::make_unique<pangolin::Var<bool>>("ui.Color_landmarks", false, true);
-  gui_vars_.ui.draw_groups = util::make_unique<pangolin::Var<bool>>("ui.Draw_Groups", false, true);
+  gui_vars_.ui.draw_persistence_weights = util::make_unique<pangolin::Var<bool>>("ui.Draw_Weights", false, true);
 
-  gui_vars_.ui.plot_idx = util::make_unique<pangolin::Var<int>>("debug.plot_lm", 17);
-  *gui_vars_.ui.plot_idx = 17;
+  gui_vars_.ui.plot_idx = util::make_unique<pangolin::Var<int>>("debug.plot_lm", 27);
+  *gui_vars_.ui.plot_idx = 27;
+  gui_vars_.estimated_map->SetSelectedLm(*gui_vars_.ui.plot_idx);
 
 
   gui_vars_.ui.prob_missed_detect = util::make_unique<pangolin::Var<double>>("ui.Prob. Missed Detect.", 0.0, 1.0);
@@ -226,7 +228,8 @@ void Visualizer::Run() {
     gui_vars_.estimated_map->SetShowPersistenceLabels(*gui_vars_.ui.show_prob_labels);
     gui_vars_.estimated_map->SetShowLandmarkId(*gui_vars_.ui.show_lm_ids);
     gui_vars_.estimated_map->SetColorBasedOnPersistence(*gui_vars_.ui.color_lms);
-    gui_vars_.estimated_map->SetDrawGroups(*gui_vars_.ui.draw_groups);
+    gui_vars_.ground_truth_map->SetShowPersistenceWeights(*gui_vars_.ui.draw_persistence_weights);
+    gui_vars_.estimated_map->SetShowPersistenceWeights(*gui_vars_.ui.draw_persistence_weights);
     gui_vars_.estimated_map->SetShowVariance(*gui_vars_.ui.show_variance);
 
 
@@ -257,6 +260,10 @@ void Visualizer::AddLandmarks() {
       gui_vars_.ground_truth_map->GetMapRef().push_back(Landmark(lm));
     }
   }
+  // update the persistence correlation weights
+  if (data_->feature_persistence_weights_map != nullptr) {
+    gui_vars_.ground_truth_map->SetPersistenceWeights(data_->feature_persistence_weights_map);
+  }
   // and add the estimated landmarks (update every time since they can change location at every timestep)
   gui_vars_.estimated_map->Clear();
   for (const auto& e : data_->estimated_landmarks) {
@@ -268,7 +275,8 @@ void Visualizer::UpdatePlotters() {
   // get the last landmark for now
   if (!data_->estimated_landmarks.empty() && data_->estimated_landmarks.find(*gui_vars_.ui.plot_idx) !=
       data_->estimated_landmarks.end()) {
-    gui_vars_.log_ptr->Log(data_->estimated_landmarks.at(*gui_vars_.ui.plot_idx)->persistence_prob);
+    gui_vars_.log_ptr->Log(data_->estimated_landmarks.at(*gui_vars_.ui.plot_idx)->persistence_prob,
+                           data_->estimated_landmarks.at(*gui_vars_.ui.plot_idx)->joint_persistece_prob);
   }
 }
 
@@ -335,7 +343,7 @@ bool Visualizer::AddIndices(std::vector<size_t> indices) {
       }
       gui_vars_.estimated_robot_path->SetLastPoseCovariance(
             data_->estimated_poses.rbegin()->second->robot.covariance);
-      gui_vars_.estimated_robot_path->ShowCovariance(data_->estimated_poses.size() > 5);
+      gui_vars_.estimated_robot_path->ShowCovariance(/*data_->estimated_poses.size() > 5*/false);
     }
 
     gui_vars_.data_associations->Clear();

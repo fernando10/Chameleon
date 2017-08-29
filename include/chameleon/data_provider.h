@@ -33,10 +33,22 @@ public:
 
   void Reset();
 
+
+  FeaturePersistenceWeightsMapPtr BuildFeaturePersistenceAssociationMatrix(double self_weight = 0.7, double num_neighbors = 5, double radius = 2,
+                                                                           double delta_time = 1);
+  FeaturePersistenceWeightsMapPtr BuildFeaturePersistenceAssociationMatrix(const LandmarkVectorPtr& map,
+                                                                           double self_weight = 0.7,
+                                                                           double num_neighbors = 5, double radius = 2,
+                                                                           double delta_time = 1);
+
+
 private:
   void LoadData();
   bool GetUTIASData(RobotData * const data);
   LandmarkVectorPtr GetUTIASMap();
+  double WeightFromDistance(double distance);
+  double LandmarkDistance(const Landmark& lm1, const Landmark& lm2);
+
 
   DataType type_;
   DataGenerator::DataGeneratorOptions sim_options_;

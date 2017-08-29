@@ -44,6 +44,108 @@ LandmarkVectorPtr DataProvider::GetPriorMap() {
   return map;
 }
 
+
+FeaturePersistenceWeightsMapPtr DataProvider::BuildFeaturePersistenceAssociationMatrix(double self_weight, double num_neighbors, double radius,
+                                                                                    double delta_time) {
+  return BuildFeaturePersistenceAssociationMatrix(GetPriorMap(), self_weight, num_neighbors, radius, delta_time);
+}
+
+FeaturePersistenceWeightsMapPtr DataProvider::BuildFeaturePersistenceAssociationMatrix(const LandmarkVectorPtr& map,
+                                                                                       double self_weight,
+                                                                                    double num_neighbors, double radius,
+                                                                                    double /*delta_time*/) {
+  VLOG(1) << "Building persistence weights...";
+  // TODO: Switch to sparse matrix
+  FeaturePersistenceWeightsMapPtr weights_map = std::make_shared<FeaturePersistenceWeightsMap>();
+
+  if (self_weight > 1.0 || self_weight < 0) {
+    LOG(ERROR) << "self weight must be between 0 and 1, setting to 1";
+    self_weight = 1.0;
+  }
+
+  for (const Landmark& lmA : (*map)) {
+    std::map<uint64_t, double> neighbors;
+
+    // find the 'num_neighbors' closest landmarks within a radius of 'radius'
+    //meters which were created in a time less than 'delta time' to the current feature
+    for (const Landmark& lmB : (*map)) {
+
+      if (lmB.id == lmA.id) {
+        continue;
+      }
+
+      double dist  = LandmarkDistance(lmA, lmB);
+
+      if (dist <= radius) {
+
+        if (neighbors.size() < num_neighbors) {
+
+          neighbors[lmB.id] = WeightFromDistance(dist);
+
+        } else {
+
+          for (std::map<uint64_t, double>::iterator it = neighbors.begin(); it != neighbors.end();) {
+
+            if (WeightFromDistance(dist) > it->second) {
+
+              it = neighbors.erase(it);
+              neighbors[lmB.id] = WeightFromDistance(dist);
+              break;
+
+            }else {
+              ++it;
+            }
+          }
+        }
+      }
+    }
+
+    // now normalize the weights
+    double sum = 0.0;
+    for(const auto& e : neighbors) {
+      sum += e.second;
+    }
+
+    if(lmA.id == 26) {
+      self_weight = 0.8;
+    }
+
+    if(lmA.id == 27 || lmA.id == 28 || lmA.id == 1) {
+      self_weight = 0.2;
+    }
+
+    for(auto& e : neighbors) {
+      e.second = (e.second / (sum)) * (1. - self_weight);
+    }
+
+    // assign weight to self
+    if (neighbors.empty()) {
+      neighbors[lmA.id] = 1.0;
+    }else {
+      neighbors[lmA.id] = self_weight;
+    }
+    (*weights_map)[lmA.id] = neighbors;
+    for(const auto& e : neighbors) {
+      VLOG(1) << fmt::format("Adding neighbor with id: {} and weight {}", e.first, e.second);
+    }
+    VLOG(1) << fmt::format("Added {} neighbors for lm id: {}", neighbors.size(), lmA.id);
+  }
+
+  return weights_map;
+}
+
+double DataProvider::LandmarkDistance(const Landmark& lm1, const Landmark& lm2) {
+  return (lm1.vec() - lm2.vec()).norm();
+}
+
+double DataProvider::WeightFromDistance(double distance) {
+  if (distance > 1e-6) {
+    return 1.0 / distance;
+  }else {
+    return 0;
+  }
+}
+
 bool DataProvider::GetData(RobotData * const data) {
   bool result = false;
   switch (type_) {

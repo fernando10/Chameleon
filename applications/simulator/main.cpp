@@ -22,12 +22,14 @@ DEFINE_bool(provide_map, true, "provide pre-built map to estimator");
 DEFINE_bool(print_optimization_full_summary, false, "print full summary");
 DEFINE_bool(print_optimization_brief_summary, false, "print brief summary");
 DEFINE_bool(persistence_filter, false, "use persistence filter");
+DEFINE_bool(joint_persistence_filter, false, "use joint persistence filter");
 DEFINE_bool(weigh_lm_by_persistence, false, "weigh lm uncertainty by persistence");
 DEFINE_double(huber_loss, 1.0, " huber loss");
 DEFINE_int32(delayed_lm_init, 10, " delayed lm initalization");
 DEFINE_string(data_file, "", "data file for dataset");
 DEFINE_string(data_type, "sim", "data type: sim, vp (victoria park) or utias");
 DEFINE_string(data_association, "known", "data association type: known, IC or JCBB");
+DEFINE_int32(sleep_time, 10, "time between viewer loops");
 /*----------------------------------------------------------------------------*/
 
 using namespace chameleon;
@@ -73,13 +75,18 @@ int main(int argc, char **argv) {
   estimator_options.ceres_options.minimizer_progress_to_stdout = FLAGS_print_optimization_full_summary;
   estimator_options.huber_loss_a = FLAGS_huber_loss;
   estimator_options.filter_options.use_persistence_filter = FLAGS_persistence_filter;
+  estimator_options.filter_options.use_joint_persistence = FLAGS_joint_persistence_filter;
   estimator_options.delayed_initalization_num = FLAGS_delayed_lm_init;
   std::unique_ptr<chameleon::ceres::Estimator> SLAM = util::make_unique<chameleon::ceres::Estimator>(estimator_options);
   EstimatedData estimator_results;  // for collecting the latest updates form the estimator
+  FeaturePersistenceWeightsMapPtr weights = nullptr;
 
-    if (FLAGS_provide_map) {
-      SLAM->SetMap(data_provider.GetPriorMap());
-    }
+  if (FLAGS_provide_map) {
+    // Get feature persistence weights
+    weights = data_provider.BuildFeaturePersistenceAssociationMatrix();
+    SLAM->SetPersistenceWeights(weights);
+    SLAM->SetMap(data_provider.GetPriorMap());
+  }
 
   ////////////////////////////////////
   // Get Data -> Estimate -> Display
@@ -128,6 +135,7 @@ int main(int argc, char **argv) {
         bool data_success = false;
         RobotData data;
         data_success = data_provider.GetData(&data);
+        data.debug.feature_persistence_weights_map = weights;
 
         if (data_success) {
 
@@ -152,7 +160,7 @@ int main(int argc, char **argv) {
           std::this_thread::sleep_for(std::chrono::seconds(1));
         }
       }
-      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+      std::this_thread::sleep_for(std::chrono::milliseconds(FLAGS_sleep_time));
     }
   }
 

@@ -75,6 +75,9 @@ private:
   // The natural logarithm of the marginal (evidence) probability p(J_{1:M})
   double log_marginal_;
 
+  double ConditionalPersistencePrior(size_t current_idx, size_t condition_start_idx);
+
+
 
 
 };

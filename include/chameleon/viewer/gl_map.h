@@ -8,7 +8,6 @@
 #include "chameleon/viewer/gl_landmark.h"
 #include "SceneGraph/GLText.h"
 #include <Eigen/Eigenvalues>
-
 ///
 /// \brief The GLMap class
 /// Code to render a set of landmarks
@@ -21,7 +20,8 @@ public:
     color_based_on_persistence_ = false;
     draw_variance_ = false;
     draw_landmark_id_ = false;
-    draw_groups_ = false;
+    draw_persistence_weights_ = false;
+    selected_lm_id_ = 1e10;
   }
 
   void DrawCanonicalObject() {
@@ -34,12 +34,12 @@ public:
       if (lm.active) {
         color << map_color_[0], map_color_[1], map_color_[2], map_color_[3];
       } else {
-        if (color_based_on_persistence_) {
-          double prob = lm.persistence_prob;
-          color << 1.f - 0.25f*float(prob), float(prob), float(prob), 1.0f;
-        } else{
-          color << 1, 1, 1, 1;
-        }
+        color << 1, 1, 1, 1;
+
+      }
+      if (color_based_on_persistence_) {
+        double prob = lm.persistence_prob;
+        color << 1.f - 0.25f*float(prob), float(prob), float(prob), 1.0f;
       }
 
       glColor4f(color[0], color[1], color[2], color[3]);
@@ -52,6 +52,13 @@ public:
       if (draw_variance_) {
         glDraw2dCovariance(lm.x(), lm.y(), lm.covariance, 9);
       }
+
+      if (lm.id == selected_lm_id_) {
+        glColor4f(1.0, 1.0, 0.0, 1.0);
+        double side = 1;
+        pangolin::glDrawRectPerimeter(lm.x() + side/2, lm.y() + side/2, lm.x() - side/2, lm.y() - side/2);
+      }
+
 
       glPopMatrix();
 
@@ -66,31 +73,45 @@ public:
       }
     }
 
-//    if(draw_groups_) {
-//      Eigen::Matrix<float, 4, 2> pts;
-//      float border = 0.5f;
-//      pts.setZero();
-//      for (const auto& lm : landmark_vec_) {
-//        if(lm.id == 1){
-//          pts(0, 0) = (float)lm.x()-border; pts(0, 1) = (float)lm.y()+border;
-//        }
-//        if(lm.id == 7) {
-//          pts(1, 0) = (float)lm.x()+border; pts(1, 1) = (float)lm.y()-border;
-//        }
+    std::map<uint64_t, size_t> lm_id_2_idx_map;
 
-//        if(lm.id == 21){
-//          pts(2, 0) = (float)lm.x()-border; pts(2, 1) = (float)lm.y()+border;
-//        }
-//        if(lm.id == 15) {
-//          pts(3, 0) = (float)lm.x()+border; pts(3, 1) = (float)lm.y()-border;
-//        }
-//      }
-//      glColor4f(1.0, 1.0, 0.0, 1.0);
-//      glLineWidth(2.0);
-//      pangolin::glDrawRectPerimeter(pts(0, 0), pts(0, 1), pts(1, 0), pts(1, 1));
-//      pangolin::glDrawRectPerimeter(pts(2, 0), pts(2, 1), pts(3, 0), pts(3, 1));
+    size_t idx = 0;
+    for (const auto& lm : landmark_vec_) {
+      lm_id_2_idx_map[lm.id] = idx;
+      idx++;
+    }
 
-//    }
+
+    if (draw_persistence_weights_) {
+      //std::cerr << "drawing persistence weights.." << std::endl;
+      if (persistence_weights_ != nullptr) {
+
+        size_t lm_idx = 0;
+        for (const auto& e1 : *(persistence_weights_)) {
+          glColor4f(lm_idx % 2, lm_idx % 2, lm_idx % 3, 1.0);
+
+          uint64_t lm_id = e1.first;
+          Eigen::Vector2d root_position = landmark_vec_[lm_id_2_idx_map.at(lm_id)].vec();
+
+          for (const auto& e2 : e1.second) {
+
+            if(e2.first == lm_id) {
+              continue;
+            }
+
+            double weight = e2.second;
+            Eigen::Vector2d neighbor_position = landmark_vec_[lm_id_2_idx_map.at(e2.first)].vec();
+
+            // draw a line from the root node to the neighbor
+            glLineWidth(weight*2.0 + 1);
+            //std::cerr << "drawing line between nodes.." << std::endl;
+            pangolin::glDrawLine(root_position, neighbor_position);
+          }
+          lm_idx ++;
+        }
+      }
+    }
+
   }
 
   inline void glDraw2dCovariance(double x, double y, Eigen::Matrix2d C, double conf )
@@ -140,10 +161,6 @@ public:
     draw_variance_ = plot_variance;
   }
 
-  void SetDrawGroups(bool draw) {
-    draw_groups_ = draw;
-  }
-
   void SetColorBasedOnPersistence(bool set) {
     color_based_on_persistence_  = set;
   }
@@ -152,17 +169,35 @@ public:
     draw_persistence_labels_ = show;
   }
 
+  void SetShowPersistenceWeights(bool show) {
+    draw_persistence_weights_ = show;
+  }
+
   void SetShowLandmarkId(bool show) {
     draw_landmark_id_ = show;
+  }
+
+  void SetSelectedLm(uint64_t lm_id){
+    selected_lm_id_ = lm_id;
+  }
+
+  void ClearSelectedLms(){
+    selected_lm_id_ = 1e10;
+  }
+
+  void SetPersistenceWeights(chameleon::FeaturePersistenceWeightsMapPtr weights) {
+    persistence_weights_ = weights;
   }
 
 private:
   std::vector<chameleon::Landmark> landmark_vec_;
   std::vector<SceneGraph::GLText> landmark_labels_vec_;
+  chameleon::FeaturePersistenceWeightsMapPtr persistence_weights_;
   Eigen::Vector4f map_color_;
   bool color_based_on_persistence_;
   bool draw_persistence_labels_;
+  bool draw_persistence_weights_;
   bool draw_landmark_id_;
-  bool draw_groups_;
   bool draw_variance_;
+  uint64_t selected_lm_id_;
 };

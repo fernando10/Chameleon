@@ -65,15 +65,9 @@ void Estimator::SetMap(LandmarkVectorPtr prior_map) {
     // add the parameter blocks now so we can set them constant
     ceres_problem_->AddParameterBlock(lm_ptr->data(), Landmark::kLandmarkDim);
     ceres_problem_->SetParameterBlockConstant(lm_ptr->data());
-    lm_ptr->active = false;
+    lm_ptr->active = true;
 
   }
-
-  // TEMP FOR DEMO
-//  persistence_filter_graph_[16][17] = 2;
-//  persistence_filter_graph_[17][18] = 3.5;
-//  persistence_filter_graph_[19][18] = 3.5;
-//  persistence_filter_graph_[20][19] = 2;
 
   localization_mode_ = true;
 }
@@ -131,7 +125,7 @@ void Estimator::AddData(const RobotData &data) {
   if (!data.observations.empty() && options_.add_observations) {
 
     // get  a map with obs_index -> landmark_id
-    LandmarkPtrMap visible_landmarks = GetLandmarksThatShouldBeVisible(new_state->robot);
+    LandmarkPtrMap visible_landmarks = GetLandmarksThatShouldBeVisible(new_state->robot, true);
     Marginals marginals;
     if (states_.size() > options_.min_states_for_solve && options_.data_association_strategy !=
         DataAssociation::DataAssociationType::Known) {
@@ -531,10 +525,10 @@ void Estimator::SetLocalizationMode(bool localization_only) {
     if (localization_only) {
       VLOG(1) << " Setting landmark id: " << e.first << " constant." ;
       ceres_problem_->SetParameterBlockConstant(e.second->data());
-      e.second->active = false;
+      //e.second->active = false;
     } else {
       ceres_problem_->SetParameterBlockVariable(e.second->data());
-      e.second->active = true;
+      //e.second->active = true;
     }
   }
   localization_mode_ = localization_only;
@@ -684,22 +678,7 @@ void Estimator::CreateObservationFactor(const uint64_t state_id,
     }
 
     // and add this observation
-    double P_M = options_.filter_options.P_M;
-    if (persistence_filter_graph_.find(landmark_id) != persistence_filter_graph_.end()){
-      for (const auto& e : persistence_filter_graph_[landmark_id]) {
-        if (persistence_filter_map_.find(e.first) != persistence_filter_map_.end()) {
-          P_M *= (e.second - (e.second-1) * landmarks_.at(e.first)->persistence_prob);
-        }
-      }
-    }
-
-    if ((landmark_id == 27 || landmark_id == 28 || landmark_id == 1 || landmark_id == 2) &&
-        persistence_filter_map_.find(26) != persistence_filter_map_.end() &&
-        landmarks_.at(26)->persistence_prob < 0.3){
-      P_M = 0.8;
-
-    }
-    persistence_filter_map_.at(landmark_id)->update(true, obs.time+1, P_M,
+    persistence_filter_map_.at(landmark_id)->update(true, obs.time+1, options_.filter_options.P_M,
                                                     options_.filter_options.P_F);
 
   }
@@ -912,7 +891,34 @@ void Estimator::GetEstimationResult(EstimatedData* data)  {
 void Estimator::UpdateMapPersistence() {
   for (auto& e : landmarks_) {
     if (persistence_filter_map_.find(e.first) != persistence_filter_map_.end()) {
-      e.second->persistence_prob = persistence_filter_map_.at(e.first)->predict(latest_timestamp_ + 1);
+
+      // get this landmark's neigboring weights
+      if (options_.filter_options.use_joint_persistence &&
+          persistence_weights_->find(e.first) != persistence_weights_->end()) {
+
+        double w1 = persistence_weights_->at(e.first).at(e.first);  // should always have self weight
+        double w2 = 0.0;
+        for (const auto& n : persistence_weights_->at(e.first)) {
+          if(n.first != e.first && persistence_filter_map_.find(n.first) != persistence_filter_map_.end()) {
+            VLOG(1) << fmt::format("weight between id: {} and id: {} is {} with persistence prb: {}",
+                                   e.first, n.first, n.second, landmarks_.at(n.first)->persistence_prob);
+            w2 += n.second * landmarks_.at(n.first)->persistence_prob;
+          }
+        }
+        if(e.second->id == 27) {
+          LOG(INFO) << fmt::format("Lm 27 weights: {}. {}", w1, w2);
+        }
+        e.second->persistence_prob = persistence_filter_map_.at(e.first)->predict(latest_timestamp_ + 1, w1, w2);
+
+        //TOOD: REMOVE THIS
+        e.second->joint_persistece_prob = persistence_filter_map_.at(e.first)->predict(latest_timestamp_ + 1);
+
+      }else {
+        e.second->persistence_prob = persistence_filter_map_.at(e.first)->predict(latest_timestamp_ + 1);
+
+        //TODO: REMOVE THIS
+        e.second->joint_persistece_prob = persistence_filter_map_.at(e.first)->predict(latest_timestamp_ + 1);
+      }
     }
   }
 }
