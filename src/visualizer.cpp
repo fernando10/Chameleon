@@ -72,7 +72,7 @@ void Visualizer::AddObjectsToSceneGraph() {
   gui_vars_.estimated_map->SetShowPersistenceLabels(false);
   gui_vars_.scene_graph.AddChild(gui_vars_.estimated_map.get());
 
-  remove_lm_idx_ = 18;  // TEMP, remove this
+  remove_lm_idx_ = 18;  // TEMP for debug
 }
 
 void Visualizer::ResetSceneGraph() {
