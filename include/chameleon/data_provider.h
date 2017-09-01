@@ -20,9 +20,14 @@ public:
   };
 
   DataProvider(std::string data_type, std::string data_file);
-  bool GetData(RobotData * const data) override;
+
+  bool GetData(RobotDataVec* const data);
+  bool GetData(RobotData* const data) override;
+
   LandmarkVectorPtr GetPriorMap();
+
   void LoadData(const std::string path, DataType type);
+
   DataGenerator::DataGeneratorOptions& SimulationOptions() {
     return sim_options_;
   }
@@ -41,11 +46,15 @@ public:
                                                                            double num_neighbors = 5, double radius = 2,
                                                                            double delta_time = 1);
 
+  size_t num_robots = 1;
+
 
 private:
   void LoadData();
-  bool GetUTIASData(RobotData * const data);
+  bool GetUTIASData(std::vector<RobotData> * const data, size_t num_robots = 1);
+  bool GetUTIASData(RobotData * const data, bool increment = true, size_t robot_idx = 1);
   LandmarkVectorPtr GetUTIASMap();
+  LandmarkVectorPtr GetVicParkMap();
   double WeightFromDistance(double distance);
   double LandmarkDistance(const Landmark& lm1, const Landmark& lm2);
 
@@ -56,8 +65,8 @@ private:
   RobotData simulator_data_;
   std::string data_file_;
   DataReader::UTIASData utias_data_;
+  DataReader::G2oData vic_park_data_;
   uint64_t current_index_;
-  size_t robot_idx_ = 1;
 };
 }  //  namespace chameleon
 

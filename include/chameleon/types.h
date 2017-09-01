@@ -479,24 +479,6 @@ typedef std::map<size_t, uint64_t> DataAssociationMap;
 
 //------------------------DATA STRUCTURES------------------------//
 
-//struct DebugData {
-//  DebugData() {
-//    ground_truth_map = std::make_shared<LandmarkVector>();
-//    ground_truth_poses = std::make_shared<RobotPoseVector>();
-//    noisy_poses = std::make_shared<RobotPoseVector>();
-//    noise_free_odometry = std::make_shared<OdometryMeasurementVector>();
-//    noisy_odometry = std::make_shared<OdometryMeasurementVector>();
-//  }
-
-//  RobotPoseVectorPtr ground_truth_poses;
-//  RobotPoseVectorPtr noisy_poses;
-//  OdometryMeasurementVectorPtr noise_free_odometry;
-//  OdometryMeasurementVectorPtr noisy_odometry;
-//  LandmarkVectorPtr ground_truth_map;
-//  RangeFinderObservationVectorMap noise_free_observations;
-//  RangeFinderObservationVectorMap noisy_observations;
-//};
-
 // debug data for a single timestep
 
 typedef std::map<uint64_t, std::map<uint64_t, double>> FeaturePersistenceWeightsMap;
@@ -533,12 +515,15 @@ struct VictoriaParkData {
 struct RobotData {
   double timestamp;
   size_t index;
+  size_t robot_idx = 1;
   DebugData debug;
   // this is all that is available to the estimation algorithm (below)
   OdometryMeasurement odometry;
   OdometryObservationVector odometry_readings;
   RangeFinderObservationVector observations;
 };
+
+typedef std::vector<RobotData> RobotDataVec;
 
 //------------------------STATE ESTIMATION STUFF------------------------//
 struct State {

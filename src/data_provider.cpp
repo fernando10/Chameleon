@@ -36,13 +36,15 @@ LandmarkVectorPtr DataProvider::GetPriorMap() {
     break;
   case DataType::VicPark:
   {
-    //TODO
+    map = GetVicParkMap();
   }
     break;
   }
 
   return map;
 }
+
+
 
 
 FeaturePersistenceWeightsMapPtr DataProvider::BuildFeaturePersistenceAssociationMatrix(double self_weight, double num_neighbors, double radius,
@@ -146,6 +148,10 @@ double DataProvider::WeightFromDistance(double distance) {
   }
 }
 
+bool DataProvider::GetData(RobotDataVec * const data) {
+return false;
+}
+
 bool DataProvider::GetData(RobotData * const data) {
   bool result = false;
   switch (type_) {
@@ -201,21 +207,24 @@ void DataProvider::LoadData() {
   case DataType::VicPark:
   {
     VLOG(1) << "Loading Victoria Park dataset";
-    //DataReader::LoadG2o(data_file_);
+    DataReader::LoadG2o(data_file_, &vic_park_data_);
   }
     break;
   }
+}
 
-  // check if we have real data to load
-  //  DataReader::G2oData vic_park_data;
-  //  VictoriaParkData vc_data;
-  //  if (use_real_data) {
-  //    if (FLAGS_data_file.empty()) {
-  //      LOG(FATAL) << "Victoria Park data specifiec but no data file passed in.";
-  //    } else {
-  //      DataReader::LoadG2o(FLAGS_data_file, &vic_park_data);
-  //    }
-  //  }
+LandmarkVectorPtr DataProvider::GetVicParkMap() {
+  if (type_ != DataType::VicPark) {
+    LOG(ERROR) << " Victoria Park data requested but that's not the type that has been set";
+    return nullptr;
+  }
+
+  if (vic_park_data_.landmarks.empty()) {
+    LOG(ERROR) << " Victoria Park Data not loaded, trying to load..";
+    LoadData();
+  }
+
+  return nullptr;
 
 }
 
@@ -233,7 +242,21 @@ LandmarkVectorPtr DataProvider::GetUTIASMap() {
   return utias_data_.gt_landmarks_vec;
 }
 
-bool DataProvider::GetUTIASData(RobotData * const data) {
+bool DataProvider::GetUTIASData(std::vector<RobotData> * const data, size_t num_robots) {
+
+//  if (data == nullptr) {
+//    return false;
+//  }
+
+//  for(size_t i = 1; i <= num_robots; i++) {
+//    RobotData r;
+//    data->push_back(GetUTIASData(&r, false, i));
+//  }
+//  current_index_++;
+  return false;
+}
+
+bool DataProvider::GetUTIASData(RobotData * const data, bool increment, size_t robot_idx) {
   if (type_ != DataType::UTIAS) {
     LOG(ERROR) << " UTIAS data requested but that's not the type that has been set";
     return false;
@@ -244,15 +267,17 @@ bool DataProvider::GetUTIASData(RobotData * const data) {
     LoadData();
   }
 
-  if (utias_data_.keyframes.at(robot_idx_).size() <= current_index_) {
+  if (utias_data_.keyframes.at(robot_idx).size() <= current_index_) {
     VLOG(1) << "End of measurements.";
     return false;
   }
 
-  VLOG(2) << " Getting UTIAS data at index: " << current_index_;
+  VLOG(2) << " Getting UTIAS data at index: " << current_index_ << " for robot: " << robot_idx;
   data->index = current_index_;
 
-  DataReader::KeyframeMeasurements::Ptr& kf = utias_data_.keyframes.at(robot_idx_)[current_index_];
+  data->robot_idx = robot_idx;
+
+  DataReader::KeyframeMeasurements::Ptr& kf = utias_data_.keyframes.at(robot_idx)[current_index_];
 
   data->timestamp = kf->time;
   VLOG(2) << fmt::format("current ts: {:f} ", data->timestamp);
@@ -270,15 +295,16 @@ bool DataProvider::GetUTIASData(RobotData * const data) {
   // get odometry measurements from the previous state to this one
   if (current_index_ > 0) {
     data->debug.noisy_pose = OdometryGenerator::PropagateMeasurement(
-                               utias_data_.odometry_buffers.at(robot_idx_)->GetRange(
-                                 utias_data_.keyframes.at(robot_idx_)[0]->time, data->timestamp),
-        utias_data_.keyframes.at(robot_idx_)[0]->ground_truth_pose);
+                               utias_data_.odometry_buffers.at(robot_idx)->GetRange(
+                                 utias_data_.keyframes.at(robot_idx)[0]->time, data->timestamp),
+        utias_data_.keyframes.at(robot_idx)[0]->ground_truth_pose);
   }else {
     data->debug.noisy_pose = kf->ground_truth_pose;
   }
 
   data->debug.noisy_observations = kf->meas;
-  current_index_++;
+
+  if (increment) { current_index_++; }
 
   return true;
 }

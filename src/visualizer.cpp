@@ -251,6 +251,11 @@ void Visualizer::SetData(ViewerData::Ptr data) {
   data_ = data;
 }
 
+void Visualizer::SetData(std::map<size_t, ViewerData::Ptr> data) {
+  std::unique_lock<std::mutex> lock(data_mutex_);
+  data_map_ = data;
+}
+
 void Visualizer::AddLandmarks() {
 
   // update the ground truth landmarks
@@ -280,60 +285,60 @@ void Visualizer::UpdatePlotters() {
   }
 }
 
-bool Visualizer::AddIndices(std::vector<size_t> indices) {
+bool Visualizer::AddIndices(std::vector<size_t> indices, int robot_idx) {
   std::unique_lock<std::mutex>(data_mutex_);
 
   AddLandmarks();
   UpdatePlotters();
 
-  for (const size_t& ts : indices) {
+  for (const size_t& idx : indices) {
     if (data_ == nullptr) {
-      LOG(ERROR) << fmt::format("Requested to add timestep: {} but viewer has no valid data pointer...", ts);
+      LOG(ERROR) << fmt::format("Requested to add timestep: {} but viewer has no valid data pointer...", idx);
       return false;
     }
     // add the robot pose at the current time
-    if (data_->ground_truth_robot_poses != nullptr && data_->ground_truth_robot_poses->size() > ts) {
+    if (data_->ground_truth_robot_poses != nullptr && data_->ground_truth_robot_poses->size() > idx) {
       // data exsits, add this pose to the display
-      RobotPose& robot = data_->ground_truth_robot_poses->at(ts);
+      RobotPose& robot = data_->ground_truth_robot_poses->at(idx);
       std::vector<Sophus::SE2d>& poses_path_ref = gui_vars_.gt_robot_path->GetPathRef();
       poses_path_ref.push_back(robot.pose);
       VLOG(3) << fmt::format("Added pose to path at: {}, {}", robot.pose.translation().x(), robot.pose.translation().y());
 
       // add the ground truth landmark observations
-      if (data_->ground_truth_observation_map.find(ts) != data_->ground_truth_observation_map.end()) {
+      if (data_->ground_truth_observation_map.find(idx) != data_->ground_truth_observation_map.end()) {
         // get the observations for this timestep
-        const RangeFinderObservationVector& gt_observations = data_->ground_truth_observation_map.at(ts);
+        const RangeFinderObservationVector& gt_observations = data_->ground_truth_observation_map.at(idx);
         gui_vars_.ground_truth_observations->SetPoseAndObservations(robot, gt_observations);
       }
 
       // add the noisy landmark observations
-      if (data_->noisy_observation_map.find(ts) != data_->noisy_observation_map.end()) {
+      if (data_->noisy_observation_map.find(idx) != data_->noisy_observation_map.end()) {
         // get the observations for this timestep
-        const RangeFinderObservationVector& noisy_observations = data_->noisy_observation_map.at(ts);
+        const RangeFinderObservationVector& noisy_observations = data_->noisy_observation_map.at(idx);
         RobotPose obs_pose = robot;
-        if (data_->estimated_poses.size() > ts) {
+        if (data_->estimated_poses.size() > idx) {
           obs_pose = data_->estimated_poses.rbegin()->second->robot;
         }
         gui_vars_.noisy_observations->SetPoseAndObservations(obs_pose, noisy_observations);
       }
 
     } else {
-      LOG(ERROR) << fmt::format("Error adding robot pose at timestep: {}, either data is null or index does not exist.", ts);
+      LOG(ERROR) << fmt::format("Error adding robot pose at timestep: {}, either data is null or index does not exist.", idx);
     }
 
     // lets also add the noisy robot poses at the current time
-    if (data_->noisy_robot_poses != nullptr && data_->noisy_robot_poses->size() > ts) {
+    if (data_->noisy_robot_poses != nullptr && data_->noisy_robot_poses->size() > idx) {
       // data exsits, add this pose to the display
-      RobotPose& noisy_robot = data_->noisy_robot_poses->at(ts);
+      RobotPose& noisy_robot = data_->noisy_robot_poses->at(idx);
       std::vector<Sophus::SE2d>& poses_path_ref = gui_vars_.noisy_robot_path->GetPathRef();
       poses_path_ref.push_back(noisy_robot.pose);
       VLOG(3) << fmt::format("Added noisy pose to path at: {}, {}", noisy_robot.pose.translation().x(), noisy_robot.pose.translation().y());
     } else {
-      LOG(ERROR) << fmt::format("Error adding noisy robot pose at timestep: {}, either data is null or index does not exist.", ts);
+      LOG(ERROR) << fmt::format("Error adding noisy robot pose at timestep: {}, either data is null or index does not exist.", idx);
     }
 
     // and the estimated quantities
-    if (data_->estimated_poses.size() > ts) {
+    if (data_->estimated_poses.size() > idx) {
       std::vector<Sophus::SE2d>& poses_path_ref = gui_vars_.estimated_robot_path->GetPathRef();
 
       // remove all states and re-add (for now)

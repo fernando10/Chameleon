@@ -26,6 +26,7 @@ DEFINE_bool(joint_persistence_filter, false, "use joint persistence filter");
 DEFINE_bool(weigh_lm_by_persistence, false, "weigh lm uncertainty by persistence");
 DEFINE_double(huber_loss, 1.0, " huber loss");
 DEFINE_int32(delayed_lm_init, 10, " delayed lm initalization");
+DEFINE_int32(num_robots, 1, "number of robots to use (if more than 1 is available)");
 DEFINE_string(data_file, "", "data file for dataset");
 DEFINE_string(data_type, "sim", "data type: sim, vp (victoria park) or utias");
 DEFINE_string(data_association, "known", "data association type: known, IC or JCBB");
@@ -52,6 +53,7 @@ int main(int argc, char **argv) {
   // Setup Data Provider so we have some data
   //////////////////////////////////////
   DataProvider data_provider(FLAGS_data_type, FLAGS_data_file);
+  data_provider.num_robots = FLAGS_num_robots;
   DataGenerator::DataGeneratorOptions& sim_options = data_provider.SimulationOptions();
   sim_options.path_options.num_steps = FLAGS_num_steps;
   sim_options.path_options.initial_position = RobotPose(0, Eigen::Vector2d::Zero());

@@ -135,10 +135,22 @@ void Estimator::AddData(const RobotData &data) {
       marginals.robot = new_state->robot;
       marginals.landmarks = visible_landmarks;
     }
+
     DataAssociationMap association = DataAssociation::AssociateDataToLandmarks(data.observations
                                                                                ,visible_landmarks
                                                                                ,marginals
                                                                                ,options_.data_association_strategy);
+
+//    for (DataAssociationMap::iterator it = association.begin(); it != association.end();) {
+//      if (persistence_filter_map_.find(it->second) != persistence_filter_map_.end() && landmarks_.at(25)->persistence_prob < 0.1
+//          && landmarks_.at(it->second)->persistence_prob < 0.5 &&
+//          (it->second == 27 || it->second == 28 || it->second == 1 || it->second == 2)) {
+//        LOG(INFO) << "not associating to landmark id: " << it->second;
+//        it = association.erase(it);
+//      } else {
+//        ++it;
+//      }
+//    }
 
     // save association results for visualizing
     data_assoc_results_.observations = data.observations;
@@ -905,19 +917,11 @@ void Estimator::UpdateMapPersistence() {
             w2 += n.second * landmarks_.at(n.first)->persistence_prob;
           }
         }
-        if(e.second->id == 27) {
-          LOG(INFO) << fmt::format("Lm 27 weights: {}. {}", w1, w2);
-        }
-        e.second->persistence_prob = persistence_filter_map_.at(e.first)->predict(latest_timestamp_ + 1, w1, w2);
 
-        //TOOD: REMOVE THIS
-        e.second->joint_persistece_prob = persistence_filter_map_.at(e.first)->predict(latest_timestamp_ + 1);
+        e.second->persistence_prob = persistence_filter_map_.at(e.first)->predict(latest_timestamp_ + 1, w1, w2);
 
       }else {
         e.second->persistence_prob = persistence_filter_map_.at(e.first)->predict(latest_timestamp_ + 1);
-
-        //TODO: REMOVE THIS
-        e.second->joint_persistece_prob = persistence_filter_map_.at(e.first)->predict(latest_timestamp_ + 1);
       }
     }
   }

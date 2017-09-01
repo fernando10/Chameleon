@@ -18,14 +18,14 @@
 #include "fmt/format.h"
 #include "fmt/ostream.h"
 #include <Eigen/Core>
-
+#include <map>
 namespace chameleon
 {
 class JointPersistenceFilter
 {
 public:
-  JointPersistenceFilter(const std::function<double(double)>& log_survival_function, double init_time = 0.0,
-                         std::vector<uint64_t> feature_ids) :
+  JointPersistenceFilter(const std::function<double(double)>& log_survival_function, std::vector<uint64_t> feature_ids,
+                         double init_time = 0.0) :
     init_time_(init_time), logS_(log_survival_function), feature_ids_(feature_ids),
     latest_obs_time_(init_time), log_evidence_sum_(nullptr), log_observation_likelihood_(0.0), log_marginal_(0.0){
 
@@ -42,8 +42,8 @@ public:
   // Adds new observations to the filter, size of observation map needs to be less than or equal to the number of features being tracked
   void Update(std::map<uint64_t, bool> detections, double observation_time, double P_M, double P_F);
 
-  // computes the joint posterior at any time t greater than the lastet observation
-  double Predict(double prediction_time) const;
+  // computes the marginal posterior at any time t greater than the lastet observation for the landmark specified
+  double Predict(double prediction_time, uint64_t lm_id) const;
 
   // computes the marginal posterior for the given feature at any time t greater than the lastest time
   double PredictMarginal(double prediction_time, uint64_t feature_id) const;
@@ -53,13 +53,11 @@ public:
   }
 
 
-
-
 private:
   double init_time_; // time filter was initialized...prior probability of existence is 1 here
   std::function<double(double)> logS_;
   std::function<double(double)> shifted_logS_;
-  std::vector<uint64_t> feature_ids_;
+  //std::vector<uint64_t> feature_ids_;
   double latest_obs_time_;
   std::vector<uint64_t> feature_ids_;  // id's of the features that we are jointly tracking the persistence of
   std::map<uint64_t, std::vector<bool>> feature_observations_;  // keeps track of the sequence of observations for each feature

@@ -148,8 +148,9 @@ public:
   Visualizer(const ViewerOptions& options);
 
   void SetData(ViewerData::Ptr data);
+  void SetData(std::map<size_t, ViewerData::Ptr> data);
   // which indeces from the data should we add to the display
-  bool AddIndices(std::vector<size_t> indices);
+  bool AddIndices(std::vector<size_t> indices, int robot_idx = -1);
 
   void RequestFinish();
   bool IsFinished();
@@ -192,6 +193,7 @@ private:
 
   GuiVars gui_vars_;
   ViewerData::Ptr data_;
+  std::map<size_t, ViewerData::Ptr> data_map_;
   std::unique_ptr<std::thread> viewer_thread_;
   std::mutex status_mutex_;
   std::mutex data_mutex_;
