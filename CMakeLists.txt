@@ -170,6 +170,10 @@ set(LIB_SRCS
   ${SRC_DIR}/persistence_filter_utils.cpp
   ${SRC_DIR}/persistence_filter.cpp
   ${SRC_DIR}/id_provider.cpp
+  ${SRC_DIR}/data_reader.cpp
+  ${SRC_DIR}/lap.cpp
+  ${SRC_DIR}/data_provider.cpp
+  ${SRC_DIR}/joint_persistence_filter.cpp
   )
 
 set( INC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include/${LIBRARY_NAME} )
@@ -189,6 +193,9 @@ set(LIB_HEADERS
   ${INC_DIR}/persistence_filter_utils.h
   ${INC_DIR}/persistence_filter.h
   ${INC_DIR}/estimator.h
+  ${INC_DIR}/data_reader.h
+  ${INC_DIR}/data_provider.h
+  ${INC_DIR}/joint_persistence_filter.h
   )
 
 include_directories( ${REQUIRED_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/include )
@@ -217,5 +224,8 @@ if(BUILD_APPLICATIONS)
     MESSAGE(STATUS "BUILDING APPLICATIONS")
     add_executable(simulator applications/simulator/main.cpp)
     target_link_libraries(simulator ${LIBRARY_NAME})
+
+    add_executable(demo applications/demo/demo.cpp)
+    target_link_libraries(demo ${LIBRARY_NAME})
 endif()
 

@@ -56,7 +56,7 @@ void PathGenerator::GeneratePath() {
   default:
     LOG(ERROR) << "Motion type not supported. Unable to generate motion";
   }
-
+  VLOG(1) << "Generated robot path with"  << robot_poses->size() << " poses";
   robot_poses_ = robot_poses;
 }
 
@@ -113,7 +113,6 @@ RobotPoseVectorPtr PathGenerator::GenerateRectangularPath() const {
   const Eigen::Vector2d width_vel = Eigen::Vector2d(width_minus_corner / num_steps_width, 0.);
 
   robot_poses->push_back(options_.initial_position); // start pose
-  //robot_poses->push_back(RobotPose(0., Eigen::Vector2d(-kRectangleLength / 2 + corner_offset, kRectangleWidth / 3)));
 
   // Top side of rectangle (start from one since the first pose has already been added) (length)
   for (size_t ii = 1; ii < num_steps_length; ++ii) {

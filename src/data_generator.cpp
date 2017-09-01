@@ -19,11 +19,9 @@ void DataGenerator::InitializeSimulation() {
   odometry_generator_ = util::make_unique<OdometryGenerator>(options_.odometry_noise);
   observation_generator_ = util::make_unique<ObservationGenerator>();
 
-  measurement_covariance_ = options_.measurement_noise.asDiagonal();
   odometry_generator_->SetPath(path_generator_->GetRobotPath());
-  world_generator_->GenerateWorld(path_generator_->GetRobotPath());
+  world_generator_->GenerateWorld(path_generator_->GetRobotPath(), WorldGenerator::WorldTypes::MimicTrajctory);
   observation_generator_->Reset(world_generator_->GetWorld(), path_generator_->GetRobotPath());
-  observation_generator_->SetCovariance(options_.measurement_noise.asDiagonal());
   current_timestep_ = 0;
 }
 
@@ -32,7 +30,11 @@ void DataGenerator::Reset() {
   InitializeSimulation();
 }
 
-bool DataGenerator::GetRobotData(RobotData* const data) {
+LandmarkVectorPtr DataGenerator::GetNoisyMap() {
+  return world_generator_->SampleWorld();
+}
+
+bool DataGenerator::GetData(RobotData* const data) {
   // since we're simulating should always return something here
   data->debug.ground_truth_pose = path_generator_->GetRobot(current_timestep_);
 
@@ -64,7 +66,11 @@ bool DataGenerator::GetRobotData(RobotData* const data) {
   }
 
   // see if any world features need to be removed
-  world_generator_->RemoveLandmarks(options_.remove_lm_ids);
+  if(!options_.remove_lm_ids.empty())
+     world_generator_->RemoveLandmarks(options_.remove_lm_ids);
+  // or changed
+  if (!options_.change_lm_ids.empty())
+    world_generator_->ChangeLandmarks(options_.change_lm_ids);
 
   // generate some observations (with and without noise)
   RangeFinderObservationVector noise_free_obs =  observation_generator_->GenerateObservations(current_timestep_);
@@ -82,8 +88,10 @@ bool DataGenerator::GetRobotData(RobotData* const data) {
 
   data->debug.noisy_pose = noisy_robot;
   data->debug.ground_truth_map = world_generator_->GetWorld();
+  data->debug.noisy_map = world_generator_->SampleWorld();
   data->debug.noise_free_observations = noise_free_obs;
   data->debug.noisy_observations = noisy_obs;
+  data->index = current_timestep_;
   data->timestamp = current_timestep_;
   data->observations = noisy_obs;
   current_timestep_++;

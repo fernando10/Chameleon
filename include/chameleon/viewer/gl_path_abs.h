@@ -66,6 +66,14 @@ public:
     return path_;
   }
 
+  void SetLastPoseCovariance(Eigen::Matrix3d cov) {
+    robot_.SetCovariance(cov);
+  }
+
+  void ShowCovariance(bool show) {
+    robot_.ShowCovariance(show);
+  }
+
 private:
   Eigen::Vector4f line_color_;
   GLRobot robot_;

@@ -110,6 +110,30 @@ RobotPose& OdometryGenerator::PropagateMeasurement(const OdometryMeasurement& me
   return noisy_robot_poses_->back();
 }
 
+RobotPose OdometryGenerator::PropagateMeasurement(const OdometryObservationVector& odometry_measurements,
+                                                  const RobotPose& current_pose, double dt) {
+  RobotPose propagated_pose = current_pose;
+
+  if (dt < 0) {
+    LOG(FATAL) << "provide delta time for odometry measurement";
+  }
+
+  VLOG(2) << "Popagating " << odometry_measurements.size() << " measurements";
+
+  for (size_t i = 0; i < odometry_measurements.size(); ++i) {
+    // do simple euler integration
+    double theta = dt * odometry_measurements.at(i).observation.omega;  // rad
+    double dx = dt * odometry_measurements.at(i).observation.velocity * std::cos(propagated_pose.theta());  // m
+    double dy = dt * odometry_measurements.at(i).observation.velocity * std::sin(propagated_pose.theta());  // m
+
+    propagated_pose.SetTheta(AngleWraparound<double>(propagated_pose.theta() + theta));
+    propagated_pose.x() = propagated_pose.x() + dx;
+    propagated_pose.y() = propagated_pose.y() + dy;
+  }
+
+  return propagated_pose;
+}
+
 RobotPose OdometryGenerator::PropagateMeasurement(const OdometryMeasurement &meas, const RobotPose &start_pose) {
   RobotPose propagated_pose = start_pose;
 

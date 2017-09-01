@@ -10,6 +10,53 @@ namespace chameleon
 {
 namespace ceres
 {
+
+// this cost function takes in as a measurement an 'odometry' reading in the form multiple forward velocity + omega
+// usually real data will take this form
+struct OdometryReadingCostFunction {
+  OdometryReadingCostFunction(const OdometryObservationVector measurements, const OdometryCovariance& cov,
+                              double dt):
+    measurements(measurements), inv_sqrt_cov(cov), dt(dt) {}
+
+  template<typename T>
+  bool operator()(const T* const T1, const T* const T2, T* residual) const {
+    const Eigen::Map<const Sophus::SE2Group<T>>T_WS_prev(T1);
+    const Eigen::Map<const Sophus::SE2Group<T>>T_WS_current(T2);
+
+    // error is predicted delta pose - estimated delta pose
+    Eigen::Map<Eigen::Matrix<T, Sophus::SE2Group<T>::DoF, 1>>error(residual);
+
+
+    Sophus::SE2Group<T> pose = T_WS_prev;
+    for (size_t i = 0; i < measurements.size(); ++i) {
+      // do simple euler integration
+      T theta = T(dt) * (T)measurements.at(i).observation.omega;  // rad
+      T dx = T(dt) * (T)measurements.at(i).observation.velocity * ::ceres::cos(pose.so2().log());  // m
+      T dy = T(dt) * (T)measurements.at(i).observation.velocity * ::ceres::sin(pose.so2().log());  // m
+
+      pose.so2() = Sophus::SO2Group<T>(AngleWraparound<T>(pose.so2().log() + theta));
+      pose.translation().x() = pose.translation().x() + dx;
+      pose.translation().y() = pose.translation().y() + dy;
+    }
+
+    // now compute the residual
+    Eigen::Matrix<T, 3, 1> res = (pose.inverse() * T_WS_current).log();
+    error[0] = res[0]; // x
+    error[1] = res[1]; // y
+    error[2] = res[2]; // theta
+
+    error = inv_sqrt_cov.template cast<T>() * error;
+    return true;
+  }
+
+  const OdometryObservationVector measurements;
+  const OdometryCovariance inv_sqrt_cov;
+  const double dt;
+};
+
+
+// this cost function takes in as a measurement an 'odometry' reading in the form a rotation + translation + rotation
+// usually simulated data will take this form
 struct OdometryCostFunction {
   OdometryCostFunction(const OdometryMeasurement& measurement, const OdometryCovariance &cov):
     measurement(measurement), inv_sqrt_cov(cov){

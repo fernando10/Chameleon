@@ -56,7 +56,11 @@ void Visualizer::AddObjectsToSceneGraph() {
   gui_vars_.noisy_observations = util::make_unique<GLObservations>();
   gui_vars_.scene_graph.AddChild(gui_vars_.noisy_observations.get());
   gui_vars_.noisy_observations->SetColor(0.6, 0.1, 0.1);  // dark red
-  gui_vars_.noisy_observations->SetLineWidth(1.5);
+  gui_vars_.noisy_observations->SetLineWidth(1.7);
+
+  // data associations
+  gui_vars_.data_associations = util::make_unique<GLDataAssociations>();
+  gui_vars_.scene_graph.AddChild(gui_vars_.data_associations.get());
 
   // add estimated quantities
   gui_vars_.estimated_robot_path = util::make_unique<GLPathAbs>();
@@ -67,6 +71,8 @@ void Visualizer::AddObjectsToSceneGraph() {
   gui_vars_.estimated_map->SetColor(1, 0, 1);  // magenta
   gui_vars_.estimated_map->SetShowPersistenceLabels(false);
   gui_vars_.scene_graph.AddChild(gui_vars_.estimated_map.get());
+
+  remove_lm_idx_ = 18;  // TEMP for debug
 }
 
 void Visualizer::ResetSceneGraph() {
@@ -112,11 +118,12 @@ void Visualizer::InitGui() {
 
   gui_vars_.log_ptr.reset(new pangolin::DataLog());
   std::vector<std::string> data_labels;
-  data_labels.push_back("P(X=1 | Z)");
+  data_labels.push_back("P(X=1 | Z) (joint)");
+  data_labels.push_back("P(X=1 | Z) (individual)");
   gui_vars_.log_ptr->SetLabels(data_labels);
 
   gui_vars_.plotter_ptr.reset(new pangolin::Plotter(gui_vars_.log_ptr.get()));
-  pangolin::XYRange<float> range(0.f, 800.f, 0.f, 1.f);
+  pangolin::XYRange/*<float>*/ range(0.f, 800.f, 0.f, 1.f);
   gui_vars_.plotter_ptr->SetDefaultView(range);
   gui_vars_.plotter_ptr->SetViewSmooth(range);
   gui_vars_.plotter_ptr->ToggleTracking();
@@ -143,24 +150,38 @@ void Visualizer::InitGui() {
   pangolin::RegisterKeyPressCallback(pangolin::PANGO_SPECIAL + pangolin::PANGO_KEY_RIGHT,
                                      [&]() { single_step_ = true; });
 
-  pangolin::RegisterKeyPressCallback('r', [&]() { VLOG(1) << "removing landmark id: " << data_->ground_truth_map->back().id;
-    landmarks_to_be_removed_.push_back(data_->ground_truth_map->back().id); });
+  pangolin::RegisterKeyPressCallback('r', [&]() { VLOG(1) << "removing landmark id: " << remove_lm_idx_;
+    landmarks_to_be_removed_.push_back(remove_lm_idx_++); });
 
-  //pangolin::RegisterGuiVarChangedCallback(&Visualizer::GuiVarChanged, (void*)this, "ui");
+  pangolin::RegisterKeyPressCallback('s', [&]() { *gui_vars_.ui.do_SLAM = !(*gui_vars_.ui.do_SLAM); });
+  pangolin::RegisterKeyPressCallback('l', [&]() { *gui_vars_.ui.do_Localization = !(*gui_vars_.ui.do_Localization); });
+  pangolin::RegisterKeyPressCallback('m', [&]() { VLOG(1) << "changing landmarks... ";
+    change_landmarks_ = true; });
+
 
   ////////////////////////////////////////////////////
   /////UI VARIABLES
   /// ////////////////////////////////////////////////
   gui_vars_.ui.reset = util::make_unique<pangolin::Var<bool>>("ui.Reset", false, false);
-  gui_vars_.ui.show_gt = util::make_unique<pangolin::Var<bool>>("ui.Show_ground_truth", true, true);
+  gui_vars_.ui.show_gt = util::make_unique<pangolin::Var<bool>>("ui.Show_ground_truth", false, true);
+  gui_vars_.ui.show_data_assoc = util::make_unique<pangolin::Var<bool>>("ui.Show_data_assoc.", false, true);
   gui_vars_.ui.show_observations = util::make_unique<pangolin::Var<bool>>("ui.Show_observations", true, true);
-  gui_vars_.ui.show_landmarks = util::make_unique<pangolin::Var<bool>>("ui.Show_landmarks", true, true);
+  gui_vars_.ui.show_gt_observations = util::make_unique<pangolin::Var<bool>>("ui.Show_gt_observations", false, true);
+  gui_vars_.ui.show_landmarks = util::make_unique<pangolin::Var<bool>>("ui.Show_landmarks", false, true);
   gui_vars_.ui.show_odometry = util::make_unique<pangolin::Var<bool>>("ui.Show_odometry", false, true);
   gui_vars_.ui.show_estimated = util::make_unique<pangolin::Var<bool>>("ui.Show_estimated", true, true);
   gui_vars_.ui.show_variance = util::make_unique<pangolin::Var<bool>>("ui.Show_variance", false, true);
   gui_vars_.ui.do_SLAM = util::make_unique<pangolin::Var<bool>>("ui.Do_SLAM", true, true);
   gui_vars_.ui.do_Localization = util::make_unique<pangolin::Var<bool>>("ui.Localization", false, true);
   gui_vars_.ui.show_prob_labels = util::make_unique<pangolin::Var<bool>>("ui.Show_posterior", false, true);
+  gui_vars_.ui.show_lm_ids = util::make_unique<pangolin::Var<bool>>("ui.Show_lm_ids", false, true);
+  gui_vars_.ui.color_lms = util::make_unique<pangolin::Var<bool>>("ui.Color_landmarks", false, true);
+  gui_vars_.ui.draw_persistence_weights = util::make_unique<pangolin::Var<bool>>("ui.Draw_Weights", false, true);
+
+  gui_vars_.ui.plot_idx = util::make_unique<pangolin::Var<int>>("debug.plot_lm", 27);
+  *gui_vars_.ui.plot_idx = 27;
+  gui_vars_.estimated_map->SetSelectedLm(*gui_vars_.ui.plot_idx);
+
 
   gui_vars_.ui.prob_missed_detect = util::make_unique<pangolin::Var<double>>("ui.Prob. Missed Detect.", 0.0, 1.0);
   *gui_vars_.ui.prob_missed_detect = 0.2;
@@ -174,6 +195,16 @@ std::vector<uint64_t> Visualizer::GetLandmarksToBeRemoved() {
   return ret;
 }
 
+std::vector<uint64_t> Visualizer::ChangeLandmarks() {
+  if(change_landmarks_) {
+    std::vector<uint64_t> ret {1, 2, 27, 28};
+    change_landmarks_ = false;
+    return ret;
+  }else{
+    return std::vector<uint64_t>();
+  }
+}
+
 
 void Visualizer::Run() {
 
@@ -182,21 +213,24 @@ void Visualizer::Run() {
   // Viewer loop.
   while (!pangolin::ShouldQuit() || CheckFinish()) {
 
-
-    VLOG(3) << " viewer loop...";
-
     // clear whole screen
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // check toggles
     gui_vars_.ground_truth_map->SetVisible(*gui_vars_.ui.show_landmarks);
-    gui_vars_.ground_truth_observations->SetVisible(*gui_vars_.ui.show_observations);
+    gui_vars_.ground_truth_observations->SetVisible(*gui_vars_.ui.show_gt_observations);
+    gui_vars_.data_associations->SetVisible(*gui_vars_.ui.show_data_assoc);
     gui_vars_.noisy_observations->SetVisible(*gui_vars_.ui.show_observations);
     gui_vars_.noisy_robot_path->SetVisible(*gui_vars_.ui.show_odometry);
     gui_vars_.gt_robot_path->SetVisible(*gui_vars_.ui.show_gt);
     gui_vars_.estimated_robot_path->SetVisible(*gui_vars_.ui.show_estimated);
     gui_vars_.estimated_map->SetVisible(*gui_vars_.ui.show_estimated);
     gui_vars_.estimated_map->SetShowPersistenceLabels(*gui_vars_.ui.show_prob_labels);
+    gui_vars_.estimated_map->SetShowLandmarkId(*gui_vars_.ui.show_lm_ids);
+    gui_vars_.estimated_map->SetColorBasedOnPersistence(*gui_vars_.ui.color_lms);
+    gui_vars_.ground_truth_map->SetShowPersistenceWeights(*gui_vars_.ui.draw_persistence_weights);
+    gui_vars_.estimated_map->SetShowPersistenceWeights(*gui_vars_.ui.draw_persistence_weights);
+    gui_vars_.estimated_map->SetShowVariance(*gui_vars_.ui.show_variance);
 
 
     if (pangolin::Pushed(*gui_vars_.ui.reset) ) {
@@ -217,6 +251,11 @@ void Visualizer::SetData(ViewerData::Ptr data) {
   data_ = data;
 }
 
+void Visualizer::SetData(std::map<size_t, ViewerData::Ptr> data) {
+  std::unique_lock<std::mutex> lock(data_mutex_);
+  data_map_ = data;
+}
+
 void Visualizer::AddLandmarks() {
 
   // update the ground truth landmarks
@@ -225,6 +264,10 @@ void Visualizer::AddLandmarks() {
     for (const auto& lm : *(data_->ground_truth_map)) {
       gui_vars_.ground_truth_map->GetMapRef().push_back(Landmark(lm));
     }
+  }
+  // update the persistence correlation weights
+  if (data_->feature_persistence_weights_map != nullptr) {
+    gui_vars_.ground_truth_map->SetPersistenceWeights(data_->feature_persistence_weights_map);
   }
   // and add the estimated landmarks (update every time since they can change location at every timestep)
   gui_vars_.estimated_map->Clear();
@@ -235,59 +278,67 @@ void Visualizer::AddLandmarks() {
 
 void Visualizer::UpdatePlotters() {
   // get the last landmark for now
- gui_vars_.log_ptr->Log(data_->estimated_landmarks.rbegin()->second->persistence_prob);
+  if (!data_->estimated_landmarks.empty() && data_->estimated_landmarks.find(*gui_vars_.ui.plot_idx) !=
+      data_->estimated_landmarks.end()) {
+    gui_vars_.log_ptr->Log(data_->estimated_landmarks.at(*gui_vars_.ui.plot_idx)->persistence_prob,
+                           data_->estimated_landmarks.at(*gui_vars_.ui.plot_idx)->joint_persistece_prob);
+  }
 }
 
-bool Visualizer::AddTimesteps(std::vector<size_t> timesteps) {
+bool Visualizer::AddIndices(std::vector<size_t> indices, int robot_idx) {
   std::unique_lock<std::mutex>(data_mutex_);
 
   AddLandmarks();
   UpdatePlotters();
 
-  for (const size_t& ts : timesteps) {
+  for (const size_t& idx : indices) {
     if (data_ == nullptr) {
-      LOG(ERROR) << fmt::format("Requested to add timestep: {} but viewer has no valid data pointer...", ts);
+      LOG(ERROR) << fmt::format("Requested to add timestep: {} but viewer has no valid data pointer...", idx);
       return false;
     }
     // add the robot pose at the current time
-    if (data_->ground_truth_robot_poses != nullptr && data_->ground_truth_robot_poses->size() > ts) {
+    if (data_->ground_truth_robot_poses != nullptr && data_->ground_truth_robot_poses->size() > idx) {
       // data exsits, add this pose to the display
-      RobotPose& robot = data_->ground_truth_robot_poses->at(ts);
+      RobotPose& robot = data_->ground_truth_robot_poses->at(idx);
       std::vector<Sophus::SE2d>& poses_path_ref = gui_vars_.gt_robot_path->GetPathRef();
       poses_path_ref.push_back(robot.pose);
       VLOG(3) << fmt::format("Added pose to path at: {}, {}", robot.pose.translation().x(), robot.pose.translation().y());
 
       // add the ground truth landmark observations
-      if (data_->ground_truth_observation_map.find(ts) != data_->ground_truth_observation_map.end()) {
+      if (data_->ground_truth_observation_map.find(idx) != data_->ground_truth_observation_map.end()) {
         // get the observations for this timestep
-        const RangeFinderObservationVector& gt_observations = data_->ground_truth_observation_map.at(ts);
+        const RangeFinderObservationVector& gt_observations = data_->ground_truth_observation_map.at(idx);
         gui_vars_.ground_truth_observations->SetPoseAndObservations(robot, gt_observations);
       }
 
       // add the noisy landmark observations
-      if (data_->noisy_observation_map.find(ts) != data_->noisy_observation_map.end()) {
+      if (data_->noisy_observation_map.find(idx) != data_->noisy_observation_map.end()) {
         // get the observations for this timestep
-        const RangeFinderObservationVector& noisy_observations = data_->noisy_observation_map.at(ts);
-        gui_vars_.noisy_observations->SetPoseAndObservations(robot, noisy_observations);
+        const RangeFinderObservationVector& noisy_observations = data_->noisy_observation_map.at(idx);
+        RobotPose obs_pose = robot;
+        if (data_->estimated_poses.size() > idx) {
+          obs_pose = data_->estimated_poses.rbegin()->second->robot;
+        }
+        gui_vars_.noisy_observations->SetPoseAndObservations(obs_pose, noisy_observations);
       }
 
     } else {
-      LOG(ERROR) << fmt::format("Error adding robot pose at timestep: {}, either data is null or index does not exist.", ts);
+      LOG(ERROR) << fmt::format("Error adding robot pose at timestep: {}, either data is null or index does not exist.", idx);
     }
 
     // lets also add the noisy robot poses at the current time
-    if (data_->noisy_robot_poses != nullptr && data_->noisy_robot_poses->size() > ts) {
+    if (data_->noisy_robot_poses != nullptr && data_->noisy_robot_poses->size() > idx) {
       // data exsits, add this pose to the display
-      RobotPose& noisy_robot = data_->noisy_robot_poses->at(ts);
+      RobotPose& noisy_robot = data_->noisy_robot_poses->at(idx);
       std::vector<Sophus::SE2d>& poses_path_ref = gui_vars_.noisy_robot_path->GetPathRef();
       poses_path_ref.push_back(noisy_robot.pose);
       VLOG(3) << fmt::format("Added noisy pose to path at: {}, {}", noisy_robot.pose.translation().x(), noisy_robot.pose.translation().y());
     } else {
-      LOG(ERROR) << fmt::format("Error adding noisy robot pose at timestep: {}, either data is null or index does not exist.", ts);
+      LOG(ERROR) << fmt::format("Error adding noisy robot pose at timestep: {}, either data is null or index does not exist.", idx);
     }
 
     // and the estimated quantities
-    if (data_->estimated_poses.size() > ts) {
+    if (data_->estimated_poses.size() > idx) {
       std::vector<Sophus::SE2d>& poses_path_ref = gui_vars_.estimated_robot_path->GetPathRef();
 
       // remove all states and re-add (for now)
@@ -295,6 +346,31 @@ bool Visualizer::AddTimesteps(std::vector<size_t> timesteps) {
       for (const auto& state : data_->estimated_poses) {
         poses_path_ref.push_back(state.second->robot.pose);
       }
+      gui_vars_.estimated_robot_path->SetLastPoseCovariance(
+            data_->estimated_poses.rbegin()->second->robot.covariance);
+      gui_vars_.estimated_robot_path->ShowCovariance(/*data_->estimated_poses.size() > 5*/false);
+    }
+
+    gui_vars_.data_associations->Clear();
+
+    if (!data_->data_associations->associations.empty()) {
+      // update the data associations
+
+      for (auto e : data_->data_associations->associations) {
+        RangeFinderObservation& obs = data_->data_associations->observations[e.first];
+        LandmarkPtr lm_w = data_->estimated_landmarks.at(e.second);  // should always be present
+
+        // transfer the observation over to the world frame
+        Landmark obs_r(obs.observation.range * std::cos(obs.observation.theta),
+                       obs.observation.range * std::sin(obs.observation.theta));
+        // transfer the observation over to the world frame
+        Landmark obs_w = data_->estimated_poses.rbegin()->second->robot * obs_r;
+
+        // finally add to the scene graph
+        gui_vars_.data_associations->AddDataAssociation(std::make_pair(obs_w.vec(), lm_w->vec()));
+
+      }
+
     }
   }
   return true;

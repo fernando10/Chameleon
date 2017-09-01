@@ -10,6 +10,8 @@ ObservationGenerator::ObservationGenerator() {
   // no data yet, create lists so we don't have any nullptrs
   path_ = std::make_shared<RobotPoseVector>();
   map_ = std::make_shared<LandmarkVector>();
+  measurement_covariance_ = RangeFinderReading::GetMeasurementCovariance();
+  measurement_covariance_ /= 10;
 }
 
 ObservationGenerator::ObservationGenerator(const LandmarkVectorPtr map, const RobotPoseVectorPtr path): map_(map), path_(path) {
@@ -67,7 +69,7 @@ RangeFinderObservationVector ObservationGenerator::GenerateNoisyObservations(siz
 
   RangeFinderObservationVector noisy_observations;
   for (const auto& obs : noise_free_observations) {
-    noisy_observations.push_back(RangeFinderObservation(obs.timestamp, obs.observation + observation_noise()));
+    noisy_observations.push_back(RangeFinderObservation(obs.time, obs.observation + observation_noise()));
   }
   return noisy_observations;
 }

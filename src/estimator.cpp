@@ -47,6 +47,29 @@ void Estimator::Reset() {
   landmark_2_state_multimap_.clear();
   localization_mode_ = false;
   latest_timestamp_ = 0;
+  last_state_id_ = 0;
+  data_assoc_results_.Clear();
+}
+
+////////////////////////////////////////////////////////////////
+/// \brief Estimator::SetMap
+////////////////////////////////////////////////////////////////
+void Estimator::SetMap(LandmarkVectorPtr prior_map) {
+  // map provided
+  landmarks_.clear();
+  for (Landmark& lm : *prior_map) {
+    LandmarkPtr lm_ptr = std::make_shared<Landmark>();
+    *lm_ptr = lm;
+    landmarks_[lm.id] = lm_ptr;
+
+    // add the parameter blocks now so we can set them constant
+    ceres_problem_->AddParameterBlock(lm_ptr->data(), Landmark::kLandmarkDim);
+    ceres_problem_->SetParameterBlockConstant(lm_ptr->data());
+    lm_ptr->active = true;
+
+  }
+
+  localization_mode_ = true;
 }
 
 ////////////////////////////////////////////////////////////////
@@ -65,12 +88,20 @@ void Estimator::AddData(const RobotData &data) {
   // initialize state by propagating odometry
   if (states_.empty()) {
     VLOG(1) << "First state received.";
-    // this is the very first state, use identity for now
-    // TODO: Get initial pose externally so it's not arbitrarily fixed at the origin
-    new_state->robot.pose = Sophus::SE2d(0, Eigen::Vector2d::Zero());
+    // TODO: Don't rely on initial pose from data
+    new_state->robot.pose = data.debug.ground_truth_pose.pose;
   } else {
     // use odometry to propagate previous measurement forward and get estimated state
-    RobotPose guess = OdometryGenerator::PropagateMeasurement(data.odometry, last_state_rit->second->robot);
+    RobotPose guess;
+    if (!data.odometry_readings.empty()){
+      // use speed and angular velocity (usually from real data)
+      VLOG(2) << fmt::format("Propagating {} odometry measurements", data.odometry_readings.size());
+      guess = OdometryGenerator::PropagateMeasurement(data.odometry_readings, last_state_rit->second->robot);
+    }else {
+      // use transform between poses as odometry (usually from sim data)
+      guess = OdometryGenerator::PropagateMeasurement(data.odometry, last_state_rit->second->robot);
+    }
+
     VLOG(2) <<  fmt::format("Propagated pose (id:{}) at: {} and got pose at: {}",last_state_rit->first, last_state_rit->second->robot, guess);
     new_state->robot.pose = guess.pose;
   }
@@ -81,7 +112,6 @@ void Estimator::AddData(const RobotData &data) {
   uint64_t id = GetNewStateId();
   new_state->id = id;
   states_.insert({id, new_state});
-  last_optimized_state_ = new_state;
   VLOG(3) << fmt::format("Added state with id: {} to problem.", id);
 
   if(states_.size() == 1) {
@@ -95,25 +125,54 @@ void Estimator::AddData(const RobotData &data) {
   if (!data.observations.empty() && options_.add_observations) {
 
     // get  a map with obs_index -> landmark_id
-    LandmarkPtrMap visible_landmarks = GetLandmarksThatShouldBeVisible(new_state->robot);
+    LandmarkPtrMap visible_landmarks = GetLandmarksThatShouldBeVisible(new_state->robot, true);
+    Marginals marginals;
+    if (states_.size() > options_.min_states_for_solve && options_.data_association_strategy !=
+        DataAssociation::DataAssociationType::Known) {
+      // try to get covariances for the state variables we care about for this data association
+      GetMarginals(last_state_id_, visible_landmarks, &marginals);
+    }else {
+      marginals.robot = new_state->robot;
+      marginals.landmarks = visible_landmarks;
+    }
+
     DataAssociationMap association = DataAssociation::AssociateDataToLandmarks(data.observations
                                                                                ,visible_landmarks
-                                                                               ,DataAssociation::DataAssociationType::Known);
+                                                                               ,marginals
+                                                                               ,options_.data_association_strategy);
 
-    // check if any landmarks that should have been observed were not so we can update the belief over that landmark
-    for (const auto& lm : visible_landmarks) {
-      bool found = false;
-      for (const auto& a : association) {
-        if (a.second == lm.first) {
-          found = true;
-          break;
+//    for (DataAssociationMap::iterator it = association.begin(); it != association.end();) {
+//      if (persistence_filter_map_.find(it->second) != persistence_filter_map_.end() && landmarks_.at(25)->persistence_prob < 0.1
+//          && landmarks_.at(it->second)->persistence_prob < 0.5 &&
+//          (it->second == 27 || it->second == 28 || it->second == 1 || it->second == 2)) {
+//        LOG(INFO) << "not associating to landmark id: " << it->second;
+//        it = association.erase(it);
+//      } else {
+//        ++it;
+//      }
+//    }
+
+    // save association results for visualizing
+    data_assoc_results_.observations = data.observations;
+    data_assoc_results_.associations = association;
+
+    if (options_.filter_options.use_persistence_filter) {
+      // check if any landmarks that should have been observed but were not so we can update the belief over that landmark
+      //TODO: if the hypothetically visible landmarks set is too large this will kill off landmarks that should not be killed
+      for (const auto& lm : visible_landmarks) {
+        bool found = false;
+        for (const auto& a : association) {
+          if (a.second == lm.first) {
+            found = true;
+            break;
+          }
         }
-      }
-      if (!found) {
-        VLOG(1) << fmt::format("Landmark id {} should have been observed but was not.", lm.first);
-        if (persistence_filter_map_.find(lm.first) != persistence_filter_map_.end()) {
-          persistence_filter_map_.at(lm.first)->update(false, data.timestamp+1, options_.filter_options.P_M,
-                                                       options_.filter_options.P_F);
+        if (!found) {
+          VLOG(1) << fmt::format("Landmark id {} should have been observed but was not.", lm.first);
+          if (persistence_filter_map_.find(lm.first) != persistence_filter_map_.end()) {
+            persistence_filter_map_.at(lm.first)->update(false, data.timestamp+1, options_.filter_options.P_M,
+                                                         options_.filter_options.P_F);
+          }
         }
       }
     }
@@ -125,15 +184,18 @@ void Estimator::AddData(const RobotData &data) {
 
     // add factors between this state and landmakrs that have been associated to measurements
     CheckAndAddObservationFactors(id, association, data.observations);
+  } else {
+    data_assoc_results_.Clear();
   }
 
   ////////////////////////////////
   ////// ODOMETRY FACTOR
   if (states_.size() > 1) {
     // only add odometry if this is not the very first state
-    CreateOdometryFactor(std::next(last_state_rit, 1)->first, last_state_rit->first, data.odometry);
+    CreateOdometryFactor(std::next(last_state_rit, 1)->first, last_state_rit->first, data);
   }
 
+  last_state_id_ = id;
   latest_timestamp_ = data.timestamp;
   VLOG(2) << "Finished adding data.";
 }
@@ -141,7 +203,7 @@ void Estimator::AddData(const RobotData &data) {
 ////////////////////////////////////////////////////////////////
 /// \brief Estimator::GetLandmarksThatShouldBeVisible
 ////////////////////////////////////////////////////////////////
-LandmarkPtrMap Estimator::GetLandmarksThatShouldBeVisible(const RobotPose& robot) {
+LandmarkPtrMap Estimator::GetLandmarksThatShouldBeVisible(const RobotPose& robot, bool use_robot_fov) {
   LandmarkPtrMap visible_landmarks;
 
   for (const auto& e : landmarks_) {
@@ -153,17 +215,25 @@ LandmarkPtrMap Estimator::GetLandmarksThatShouldBeVisible(const RobotPose& robot
     if(lm_r.x() < 1e-2) {
       continue;  // landmark too close or behind
     }
-    // get angle
-    double theta = AngleWraparound<double>(std::atan2(lm_r.y(), lm_r.x()));
 
-    if (std::abs(theta) <= robot.field_of_view/2.) {
-      // lm in the field of view, get distance
-      double distance = lm_r.norm();
-      if (distance <= robot.range) {
-        // should be visible
-        visible_landmarks.insert({e.first, e.second});
+    if (use_robot_fov) {
+      // only get landmakrs that should be visible given the robots range and fov
+      // get angle
+      double theta = AngleWraparound<double>(std::atan2(lm_r.y(), lm_r.x()));
+
+      if (std::abs(theta) <= robot.field_of_view/2.) {
+        // lm in the field of view, get distance
+        double distance = lm_r.norm();
+        if (distance <= robot.range) {
+          // should be visible
+          visible_landmarks.insert({e.first, e.second});
+        }
       }
+    } else {
+      // anything in front of the robot is fair game
+      visible_landmarks.insert({e.first, e.second});
     }
+
   }
 
   return visible_landmarks;
@@ -181,6 +251,10 @@ void Estimator::Solve() {
       GetMapUncertainty();
     }
 
+    if (options_.compute_latest_pose_covariance) {
+      GetLatestPoseUncertainty();
+    }
+
     if (options_.print_full_summary) {
       LOG(INFO) << summary_.FullReport();
     }else if (options_.print_brief_summary) {
@@ -192,7 +266,137 @@ void Estimator::Solve() {
   }
 }
 
-// TODO: change to get the uncertainty of all landmarks at the same time
+
+////////////////////////////////////////////////////////////////
+/// \brief Estimator::GetMarginals
+////////////////////////////////////////////////////////////////
+bool Estimator::GetMarginals(uint64_t state_id, LandmarkPtrMap lms, Marginals* res) {
+  std::vector<uint64_t> lm_ids;
+  for(const auto& e : lms) {
+    lm_ids.push_back(e.first);
+  }
+  return GetMarginals(state_id, lm_ids, res);
+}
+
+bool Estimator::GetMarginals(uint64_t state_id, std::vector<uint64_t> lm_ids, Marginals* res) {
+
+  std::vector<std::pair<const double*, const double*>> covariance_blocks;
+  if(!CheckStateExists(last_state_id_)) {
+    LOG(ERROR) << "Trying to get marginal covariance for state id: " << last_state_id_ << " but it's not in the problem";
+    return false;
+  }
+
+  StatePtr state = states_.at(state_id);
+  covariance_blocks.push_back(std::make_pair(state->data(), state->data()));
+
+
+  for (const auto& landmark_id : lm_ids) {
+    if (!CheckLandmarkExists(landmark_id)) {
+      LOG(ERROR) << fmt::format("Covariance for lm id: {} requested but that id is not in the map.", landmark_id);
+      return false;
+    }
+    LandmarkPtr lm = landmarks_.at(landmark_id);
+    if (unitialized_landmarks_.find(landmark_id) != unitialized_landmarks_.end() ||
+        !lm->active) {
+      // landmark hasn't been added to the estimation yet or landmark is fixed
+      continue;
+    }
+    covariance_blocks.push_back(std::make_pair(lm->data(), lm->data())); // get the marginal covariance
+    covariance_blocks.push_back(std::make_pair(state->data(), lm->data())); // and the pose-landmark covariance
+  }
+
+
+  ::ceres::Covariance::Options options;
+  ::ceres::Covariance covariance(options);
+  Eigen::MatrixXd cov_out(State::kStateDim + lm_ids.size() * Landmark::kLandmarkDim,
+                          State::kStateDim + lm_ids.size() * Landmark::kLandmarkDim);
+
+  bool success = covariance.Compute(covariance_blocks, ceres_problem_.get());
+
+  if (success) {
+    Eigen::Map<Eigen::Matrix<double,State::kStateDim, State::kStateDim, Eigen::RowMajor>> state_cov(
+          cov_out.block<State::kStateDim, State::kStateDim>(0, 0).data());
+
+    covariance.GetCovarianceBlockInTangentSpace(state->data(), state->data(), state_cov.data());
+    res->covariances.insert({std::make_pair(state_id, state_id), state_cov});
+    res->robot = state->robot;
+    res->pose_id = state_id;
+
+    // get the covariance blocks for all the requested landmarks
+    for (size_t idx = 0; idx < lm_ids.size(); ++idx) {
+
+      if (unitialized_landmarks_.find(lm_ids.at(idx)) != unitialized_landmarks_.end()) {
+        // landmark hasn't been added to the estimation yet...
+        res->covariances.insert({std::make_pair(lm_ids.at(idx), lm_ids.at(idx)), LandmarkCovariance::Identity()});
+        res->covariances.insert({std::make_pair(state_id, lm_ids.at(idx)), Eigen::Matrix<double, 3, 2>::Zero()});
+        continue;
+      }
+
+      if (!landmarks_.at(lm_ids.at(idx))->active) {
+        res->covariances.insert({std::make_pair(lm_ids.at(idx), lm_ids.at(idx)), landmarks_.at(lm_ids.at(idx))->covariance });
+        res->covariances.insert({std::make_pair(state_id, lm_ids.at(idx)), Eigen::Matrix<double, 3, 2>::Zero()});  // TODO: how to compute state-marginal covariance block when map was given?
+        continue;
+      }
+
+      // first get the diagonal block
+      Eigen::Map<Eigen::Matrix<double,Landmark::kLandmarkDim, Landmark::kLandmarkDim, Eigen::RowMajor>> lm_cov(
+            cov_out.block<Landmark::kLandmarkDim, Landmark::kLandmarkDim>(
+              State::kStateDim + idx * Landmark::kLandmarkDim,
+              State::kStateDim + idx * Landmark::kLandmarkDim).data());
+      LandmarkPtr lm = landmarks_.at(lm_ids.at(idx));
+      covariance.GetCovarianceBlock(lm->data(), lm->data(), lm_cov.data());
+      res->covariances.insert({std::make_pair(lm_ids.at(idx), lm_ids.at(idx)), lm_cov});
+      res->landmarks[lm_ids.at(idx)] = lm;
+
+      // now get the off-diagonal pose-landmark covariance
+      Eigen::Map<Eigen::Matrix<double,State::kStateDim, Landmark::kLandmarkDim, Eigen::RowMajor>> state_lm_cov(
+            cov_out.block<State::kStateDim, Landmark::kLandmarkDim>(0, State::kStateDim + idx * Landmark::kLandmarkDim).data());
+      covariance.GetCovarianceBlock(state->data(), lm->data(), state_lm_cov.data());
+      res->covariances.insert({std::make_pair(state_id, lm_ids.at(idx)), state_lm_cov});
+
+      // also fill out the landmark-pose
+      cov_out.block<Landmark::kLandmarkDim, State::kStateDim>(State::kStateDim + idx * Landmark::kLandmarkDim, 0) =
+          state_lm_cov.transpose();
+    }
+  }else {
+    LOG(ERROR) << "Unable to compute marginal covariances.";
+  }
+
+  return success;
+
+}
+
+
+////////////////////////////////////////////////////////////////
+/// \brief Estimator::GetLatestPoseUncertainty
+////////////////////////////////////////////////////////////////
+bool Estimator::GetLatestPoseUncertainty() {
+
+  std::vector<std::pair<const double*, const double*>> covariance_blocks;
+  if(!CheckStateExists(last_state_id_)) {
+    LOG(ERROR) << "Trying to get marginal covariance for state id: " << last_state_id_ << " but it's not in the problem";
+    return false;
+  }
+
+  StatePtr state = states_.at(last_state_id_);
+  covariance_blocks.push_back(std::make_pair(state->data(), state->data()));
+
+  ::ceres::Covariance::Options options;
+  ::ceres::Covariance covariance(options);
+
+  Eigen::MatrixXd cov_out;
+  cov_out.resize(covariance_blocks.size() * Sophus::SE2d::DoF, covariance_blocks.size() * Sophus::SE2d::DoF);
+
+  bool success = covariance.Compute(covariance_blocks, ceres_problem_.get());
+  if (success) {
+    covariance.GetCovarianceBlockInTangentSpace(state->data(), state->data(), cov_out.data());
+    state->robot.covariance = cov_out;  // update the covariance in the state
+    VLOG(1) << "Latest state covariance: \n" << cov_out;
+  }
+  return success;
+
+}
+
 ////////////////////////////////////////////////////////////////
 /// \brief Estimator::GetMapUncertainty
 ////////////////////////////////////////////////////////////////
@@ -211,7 +415,6 @@ void Estimator::GetMapUncertainty() {
   }
 }
 
-// TODO: change to take as input vecor of landmark ids for multiple retreival at the same time
 ////////////////////////////////////////////////////////////////
 /// \brief Estimator::GetLandmarkUncertainty
 ////////////////////////////////////////////////////////////////
@@ -242,9 +445,9 @@ bool Estimator::GetLandmarkUncertainty(std::vector<uint64_t> landmark_ids, Eigen
     // get the covariance blocks for all the requested landmarks
     for (size_t idx = 0; idx < landmark_ids.size(); ++idx) {
       Eigen::Map<Eigen::Matrix<double,Landmark::kLandmarkDim, Landmark::kLandmarkDim, Eigen::RowMajor>> lm_cov(
-                                                                                                          cov_out->block<Landmark::kLandmarkDim, Landmark::kLandmarkDim>(
-                                                                                                            idx * Landmark::kLandmarkDim,
-                                                                                                            idx * Landmark::kLandmarkDim).data());
+            cov_out->block<Landmark::kLandmarkDim, Landmark::kLandmarkDim>(
+              idx * Landmark::kLandmarkDim,
+              idx * Landmark::kLandmarkDim).data());
       LandmarkPtr lm = landmarks_.at(landmark_ids.at(idx));
       covariance.GetCovarianceBlock(lm->data(), lm->data(), lm_cov.data());
       lm->covariance = lm_cov;  // update the covariance in the landmark
@@ -321,14 +524,23 @@ void Estimator::SetLocalizationMode(bool localization_only) {
   if(localization_mode_ == localization_only) {
     return;
   }
+
+  if (options_.provide_map) {
+    VLOG(1) << " Localization mode toggled but prior map was provided";
+    return;
+  }
+
   VLOG(1) << "Localization mode requested with flag: " << localization_only;
   for (const auto e : landmarks_) {
+    if (!e.second->active) { continue; }  // check if landmark is in problem
+
     if (localization_only) {
+      VLOG(1) << " Setting landmark id: " << e.first << " constant." ;
       ceres_problem_->SetParameterBlockConstant(e.second->data());
-      e.second->active = false;
+      //e.second->active = false;
     } else {
       ceres_problem_->SetParameterBlockVariable(e.second->data());
-      e.second->active = true;
+      //e.second->active = true;
     }
   }
   localization_mode_ = localization_only;
@@ -416,7 +628,7 @@ void Estimator::CheckAndAddObservationFactors(const uint64_t state_id,
     LandmarkPtr lm = landmarks_.at(landmark_id);
     lm->AddObservation();
 
-    if (lm->GetNumObservations() < options_.delayed_initalization_num) {
+    if (lm->GetNumObservations() < options_.delayed_initalization_num && !options_.provide_map) {
       VLOG(2) << fmt::format("landmark id: {} has {} observations, but {} are needed.", landmark_id, lm->GetNumObservations(),
                              options_.delayed_initalization_num);
       unitialized_landmarks_[landmark_id][state_id].push_back(observations.at(meas_idx)); // save observation for later.
@@ -438,6 +650,9 @@ void Estimator::CheckAndAddObservationFactors(const uint64_t state_id,
           CreateObservationFactor(s_id, landmark_id, obs);
         }
       }
+
+      // remove the landmark from the uninitialized list
+      unitialized_landmarks_.erase(unitialized_landmarks_.find(landmark_id));
     }
     else {
       CreateObservationFactor(state_id, landmark_id, observations.at(meas_idx));
@@ -475,16 +690,21 @@ void Estimator::CreateObservationFactor(const uint64_t state_id,
     }
 
     // and add this observation
-    persistence_filter_map_.at(landmark_id)->update(true, obs.timestamp+1, options_.filter_options.P_M,
+    persistence_filter_map_.at(landmark_id)->update(true, obs.time+1, options_.filter_options.P_M,
                                                     options_.filter_options.P_F);
 
   }
 
   // add observation factor between state and landmark to problem
-  //TODO: Get correct measurement covariance
-  RangeFinderCovariance range_cov = RangeFinderCovariance::Identity();
-  range_cov(RangeFinderReading::kIndexBearing, RangeFinderReading::kIndexBearing) = Square(0.087);
-  range_cov(RangeFinderReading::kIndexRange, RangeFinderReading::kIndexRange) = Square(0.05); // 10cm
+  RangeFinderCovariance range_cov = RangeFinderReading::GetMeasurementCovariance();
+  if (options_.weigh_landmarks_by_persistence && options_.filter_options.use_persistence_filter &&
+      persistence_filter_map_.find(landmark_id) != persistence_filter_map_.end()) {
+    double persistence_prob = landmarks_.at(landmark_id)->persistence_prob;
+    if(persistence_prob < 1e-10){
+      persistence_prob = 1e-10;
+    }
+    range_cov *= 1.0 / persistence_prob;
+  }
   Eigen::LLT<RangeFinderCovariance> llt_of_information(range_cov.inverse());
   RangeFinderCovariance sqrt_information = llt_of_information.matrixL().transpose();
 
@@ -503,7 +723,7 @@ void Estimator::CreateObservationFactor(const uint64_t state_id,
 /// \brief Estimator::CreateOdometryFactor
 ///////////////////////////////////////////////////////////////////////////
 void Estimator::CreateOdometryFactor(const uint64_t prev_state_id, const uint64_t current_state_id,
-                                     const OdometryMeasurement& odometry) {
+                                     const RobotData& data) {
   VLOG(2) << fmt::format("Trying to create odometry factor between state {} and state {}", prev_state_id, current_state_id);
   if (!CheckStateExists(prev_state_id)) {
     LOG(ERROR) << fmt::format("Error adding odometry factor, state id {} requested but not in state map", prev_state_id);
@@ -513,22 +733,43 @@ void Estimator::CreateOdometryFactor(const uint64_t prev_state_id, const uint64_
     LOG(ERROR) << fmt::format("Error adding odometry factor, state id {} requested but not in state map", current_state_id);
     return;
   }
-  // add observation factor between state and landmark to problem
-  //TODO: Get correct odometry covariance
-  OdometryCovariance odometry_cov = OdometryCovariance::Identity();
-  odometry_cov(0,0) = Square(5e-2);
-  odometry_cov(1,1) = Square(1e-3);
-  odometry_cov(2,2) = Square(5e-2);
-  OdometryCovariance inv_cov = odometry_cov.inverse();
-  Eigen::LLT<OdometryCovariance> llt_of_information(inv_cov);
-  OdometryCovariance sqrt_information = llt_of_information.matrixL().transpose();
 
-  auto odometry_cost_function = new ::ceres::AutoDiffCostFunction<ceres::OdometryCostFunction,
-      OdometryMeasurement::kMeasurementDim, Sophus::SE2d::num_parameters, Sophus::SE2d::num_parameters>(
-        new ceres::OdometryCostFunction (odometry, sqrt_information));
+  if (data.odometry_readings.empty()) {
+    // no odometry readings (speed and omega), must be simulated data with a transform representing the odometry
+    // measurement
 
-  ceres_problem_->AddResidualBlock(odometry_cost_function, ceres_loss_function_.get(),
-                                   states_.at(prev_state_id)->data(),  states_.at(current_state_id)->data());
+    // add observation factor between state and landmark to problem
+    //TODO: Get correct odometry covariance
+    OdometryCovariance odometry_cov = OdometryCovariance::Identity();
+    odometry_cov(0,0) = Square(5e-2);
+    odometry_cov(1,1) = Square(1e-3);
+    odometry_cov(2,2) = Square(5e-2);
+    OdometryCovariance inv_cov = odometry_cov.inverse();
+    Eigen::LLT<OdometryCovariance> llt_of_information(inv_cov);
+    OdometryCovariance sqrt_information = llt_of_information.matrixL().transpose();
+
+    auto odometry_cost_function = new ::ceres::AutoDiffCostFunction<ceres::OdometryCostFunction,
+        OdometryMeasurement::kMeasurementDim, Sophus::SE2d::num_parameters, Sophus::SE2d::num_parameters>(
+          new ceres::OdometryCostFunction (data.odometry, sqrt_information));
+
+    ceres_problem_->AddResidualBlock(odometry_cost_function, ceres_loss_function_.get(),
+                                     states_.at(prev_state_id)->data(),  states_.at(current_state_id)->data());
+  } else {
+    // we have odometry readings, use them to create a factor (usually from real data)
+    OdometryCovariance odometry_cov = OdometryCovariance::Identity();
+    OdometryCovariance inv_cov = odometry_cov.inverse();
+    Eigen::LLT<OdometryCovariance> llt_of_information(inv_cov);
+    OdometryCovariance sqrt_information = llt_of_information.matrixL().transpose();
+
+    auto odometry_cost_function = new ::ceres::AutoDiffCostFunction<ceres::OdometryReadingCostFunction,
+        Sophus::SE2d::DoF, Sophus::SE2d::num_parameters, Sophus::SE2d::num_parameters>(
+          new ceres::OdometryReadingCostFunction (data.odometry_readings, sqrt_information,
+                                                  OdometryReading::kDt));
+
+    ceres_problem_->AddResidualBlock(odometry_cost_function, ceres_loss_function_.get(),
+                                     states_.at(prev_state_id)->data(),  states_.at(current_state_id)->data());
+
+  }
   VLOG(2) << fmt::format("Created odometry factor between state {} and state {}",
                          prev_state_id, current_state_id);
 
@@ -629,7 +870,7 @@ bool Estimator::GetFullJacobian() {
     size_t start = sparse_jacobian.rows[i];
     size_t end = sparse_jacobian.rows[i+1] - 1;
     for(size_t j = start; j <= end; j++){
-        jacobian(i, sparse_jacobian.cols[j]) = sparse_jacobian.values[j];
+      jacobian(i, sparse_jacobian.cols[j]) = sparse_jacobian.values[j];
     }
   }
 
@@ -651,6 +892,7 @@ void Estimator::GetEstimationResult(EstimatedData* data)  {
     }
     data->landmarks = landmarks_;
     data->states = states_;
+    data->data_association = data_assoc_results_;
   }
 }
 
@@ -661,7 +903,26 @@ void Estimator::GetEstimationResult(EstimatedData* data)  {
 void Estimator::UpdateMapPersistence() {
   for (auto& e : landmarks_) {
     if (persistence_filter_map_.find(e.first) != persistence_filter_map_.end()) {
-      e.second->persistence_prob = persistence_filter_map_.at(e.first)->predict(latest_timestamp_ + 1);
+
+      // get this landmark's neigboring weights
+      if (options_.filter_options.use_joint_persistence &&
+          persistence_weights_->find(e.first) != persistence_weights_->end()) {
+
+        double w1 = persistence_weights_->at(e.first).at(e.first);  // should always have self weight
+        double w2 = 0.0;
+        for (const auto& n : persistence_weights_->at(e.first)) {
+          if(n.first != e.first && persistence_filter_map_.find(n.first) != persistence_filter_map_.end()) {
+            VLOG(1) << fmt::format("weight between id: {} and id: {} is {} with persistence prb: {}",
+                                   e.first, n.first, n.second, landmarks_.at(n.first)->persistence_prob);
+            w2 += n.second * landmarks_.at(n.first)->persistence_prob;
+          }
+        }
+
+        e.second->persistence_prob = persistence_filter_map_.at(e.first)->predict(latest_timestamp_ + 1, w1, w2);
+
+      }else {
+        e.second->persistence_prob = persistence_filter_map_.at(e.first)->predict(latest_timestamp_ + 1);
+      }
     }
   }
 }

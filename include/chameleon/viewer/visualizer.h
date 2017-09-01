@@ -9,7 +9,9 @@
 #include "chameleon/viewer/gl_robot.h"
 #include "chameleon/viewer/gl_path_abs.h"
 #include "chameleon/viewer/gl_map.h"
+#include "chameleon/viewer/gl_data_associations.h"
 #include "chameleon/viewer/gl_observations.h"
+#include "chameleon/data_reader.h"
 
 #include "fmt/format.h"
 
@@ -39,18 +41,32 @@ public:
       ground_truth_robot_poses = std::make_shared<RobotPoseVector>();
       noisy_robot_poses = std::make_shared<RobotPoseVector>();
       ground_truth_map = std::make_shared<LandmarkVector>();
+      data_associations = std::make_shared<DataAssociationResults>();
+      feature_persistence_weights_map = std::make_shared<FeaturePersistenceWeightsMap>();
     }
 
     ///
     /// \brief AddData > Adds simulated data to the visualizer
-    /// \param data > simulated data (with and without noise)
+    /// \param data -> data to display
     ///
     void AddData(const RobotData& data) {
       ground_truth_robot_poses->push_back(data.debug.ground_truth_pose);
       noisy_robot_poses->push_back(data.debug.noisy_pose);
-      ground_truth_map = data.debug.ground_truth_map;
-      ground_truth_observation_map.insert({data.timestamp, data.debug.noise_free_observations});
-      noisy_observation_map.insert({data.timestamp, data.debug.noisy_observations});
+      if (data.debug.ground_truth_map != nullptr) {
+        ground_truth_map = data.debug.ground_truth_map;
+      }
+      if(data.debug.feature_persistence_weights_map != nullptr) {
+        feature_persistence_weights_map = data.debug.feature_persistence_weights_map;
+      }
+      ground_truth_observation_map.insert({data.index, data.debug.noise_free_observations});
+      noisy_observation_map.insert({data.index, data.debug.noisy_observations});
+    }
+
+    void AddData(const DataReader::G2oData& data) {
+
+      for (const auto& e : data.landmarks) {
+        ground_truth_map->push_back(*(e.second));
+      }
     }
 
     ///
@@ -58,8 +74,9 @@ public:
     /// \param data > inferred data
     ///
     void AddData(const EstimatedData& data) {
-       estimated_landmarks = data.landmarks;
-       estimated_poses = data.states;
+      estimated_landmarks = data.landmarks;
+      estimated_poses = data.states;
+      *data_associations = data.data_association;
     }
 
     typedef std::shared_ptr<ViewerData> Ptr;
@@ -68,16 +85,20 @@ public:
     LandmarkVectorPtr ground_truth_map;
     RangeFinderObservationVectorMap ground_truth_observation_map;
     RangeFinderObservationVectorMap noisy_observation_map;
+    FeaturePersistenceWeightsMapPtr feature_persistence_weights_map;
 
     // estimated quantities
     LandmarkPtrMap estimated_landmarks;
     StatePtrMap estimated_poses;
+    DataAssociationResults::Ptr data_associations;
   };
 
   // variables that will be displayed in the GUI
   struct DebugGUIVariables {
     std::unique_ptr<pangolin::Var<bool>> show_gt;
+    std::unique_ptr<pangolin::Var<bool>> show_data_assoc;
     std::unique_ptr<pangolin::Var<bool>> show_observations;
+    std::unique_ptr<pangolin::Var<bool>> show_gt_observations;
     std::unique_ptr<pangolin::Var<bool>> show_landmarks;
     std::unique_ptr<pangolin::Var<bool>> show_odometry;
     std::unique_ptr<pangolin::Var<bool>> show_estimated;
@@ -86,6 +107,10 @@ public:
     std::unique_ptr<pangolin::Var<bool>> do_Localization;
     std::unique_ptr<pangolin::Var<bool>> reset;
     std::unique_ptr<pangolin::Var<bool>> show_prob_labels;
+    std::unique_ptr<pangolin::Var<bool>> show_lm_ids;
+    std::unique_ptr<pangolin::Var<bool>> color_lms;
+    std::unique_ptr<pangolin::Var<bool>> draw_persistence_weights;
+    std::unique_ptr<pangolin::Var<int>> plot_idx;
     std::unique_ptr<pangolin::Var<double>> prob_missed_detect;
     std::unique_ptr<pangolin::Var<double>> prob_false_detect;
   };
@@ -112,6 +137,7 @@ public:
     std::unique_ptr<GLMap> ground_truth_map;
     std::unique_ptr<GLObservations> ground_truth_observations;
     std::unique_ptr<GLObservations> noisy_observations;
+    std::unique_ptr<GLDataAssociations> data_associations;
     // estimated quantities
     std::unique_ptr<GLMap> estimated_map;
     std::unique_ptr<GLPathAbs> estimated_robot_path;
@@ -122,8 +148,9 @@ public:
   Visualizer(const ViewerOptions& options);
 
   void SetData(ViewerData::Ptr data);
-  // which timesteps from the data should we add to the display
-  bool AddTimesteps(std::vector<size_t> timesteps);
+  void SetData(std::map<size_t, ViewerData::Ptr> data);
+  // which indeces from the data should we add to the display
+  bool AddIndices(std::vector<size_t> indices, int robot_idx = -1);
 
   void RequestFinish();
   bool IsFinished();
@@ -134,6 +161,8 @@ public:
   bool IsResetRequested();
   const DebugGUIVariables& GetDebugVariables();
   std::vector<uint64_t> GetLandmarksToBeRemoved();
+  std::vector<uint64_t> ChangeLandmarks();
+
 
 private:
 
@@ -152,22 +181,25 @@ private:
   void AddObjectsToSceneGraph();
   void ResetSceneGraph();
   void UpdatePlotters();
-  //void GuiVarChanged(void * data, const::std::string& name, pangolin::VarValueGeneric& var);
-
 
   const ViewerOptions& options_;
   bool single_step_ = false;
   bool running_ = false;
   bool reset_requested_ = false;
   std::vector<uint64_t> landmarks_to_be_removed_;
+  std::vector<uint64_t> landmarks_to_be_changed_;
+  bool change_landmarks_ = false;
+
 
   GuiVars gui_vars_;
   ViewerData::Ptr data_;
+  std::map<size_t, ViewerData::Ptr> data_map_;
   std::unique_ptr<std::thread> viewer_thread_;
   std::mutex status_mutex_;
   std::mutex data_mutex_;
   bool finished_ = false;
   bool finish_requested_ = false;
+  size_t remove_lm_idx_ = 18;
 };
 
 }  // namespace chameleon

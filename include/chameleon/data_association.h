@@ -30,13 +30,19 @@ public:
   /// \return Data association in the form: index of observation in measurement vector -> landmark_id
   ///
   static DataAssociationMap AssociateDataToLandmarks(const RangeFinderObservationVector& measurements,
-                                                     const LandmarkPtrMap& /*map*/, DataAssociationType strategy);
+                                                     const LandmarkPtrMap& map, const Marginals& current_state, DataAssociationType strategy);
 
 private:
 
   // Get the data association directly from the measurements, the map isnt needed for this one
   static void KnownDataAssociation(const RangeFinderObservationVector& measurements, const LandmarkPtrMap& map,
                                    DataAssociationMap* const  association);
+
+  // Don't assume known data association and use the mahalanobis distance to establish the best pairing for each landmark
+  static void IndividualCompatibility(const RangeFinderObservationVector& measurements, const LandmarkPtrMap& map,
+                                                const Marginals& current_state, DataAssociationMap* const  association);
+
+  static double MahalanobisDistance(Eigen::VectorXd z, Distribution dist);
 };
 
 }  //namespace chameleon

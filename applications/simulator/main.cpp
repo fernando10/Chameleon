@@ -7,8 +7,10 @@
 
 #include "chameleon/viewer/visualizer.h"
 #include "chameleon/data_generator.h"
+#include "chameleon/data_provider.h"
 #include "chameleon/estimator.h"
 #include "fmt/printf.h"
+#include "chameleon/data_reader.h"
 
 /*-----------COMMAND LINE FLAGS-----------------------------------------------*/
 DEFINE_bool(display, true, "use viewer (pangolin)");
@@ -16,11 +18,19 @@ DEFINE_bool(start_running, false, "start running immediately");
 DEFINE_bool(add_observations, true, "add landmark observation/estimation");
 DEFINE_int32(num_steps, 200, " number of steps to take");
 DEFINE_bool(compute_lm_covariance, false, "compute landmark covariance");
+DEFINE_bool(provide_map, true, "provide pre-built map to estimator");
 DEFINE_bool(print_optimization_full_summary, false, "print full summary");
 DEFINE_bool(print_optimization_brief_summary, false, "print brief summary");
 DEFINE_bool(persistence_filter, false, "use persistence filter");
+DEFINE_bool(joint_persistence_filter, false, "use joint persistence filter");
+DEFINE_bool(weigh_lm_by_persistence, false, "weigh lm uncertainty by persistence");
 DEFINE_double(huber_loss, 1.0, " huber loss");
 DEFINE_int32(delayed_lm_init, 10, " delayed lm initalization");
+DEFINE_int32(num_robots, 1, "number of robots to use (if more than 1 is available)");
+DEFINE_string(data_file, "", "data file for dataset");
+DEFINE_string(data_type, "sim", "data type: sim, vp (victoria park) or utias");
+DEFINE_string(data_association, "known", "data association type: known, IC or JCBB");
+DEFINE_int32(sleep_time, 10, "time between viewer loops");
 /*----------------------------------------------------------------------------*/
 
 using namespace chameleon;
@@ -40,37 +50,52 @@ int main(int argc, char **argv) {
   FLAGS_logtostderr = 1;
 
   ///////////////////////////////////////
-  // Setup Data Generator so we have some simulated data
+  // Setup Data Provider so we have some data
   //////////////////////////////////////
-  DataGenerator::DataGeneratorOptions sim_options;  // use default options
+  DataProvider data_provider(FLAGS_data_type, FLAGS_data_file);
+  data_provider.num_robots = FLAGS_num_robots;
+  DataGenerator::DataGeneratorOptions& sim_options = data_provider.SimulationOptions();
   sim_options.path_options.num_steps = FLAGS_num_steps;
   sim_options.path_options.initial_position = RobotPose(0, Eigen::Vector2d::Zero());
-  std::unique_ptr<DataGenerator> data_generator = util::make_unique<DataGenerator>(sim_options);
-  RobotData simulator_data;  // data corresponding to a single timestep
 
   //////////////////////////////////////
   // Setup estimator
   //////////////////////////////////////
   chameleon::ceres::Estimator::EstimatorOptions estimator_options;
   estimator_options.print_full_summary = true;
-  estimator_options.data_association_strategy = DataAssociation::DataAssociationType::Known;
+  if (FLAGS_data_association.compare("known") == 0) {
+    estimator_options.data_association_strategy = DataAssociation::DataAssociationType::Known;
+  } else if (FLAGS_data_association.compare("IC") == 0) {
+    estimator_options.data_association_strategy = DataAssociation::DataAssociationType::IC;
+  }
   estimator_options.add_observations = FLAGS_add_observations;
+  estimator_options.provide_map = FLAGS_provide_map;
+  estimator_options.weigh_landmarks_by_persistence = FLAGS_weigh_lm_by_persistence;
   estimator_options.print_brief_summary = FLAGS_print_optimization_brief_summary;
   estimator_options.print_full_summary = FLAGS_print_optimization_full_summary;
   estimator_options.compute_landmark_covariance = FLAGS_compute_lm_covariance;
   estimator_options.ceres_options.minimizer_progress_to_stdout = FLAGS_print_optimization_full_summary;
   estimator_options.huber_loss_a = FLAGS_huber_loss;
   estimator_options.filter_options.use_persistence_filter = FLAGS_persistence_filter;
+  estimator_options.filter_options.use_joint_persistence = FLAGS_joint_persistence_filter;
   estimator_options.delayed_initalization_num = FLAGS_delayed_lm_init;
   std::unique_ptr<chameleon::ceres::Estimator> SLAM = util::make_unique<chameleon::ceres::Estimator>(estimator_options);
   EstimatedData estimator_results;  // for collecting the latest updates form the estimator
+  FeaturePersistenceWeightsMapPtr weights = nullptr;
+
+  if (FLAGS_provide_map) {
+    // Get feature persistence weights
+    weights = data_provider.BuildFeaturePersistenceAssociationMatrix();
+    SLAM->SetPersistenceWeights(weights);
+    SLAM->SetMap(data_provider.GetPriorMap());
+  }
 
   ////////////////////////////////////
   // Get Data -> Estimate -> Display
   ////////////////////////////////////
   if (FLAGS_display) {
     Visualizer::ViewerOptions viewer_options;
-    viewer_options.window_name = "Chameleon - ICRA 2018";
+    viewer_options.window_name = "Chameleon - TRI Summer 2017";
     viewer_options.start_running = FLAGS_start_running;
 
     Visualizer viewer(viewer_options);  // create viewer and run thread
@@ -84,8 +109,13 @@ int main(int argc, char **argv) {
 
       if (viewer.IsResetRequested()) {
         LOG(INFO) << " Reseting...";
-        data_generator->Reset();
-        SLAM->Reset();
+        data_provider.Reset();  // reset data provider
+        SLAM->Reset();  // reset slam system
+        if (estimator_options.provide_map) {
+          SLAM->SetMap(data_provider.GetPriorMap());
+        }
+
+        // reset viewer
         viewer_data = std::make_shared<Visualizer::ViewerData>();
         viewer.SetData(viewer_data);
         viewer.SetReset();
@@ -100,24 +130,24 @@ int main(int argc, char **argv) {
 
       if (go) {
 
-        // update feature detection probabilities
-        sim_options.prob_missed_detection = *(viewer.GetDebugVariables().prob_missed_detect);
-        sim_options.prob_false_positive = *(viewer.GetDebugVariables().prob_false_detect);
-
-        // check if any landmarks need to be removed
-        sim_options.remove_lm_ids = viewer.GetLandmarksToBeRemoved();
-
+        // pass along any user input to the data provider
+        data_provider.UpdateOptions(viewer);
 
         // Get some data
-        if (data_generator->GetRobotData(&simulator_data)) {
+        bool data_success = false;
+        RobotData data;
+        data_success = data_provider.GetData(&data);
+        data.debug.feature_persistence_weights_map = weights;
 
-          // display debug data
-          viewer_data->AddData(simulator_data);
+        if (data_success) {
+
+          // display data
+          viewer_data->AddData(data);
 
           if (*(viewer.GetDebugVariables().do_SLAM)) {
             estimator_options.filter_options.P_F = *(viewer.GetDebugVariables().prob_false_detect);
             estimator_options.filter_options.P_M = *(viewer.GetDebugVariables().prob_missed_detect);
-            SLAM->AddData(simulator_data);
+            SLAM->AddData(data);
             SLAM->SetLocalizationMode(*(viewer.GetDebugVariables().do_Localization));
             // solve is currently batch synchronous....TBD if needs to be threaded
             SLAM->Solve();
@@ -125,14 +155,14 @@ int main(int argc, char **argv) {
             viewer_data->AddData(estimator_results);
           }
 
-          viewer.AddTimesteps({size_t(simulator_data.timestamp)});  // add the current timestep to the display
+          viewer.AddIndices({size_t(data.index)});  // add the current index to the display
 
         } else {
           LOG(ERROR) << "Unable to get data.";
           std::this_thread::sleep_for(std::chrono::seconds(1));
         }
       }
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      std::this_thread::sleep_for(std::chrono::milliseconds(FLAGS_sleep_time));
     }
   }
 

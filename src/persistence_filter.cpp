@@ -107,7 +107,16 @@ void PersistenceFilter::update(bool detector_output, double observation_time, do
 
 double PersistenceFilter::predict(double prediction_time) const
 {
+  return predict(prediction_time, 1.0, 0.0);
+}
+
+double PersistenceFilter::predict(double prediction_time, double pi_1, double pi_2) const
+{
   VLOG(2) << fmt::format("Predict with  time: {}", prediction_time);
+
+  if(pi_1 + pi_2 > 1 || pi_1 < 0 || pi_2 < 0) {
+    LOG(FATAL) << "invalid weights passed in to persistence filter: pi_1: " << pi_1 << "pi_2: " << pi_2;
+  }
 
   // Input checking
   if(prediction_time < tN_)
@@ -115,17 +124,22 @@ double PersistenceFilter::predict(double prediction_time) const
     throw std::domain_error("Prediction time must be at least as recent as the last incorporated observation (prediction_time >= last_observation_time)");
   }
 
-  double exp_arg = logpY_tN_ - logpY_ + shifted_logS_(prediction_time);
+  VLOG(2) << "predict called with pi_1: " << pi_1 << " and pi_2: " << pi_2;
   gsl_error_handler_t* error_handler = gsl_set_error_handler_off();
   gsl_sf_result result;
+
+  //double prior = pi_2 == 0 ? shifted_logS_(prediction_time) :  logsum(std::log(pi_1) + shifted_logS_(prediction_time), std::log(pi_2));
+  double exp_arg = logpY_tN_ - logpY_ + shifted_logS_(prediction_time);
+
   int status = gsl_sf_exp_e(exp_arg, &result);
   // Reset original error handler here
   gsl_set_error_handler(error_handler);
 
   if(status == GSL_SUCCESS)
   {
-    VLOG(3) << "Got prediction: " << result.val;
-    return result.val;
+    double res = result.val;
+    VLOG(3) << "Got prediction: " << res * pi_1 + pi_2;
+    return res * pi_1 + pi_2;
   }
   else
   {

@@ -5,7 +5,7 @@
 #include <Eigen/Eigen>
 #include "chameleon/types.h"
 
-#include <SceneGraph/GLObject.h>
+#include "SceneGraph/GLObject.h"
 #define MAT4_COL_MAJOR_DATA(m) (Eigen::Matrix<float,4,4,Eigen::ColMajor>(m).data())
 
 ///

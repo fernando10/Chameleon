@@ -23,10 +23,9 @@ class PathGenerator {
   };
 
   struct PathGeneratorOptions {
-    size_t num_steps = 100;
+    size_t num_steps = 200;
     PathTypes motion_type = PathTypes::Rectangle;
     RobotPose initial_position;  // all measurements are relative so we can set any initial position
-
   };
 
   PathGenerator(const PathGeneratorOptions& options);
